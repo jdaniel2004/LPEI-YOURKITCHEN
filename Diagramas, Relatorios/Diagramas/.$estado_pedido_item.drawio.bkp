@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- Main Title -->
+    <mxCell id="t0" value="Diagrama de Estado — Pedido e ItemPedido" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="300" y="10" width="500" height="30" as="geometry" />
+    </mxCell>
+
+    <!-- ===================== -->
+    <!--   SECTION: PEDIDO     -->
+    <!-- ===================== -->
+
+    <!-- Section label -->
+    <mxCell id="sec1" value="Pedido" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontStyle=3;" vertex="1" parent="1">
+      <mxGeometry x="30" y="55" width="100" height="25" as="geometry" />
+    </mxCell>
+
+    <!-- Section border -->
+    <mxCell id="border1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="50" width="1060" height="300" as="geometry" />
+    </mxCell>
+
+    <!-- Initial Pseudo-State Pedido -->
+    <mxCell id="pi" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="55" y="130" width="20" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- State: Criado -->
+    <mxCell id="p1" value="&lt;b&gt;Criado&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="110" y="120" width="120" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Enviado para KDS -->
+    <mxCell id="p2" value="&lt;b&gt;Enviado para KDS&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="290" y="120" width="140" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Em Preparação -->
+    <mxCell id="p3" value="&lt;b&gt;Em Preparação&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="500" y="120" width="140" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Pronto para Servir -->
+    <mxCell id="p4" value="&lt;b&gt;Pronto para Servir&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="710" y="120" width="140" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Fechado -->
+    <mxCell id="p5" value="&lt;b&gt;Fechado&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="920" y="120" width="120" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Cancelado (Pedido) -->
+    <mxCell id="p6" value="&lt;b&gt;Cancelado&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="500" y="265" width="140" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- Final Pedido -->
+    <mxCell id="pf" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" vertex="1" parent="1">
+      <mxGeometry x="970" y="175" width="20" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- TRANSITIONS — Pedido -->
+    <mxCell id="pe0" edge="1" source="pi" target="p1" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="pe1" value="Empregado confirma envio" edge="1" source="p1" target="p2" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="pe2" value="Cozinheiro inicia&#xa;pelo menos 1 item" edge="1" source="p2" target="p3" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="pe3" value="Todos os itens&#xa;marcados Prontos" edge="1" source="p3" target="p4" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="pe4" value="Pagamento efetuado" edge="1" source="p4" target="p5" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="pe5" edge="1" source="p5" target="pf" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- Cancelado transitions -->
+    <mxCell id="pe6" value="Cancelar pedido" edge="1" source="p1" target="p6" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="170" y="245" />
+          <mxPoint x="500" y="288" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="pe7" value="Cancelar pedido" edge="1" source="p2" target="p6" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="360" y="245" />
+          <mxPoint x="500" y="288" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="pe8" value="Cancelar pedido" edge="1" source="p3" target="p6" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ========================= -->
+    <!--   SECTION: ITEM PEDIDO    -->
+    <!-- ========================= -->
+
+    <!-- Section label -->
+    <mxCell id="sec2" value="ItemPedido" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontStyle=3;" vertex="1" parent="1">
+      <mxGeometry x="30" y="380" width="120" height="25" as="geometry" />
+    </mxCell>
+
+    <!-- Section border -->
+    <mxCell id="border2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="375" width="1060" height="280" as="geometry" />
+    </mxCell>
+
+    <!-- Initial Pseudo-State ItemPedido -->
+    <mxCell id="ii" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="100" y="460" width="20" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- State: Pendente -->
+    <mxCell id="i1" value="&lt;b&gt;Pendente&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="180" y="450" width="120" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Em Preparação -->
+    <mxCell id="i2" value="&lt;b&gt;Em Preparação&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="430" y="450" width="140" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Pronto -->
+    <mxCell id="i3" value="&lt;b&gt;Pronto&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="700" y="450" width="120" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- State: Cancelado (Item) -->
+    <mxCell id="i4" value="&lt;b&gt;Cancelado&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="430" y="570" width="140" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- Final ItemPedido -->
+    <mxCell id="if1" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" vertex="1" parent="1">
+      <mxGeometry x="850" y="465" width="20" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="if2" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" vertex="1" parent="1">
+      <mxGeometry x="580" y="630" width="20" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- TRANSITIONS — ItemPedido -->
+    <mxCell id="ie0" edge="1" source="ii" target="i1" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="ie1" value="Cozinheiro inicia preparação&#xa;(marcar Em Preparação)" edge="1" source="i1" target="i2" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="ie2" value="Cozinheiro marca Pronto" edge="1" source="i2" target="i3" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="ie3" edge="1" source="i3" target="if1" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- Cancelado from Pendente -->
+    <mxCell id="ie4" value="Empregado cancela item&#xa;(antes de envio KDS)" edge="1" source="i1" target="i4" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="240" y="565" />
+          <mxPoint x="430" y="592" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <!-- Cancelado from Em Preparação -->
+    <mxCell id="ie5" value="Gestor cancela item" edge="1" source="i2" target="i4" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="ie6" edge="1" source="i4" target="if2" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

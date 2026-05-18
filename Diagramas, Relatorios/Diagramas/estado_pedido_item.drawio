@@ -1,0 +1,135 @@
+<mxfile host="Electron">
+  <diagram id="fIxlSE136ryLCJGD0YiL" name="Page-1">
+    <mxGraphModel dx="1585" dy="975" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontStyle=1;" value="Diagrama de Estado — Pedido e ItemPedido" vertex="1">
+          <mxGeometry height="30" width="500" x="450" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="sec1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontStyle=3;" value="Pedido" vertex="1">
+          <mxGeometry height="25" width="100" x="30" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="border1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;" value="" vertex="1">
+          <mxGeometry height="300" width="1340" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="pi" parent="1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="55" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="&lt;b&gt;Criado&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="120" x="110" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" value="&lt;b&gt;Enviado para KDS&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="140" x="360" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="&lt;b&gt;Em Preparação&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="140" x="630" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="&lt;b&gt;Pronto para Servir&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="140" x="920" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="&lt;b&gt;Fechado&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="120" x="1210" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="&lt;b&gt;Cancelado&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="140" x="630" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="pf" parent="1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="1260" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="pe0" edge="1" parent="1" source="pi" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pe1" edge="1" parent="1" source="p1" target="p2" value="Empregado confirma&#xa; envio">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pe2" edge="1" parent="1" source="p2" target="p3" value="Cozinheiro inicia&#xa;pelo menos 1 item">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pe3" edge="1" parent="1" source="p3" target="p4" value="Todos os itens&#xa;marcados Prontos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pe4" edge="1" parent="1" source="p4" target="p5" value="Pagamento efetuado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pe5" edge="1" parent="1" source="p5" target="pf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pe6" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;" target="p6" value="Cancelar pedido">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pe7" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;" target="p6" value="Cancelar pedido">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="220" />
+              <mxPoint x="570" y="220" />
+              <mxPoint x="570" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pe8" edge="1" parent="1" source="p3" target="p6" value="Cancelar pedido">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pBadktSCKdzGCXtjlv_y-1" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="305" width="890" x="255" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="sec2" parent="pBadktSCKdzGCXtjlv_y-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontStyle=3;" value="ItemPedido" vertex="1">
+          <mxGeometry height="25" width="120" x="10" y="5" as="geometry" />
+        </mxCell>
+        <mxCell id="border2" parent="pBadktSCKdzGCXtjlv_y-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;" value="" vertex="1">
+          <mxGeometry height="305" width="890" as="geometry" />
+        </mxCell>
+        <mxCell id="ii" parent="pBadktSCKdzGCXtjlv_y-1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="80" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="i1" parent="pBadktSCKdzGCXtjlv_y-1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="&lt;b&gt;Pendente&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="120" x="160" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="i2" parent="pBadktSCKdzGCXtjlv_y-1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="&lt;b&gt;Em Preparação&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="140" x="410" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="i3" parent="pBadktSCKdzGCXtjlv_y-1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="&lt;b&gt;Pronto&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="120" x="680" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="i4" parent="pBadktSCKdzGCXtjlv_y-1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="&lt;b&gt;Cancelado&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="140" x="410" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="if1" parent="pBadktSCKdzGCXtjlv_y-1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="830" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="if2" parent="pBadktSCKdzGCXtjlv_y-1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="590" y="207.5" as="geometry" />
+        </mxCell>
+        <mxCell id="ie0" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="ii" target="i1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ie1" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="i1" target="i2" value="Cozinheiro inicia &#xa;preparação&#xa;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ie2" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="i2" target="i3" value="Cozinheiro marca &#xa;Pronto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ie3" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="i3" target="if1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ie4" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="i1" style="edgeStyle=orthogonalEdgeStyle;" target="i4" value="Cancelar Item">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="218" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ie5" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="i2" target="i4" value="Cancelar Item">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ie6" edge="1" parent="pBadktSCKdzGCXtjlv_y-1" source="i4" target="if2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="700" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- Title -->
+    <mxCell id="t1" value="Diagrama de Estado — Mesa" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="250" y="10" width="350" height="30" as="geometry" />
+    </mxCell>
+
+    <!-- Initial Pseudo-State -->
+    <mxCell id="init" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="390" y="60" width="20" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- State: LIVRE -->
+    <mxCell id="livre" value="&lt;b&gt;Livre&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="330" y="130" width="140" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- State: RESERVADA -->
+    <mxCell id="reservada" value="&lt;b&gt;Reservada&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="90" y="290" width="140" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- State: OCUPADA -->
+    <mxCell id="ocupada" value="&lt;b&gt;Ocupada&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="570" y="290" width="140" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- State: AGUARDA CONTA -->
+    <mxCell id="aguarda" value="&lt;b&gt;Aguarda Conta&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="330" y="460" width="140" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- Final Pseudo-State (conceptual — mesa desativada) -->
+    <mxCell id="fin" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" vertex="1" parent="1">
+      <mxGeometry x="390" y="570" width="20" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- TRANSITIONS -->
+
+    <!-- init → Livre -->
+    <mxCell id="e0" edge="1" source="init" target="livre" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Livre → Reservada: Criar Reserva -->
+    <mxCell id="e1" value="Criar Reserva" edge="1" source="livre" target="reservada" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="330" y="155" />
+          <mxPoint x="160" y="155" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Reservada → Livre: Cancelar Reserva -->
+    <mxCell id="e2" value="Cancelar Reserva" edge="1" source="reservada" target="livre" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="160" y="210" />
+          <mxPoint x="330" y="210" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Livre → Ocupada: Abrir Mesa -->
+    <mxCell id="e3" value="Abrir Mesa" edge="1" source="livre" target="ocupada" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="470" y="155" />
+          <mxPoint x="640" y="155" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Reservada → Ocupada: Cliente Chega / Confirmar Reserva -->
+    <mxCell id="e4" value="Cliente chega /&#xa;Confirmar Reserva" edge="1" source="reservada" target="ocupada" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Ocupada → Ocupada (Transferir Mesa) — self-loop -->
+    <mxCell id="e5" value="Transferir Mesa" edge="1" source="ocupada" target="ocupada" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="730" y="290" />
+          <mxPoint x="760" y="290" />
+          <mxPoint x="760" y="340" />
+          <mxPoint x="730" y="340" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Ocupada → AguardaConta: Solicitar Conta -->
+    <mxCell id="e6" value="Solicitar Conta" edge="1" source="ocupada" target="aguarda" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="640" y="340" />
+          <mxPoint x="640" y="430" />
+          <mxPoint x="470" y="430" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- AguardaConta → Ocupada: Cancelar Conta -->
+    <mxCell id="e7" value="Cancelar Conta" edge="1" source="aguarda" target="ocupada" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="470" y="480" />
+          <mxPoint x="560" y="480" />
+          <mxPoint x="560" y="370" />
+          <mxPoint x="570" y="370" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- AguardaConta → Livre: Pagamento Concluído -->
+    <mxCell id="e8" value="Pagamento Concluído" edge="1" source="aguarda" target="livre" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="330" y="485" />
+          <mxPoint x="200" y="485" />
+          <mxPoint x="200" y="155" />
+          <mxPoint x="330" y="155" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- AguardaConta → Final: Mesa Desativada (optional) -->
+    <mxCell id="e9" value="Mesa Desativada" edge="1" source="aguarda" target="fin" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

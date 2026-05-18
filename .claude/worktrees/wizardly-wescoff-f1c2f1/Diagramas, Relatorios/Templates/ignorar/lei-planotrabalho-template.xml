@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<indexing>
+ <object alt="" name="Image1" object_type="graphic"/>
+ <object alt="" name="WordPictureWatermark9538562" object_type="graphic"/>
+ <object alt="" name="Image3" object_type="graphic"/>
+ <object index="24" name="Table6" object_type="table"/>
+ <paragraph index="26" node_type="writer" parent_index="24"> Licenciatura em Engenharia Informática </paragraph>
+ <object index="32" name="Table7" object_type="table"/>
+ <paragraph index="34" node_type="writer" parent_index="32"> Licenciatura em Engenharia Informática </paragraph>
+ <paragraph index="47" node_type="writer">Plano de Trabalho</paragraph>
+ <paragraph index="48" node_type="writer">de</paragraph>
+ <paragraph index="49" node_type="writer">Laboratório de Projeto em Engenharia Informática</paragraph>
+ <paragraph index="50" node_type="writer">da</paragraph>
+ <paragraph index="51" node_type="writer">Licenciatura em Engenharia Informática</paragraph>
+ <object index="55" name="Table1" object_type="table"/>
+ <paragraph index="57" node_type="writer" parent_index="55">Nome do aluno</paragraph>
+ <paragraph index="60" node_type="writer" parent_index="55">Número do aluno</paragraph>
+ <paragraph index="63" node_type="writer" parent_index="55">Jorge Daniel Sampaio Melo Teixeira</paragraph>
+ <paragraph index="66" node_type="writer" parent_index="55">81547</paragraph>
+ <object index="76" name="Table2" object_type="table"/>
+ <paragraph index="78" node_type="writer" parent_index="76">Título do trabalho</paragraph>
+ <paragraph index="81" node_type="writer" parent_index="76">Sistema de Gestão para Restauração (POS)</paragraph>
+ <object index="85" name="Table3" object_type="table"/>
+ <paragraph index="87" node_type="writer" parent_index="85">Nome do orientador</paragraph>
+ <paragraph index="90" node_type="writer" parent_index="85">Frederico Augusto Dos Santos Branco</paragraph>
+ <object index="94" name="Table4" object_type="table"/>
+ <paragraph index="96" node_type="writer" parent_index="94">Nome do(s) coorientador(es)</paragraph>
+ <paragraph index="99" node_type="writer" parent_index="94">Emanuel Soares Peres Correia</paragraph>
+ <paragraph index="100" node_type="writer" parent_index="94">Manuel José Cabral dos Santos Reis</paragraph>
+ <object index="104" name="Table5" object_type="table"/>
+ <paragraph index="106" node_type="writer" parent_index="104">Nome do coorientador externo à UTAD</paragraph>
+ <paragraph index="113" node_type="writer">1 – Tema do projeto</paragraph>
+ <paragraph index="114" node_type="writer">O projeto foca-se no desenvolvimento de um Sistema de Gestão para Restauração, integrando um Point of Sales (POS) e um Kitchen Display System (KDS). A solução visa responder à necessidade de velocidade e eficiência no setor da restauração, utilizando a metodologia de Vibe Coding para simplificar a implementação de comunicações em tempo real via WebSockets. O trabalho terá um foco especial na resiliência do sistema e na criação de uma interface tátil intuitiva, utilizando assistentes de IA para a geração de código.</paragraph>
+ <paragraph index="115" node_type="writer">2 – Objetivos</paragraph>
+ <paragraph index="116" node_type="writer">PRINCIPAL</paragraph>
+ <paragraph index="117" node_type="writer">Implementar uma solução tecnológica integrada para a frente de loja e gestão de cozinha.</paragraph>
+ <paragraph index="118" node_type="writer">OBJETIVOS ESPECÍFICOS</paragraph>
+ <paragraph index="119" node_type="writer">Desenvolver uma interface tátil para registo rápido de pedidos e gestão de mesas.</paragraph>
+ <paragraph index="120" node_type="writer">Implementar ecrãs de cozinha (KDS) sincronizados em tempo real com o POS.</paragraph>
+ <paragraph index="121" node_type="writer">Criar um módulo de Gestão de Stocks e Fichas Técnicas com abate automático de ingredientes e controlo de Food Cost.</paragraph>
+ <paragraph index="122" node_type="writer">Desenvolver um Backoffice para análise de vendas e configuração remota de menus.</paragraph>
+ <paragraph index="124" node_type="writer">ENTREGÁVEIS FINAIS</paragraph>
+ <paragraph index="125" node_type="writer">Software Funcional: Aplicação alojada em ambiente cloud</paragraph>
+ <paragraph index="126" node_type="writer">Repositório de Código: Histórico de desenvolvimento no GitHub/GitLab.</paragraph>
+ <paragraph index="127" node_type="writer">Base de Conhecimento: Workspace no Anytype com toda a modelação e registos.</paragraph>
+ <paragraph index="128" node_type="writer">Relatório Final: Documentação detalhando o processo de Vibe Coding e arquitetura.</paragraph>
+ <paragraph index="129" node_type="writer">3 – Tarefas a executar</paragraph>
+ <paragraph index="130" node_type="writer">Fundação e Setup Inicial: Configuração do Anytype, Investigação do estado da arte e elaboração da modelação UML inicial.</paragraph>
+ <paragraph index="131" node_type="writer">Prototipagem e Modelação: Tradução de diagramas em prompts para ferramentas de IA (Antigravity/Stich), geração do backend e wireframes da interface.</paragraph>
+ <paragraph index="132" node_type="writer">Implementação da Lógica de Base:</paragraph>
+ <paragraph index="133" node_type="writer">Desenvolvimento da lógica de sincronização via WebSockets</paragraph>
+ <paragraph index="134" node_type="writer">Implementação do módulo de gestão de mesas e pagamentos</paragraph>
+ <paragraph index="135" node_type="writer">Criação do sistema de abate de stock e fichas técnicas</paragraph>
+ <paragraph index="136" node_type="writer">Testes e refatorização: Testes unitários gerados por IA, testes de usabilidade da interface tátil e correção de bugs</paragraph>
+ <paragraph index="137" node_type="writer">Deploy e Documentação: Alojamento do sistema (ex: Vercel/Supabase/Github Pages/ Self-hosted), redação do relatório final e preparação da apresentação</paragraph>
+ <paragraph index="139" node_type="writer">4 – Calendarização das tarefas</paragraph>
+ <paragraph index="141" node_type="writer">Vila Real, 25 de Fevereiro de 2026</paragraph>
+ <paragraph index="143" node_type="writer">____________________________________________</paragraph>
+</indexing>
