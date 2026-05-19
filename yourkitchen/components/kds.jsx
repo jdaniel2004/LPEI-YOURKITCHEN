@@ -1,0 +1,1051 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const T = {
+  bg: "#08080B",
+  surface: "#0F0F14",
+  card: "#15151C",
+  elevated: "#1C1C25",
+  border: "#252530",
+  borderBright: "#32324A",
+  accent: "#7C6AF7",
+  accentDim: "#7C6AF720",
+  teal: "#3ECFAE",
+  tealDim: "#3ECFAE18",
+  danger: "#F75A5A",
+  dangerDim: "#F75A5A18",
+  warning: "#F7A94A",
+  warningDim: "#F7A94A18",
+  success: "#4AF785",
+  successDim: "#4AF78518",
+  text: "#EDEDF2",
+  textSec: "#8888A0",
+  textMuted: "#4A4A60",
+};
+
+// ─── MOCK DATA ─────────────────────────────────────────────────────────────────
+const MOCK_TICKETS = [
+  {
+    id: "T001", type: "mesa", table: "M4", waiter: "Sofia",
+    createdAt: Date.now() - 3.5 * 60 * 1000, status: "pendente",
+    items: [
+      { id: "i1", name: "Bacalhau à Brás", qty: 2, notes: "sem cebola num deles", sent: true, cancelled: false },
+      { id: "i2", name: "Polvo Grelhado", qty: 1, notes: "", sent: true, cancelled: false },
+      { id: "i3", name: "Sopa do Dia", qty: 2, notes: "", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T002", type: "take-away", table: null, waiter: "João",
+    createdAt: Date.now() - 11.2 * 60 * 1000, status: "pendente",
+    items: [
+      { id: "i4", name: "Frango Assado (meia)", qty: 1, notes: "bem passado", sent: true, cancelled: false },
+      { id: "i5", name: "Batatas Fritas", qty: 1, notes: "", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T003", type: "mesa", table: "M7", waiter: "Mariana",
+    createdAt: Date.now() - 13.8 * 60 * 1000, status: "pendente",
+    items: [
+      { id: "i6", name: "Bife do Lombo", qty: 1, notes: "mal passado", sent: true, cancelled: false },
+      { id: "i7", name: "Risotto de Cogumelos", qty: 2, notes: "", sent: true, cancelled: false },
+      { id: "i8", name: "Salada Caesar", qty: 1, notes: "molho à parte", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T004", type: "mesa", table: "M2", waiter: "Sofia",
+    createdAt: Date.now() - 7.1 * 60 * 1000, status: "em_preparacao",
+    items: [
+      { id: "i9", name: "Francesinha", qty: 2, notes: "extra molho num", sent: true, cancelled: false },
+      { id: "i10", name: "Cerveja Imperial", qty: 2, notes: "", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T005", type: "mesa", table: "M9", waiter: "Rui",
+    createdAt: Date.now() - 14.3 * 60 * 1000, status: "em_preparacao",
+    items: [
+      { id: "i11", name: "Dourada no Forno", qty: 1, notes: "", sent: true, cancelled: false },
+      { id: "i12", name: "Arroz de Tomate", qty: 2, notes: "", sent: true, cancelled: false },
+      { id: "i13", name: "Sobremesa do Chef", qty: 1, notes: "sem glúten", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T006", type: "balcao", table: null, waiter: "João",
+    createdAt: Date.now() - 8.4 * 60 * 1000, status: "em_preparacao",
+    items: [
+      { id: "i14", name: "Tosta Mista", qty: 3, notes: "", sent: true, cancelled: false },
+      { id: "i15", name: "Galão", qty: 2, notes: "", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T007", type: "mesa", table: "M1", waiter: "Mariana",
+    createdAt: Date.now() - 18.5 * 60 * 1000, status: "pronto",
+    items: [
+      { id: "i16", name: "Caldo Verde", qty: 2, notes: "", sent: true, cancelled: false },
+      { id: "i17", name: "Perna de Frango", qty: 2, notes: "", sent: true, cancelled: false },
+    ],
+  },
+  {
+    id: "T008", type: "mesa", table: "M6", waiter: "Sofia",
+    createdAt: Date.now() - 21.0 * 60 * 1000, status: "pronto",
+    items: [
+      { id: "i18", name: "Alheira com Ovos", qty: 1, notes: "", sent: true, cancelled: false },
+      { id: "i19", name: "Bitoque", qty: 2, notes: "bem passado os dois", sent: true, cancelled: false },
+    ],
+  },
+];
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────────
+function elapsed(createdAt) {
+  return Math.floor((Date.now() - createdAt) / 1000);
+}
+function fmtTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+function timerColor(secs) {
+  if (secs < 5 * 60) return { color: T.success, bg: T.successDim, pulse: false };
+  if (secs < 12 * 60) return { color: T.warning, bg: T.warningDim, pulse: false };
+  return { color: T.danger, bg: T.dangerDim, pulse: true };
+}
+function typeLabel(type, table) {
+  if (type === "mesa") return { label: `Mesa ${table}`, color: T.accent, bg: T.accentDim };
+  if (type === "take-away") return { label: "Take-Away", color: T.teal, bg: T.tealDim };
+  return { label: "Balcão", color: T.warning, bg: T.warningDim };
+}
+function statusLabel(s) {
+  if (s === "pendente") return "Pendente";
+  if (s === "em_preparacao") return "Em Preparação";
+  return "Pronto";
+}
+function nextStatus(s) {
+  if (s === "pendente") return "em_preparacao";
+  if (s === "em_preparacao") return "pronto";
+  return null;
+}
+function nextLabel(s) {
+  if (s === "pendente") return "Iniciar";
+  if (s === "em_preparacao") return "Marcar Pronto";
+  return null;
+}
+
+// ─── STYLES ────────────────────────────────────────────────────────────────────
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: ${T.bg};
+    color: ${T.text};
+    font-family: 'Syne', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 2px; }
+
+  @keyframes pulse-red {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 ${T.danger}44; }
+    50% { opacity: 0.75; box-shadow: 0 0 0 6px transparent; }
+  }
+  @keyframes pulse-border {
+    0%, 100% { border-color: ${T.danger}; }
+    50% { border-color: ${T.danger}44; }
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes slide-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes count-up {
+    from { transform: translateY(4px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes glow-success {
+    0% { box-shadow: 0 0 0 0 ${T.success}55; }
+    50% { box-shadow: 0 0 24px 8px ${T.success}22; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+
+  .kds-root {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: ${T.bg};
+  }
+
+  .kds-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    border-bottom: 1px solid ${T.border};
+    background: ${T.surface};
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .kds-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+  .kds-logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: ${T.accent};
+    box-shadow: 0 0 12px ${T.accent};
+  }
+
+  .kds-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .kds-clock {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: ${T.text};
+    letter-spacing: 1px;
+  }
+  .kds-date {
+    font-size: 12px;
+    color: ${T.textMuted};
+    font-family: 'DM Mono', monospace;
+  }
+
+  .kds-cols-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    flex: 1;
+    overflow: hidden;
+    background: ${T.border};
+  }
+
+  .kds-col {
+    display: flex;
+    flex-direction: column;
+    background: ${T.bg};
+    overflow: hidden;
+  }
+
+  .kds-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    background: ${T.surface};
+    border-bottom: 2px solid transparent;
+    flex-shrink: 0;
+  }
+
+  .kds-col-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: ${T.textSec};
+  }
+  .kds-col-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .col-pendente .kds-col-header { border-color: ${T.textMuted}; }
+  .col-em_preparacao .kds-col-header { border-color: ${T.warning}; }
+  .col-pronto .kds-col-header { border-color: ${T.success}; }
+  .col-pendente .kds-col-count { background: ${T.elevated}; color: ${T.textSec}; }
+  .col-em_preparacao .kds-col-count { background: ${T.warningDim}; color: ${T.warning}; }
+  .col-pronto .kds-col-count { background: ${T.successDim}; color: ${T.success}; }
+
+  .kds-col-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .kds-ticket {
+    background: ${T.card};
+    border: 1px solid ${T.border};
+    border-radius: 10px;
+    overflow: hidden;
+    animation: slide-in 0.25s ease;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .kds-ticket:hover { border-color: ${T.borderBright}; }
+  .kds-ticket.is-urgent {
+    animation: pulse-border 2s infinite;
+    box-shadow: inset 0 0 0 1px ${T.danger}33;
+  }
+  .kds-ticket.is-done {
+    opacity: 0.65;
+    filter: saturate(0.4);
+  }
+  .kds-ticket.is-done:hover { opacity: 0.85; filter: saturate(0.6); }
+
+  .ticket-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid ${T.border};
+  }
+  .ticket-top-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ticket-type-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 0.3px;
+  }
+  .ticket-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: ${T.textMuted};
+  }
+  .timer-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    transition: all 0.5s;
+  }
+  .timer-badge.pulsing {
+    animation: pulse-red 1.5s infinite;
+  }
+
+  .ticket-waiter {
+    padding: 6px 12px;
+    font-size: 11px;
+    color: ${T.textMuted};
+    border-bottom: 1px solid ${T.border};
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .ticket-waiter span { color: ${T.textSec}; font-weight: 600; }
+
+  .ticket-items {
+    padding: 8px 0;
+  }
+  .ticket-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 12px;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .ticket-item:hover { background: ${T.elevated}; }
+  .ticket-item.is-cancelled {
+    opacity: 0.35;
+    text-decoration: line-through;
+  }
+  .item-qty {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    color: ${T.accent};
+    min-width: 22px;
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+  .item-content { flex: 1; min-width: 0; }
+  .item-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: ${T.text};
+    line-height: 1.2;
+  }
+  .item-notes {
+    font-size: 12px;
+    font-weight: 700;
+    color: ${T.warning};
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  .item-cancel-btn {
+    opacity: 0;
+    background: ${T.dangerDim};
+    border: 1px solid ${T.danger}44;
+    color: ${T.danger};
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    align-self: center;
+    font-family: 'Syne', sans-serif;
+  }
+  .ticket-item:hover .item-cancel-btn:not([disabled]) { opacity: 1; }
+  .item-cancel-btn:hover { background: ${T.danger}33 !important; border-color: ${T.danger}; }
+  .item-cancel-btn:disabled { display: none; }
+
+  .ticket-footer {
+    padding: 10px 12px;
+    border-top: 1px solid ${T.border};
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .ticket-action-btn {
+    flex: 1;
+    border: none;
+    border-radius: 7px;
+    padding: 11px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.3px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 42px;
+  }
+  .btn-iniciar {
+    background: ${T.accentDim};
+    color: ${T.accent};
+    border: 1px solid ${T.accent}44;
+  }
+  .btn-iniciar:hover { background: ${T.accent}30; border-color: ${T.accent}88; }
+  .btn-iniciar:active { transform: scale(0.97); }
+  .btn-pronto {
+    background: ${T.tealDim};
+    color: ${T.teal};
+    border: 1px solid ${T.teal}44;
+  }
+  .btn-pronto:hover { background: ${T.teal}28; border-color: ${T.teal}88; }
+  .btn-pronto:active { transform: scale(0.97); }
+  .btn-servido {
+    background: ${T.successDim};
+    color: ${T.success};
+    border: 1px solid ${T.success}44;
+    font-size: 12px;
+  }
+  .btn-servido:hover { background: ${T.success}28; }
+  .btn-servido:active { transform: scale(0.97); }
+
+  .ticket-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px 20px;
+    color: ${T.textMuted};
+  }
+  .ticket-empty-icon { font-size: 28px; opacity: 0.3; }
+  .ticket-empty-text { font-size: 13px; letter-spacing: 0.5px; }
+
+  /* Modal anular */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in 0.15s ease;
+  }
+  .modal-box {
+    background: ${T.elevated};
+    border: 1px solid ${T.borderBright};
+    border-radius: 14px;
+    padding: 28px;
+    width: 420px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    animation: slide-in 0.2s ease;
+  }
+  .modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .modal-sub {
+    font-size: 13px;
+    color: ${T.textSec};
+    margin-bottom: 20px;
+  }
+  .modal-sub strong { color: ${T.warning}; }
+  .modal-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: ${T.textMuted};
+    margin-bottom: 8px;
+  }
+  .modal-textarea {
+    width: 100%;
+    background: ${T.card};
+    border: 1px solid ${T.border};
+    border-radius: 8px;
+    color: ${T.text};
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    padding: 12px;
+    resize: none;
+    height: 80px;
+    outline: none;
+    transition: border-color 0.15s;
+    margin-bottom: 20px;
+  }
+  .modal-textarea:focus { border-color: ${T.borderBright}; }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-btn-cancel {
+    background: ${T.elevated};
+    border: 1px solid ${T.border};
+    color: ${T.textSec};
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .modal-btn-cancel:hover { border-color: ${T.borderBright}; color: ${T.text}; }
+  .modal-btn-confirm {
+    background: ${T.dangerDim};
+    border: 1px solid ${T.danger}55;
+    color: ${T.danger};
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .modal-btn-confirm:hover { background: ${T.danger}28; }
+
+  /* Toast */
+  .toast-stack {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    background: ${T.elevated};
+    border: 1px solid ${T.border};
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: ${T.text};
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: slide-in 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 260px;
+    pointer-events: auto;
+  }
+  .toast-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Logs panel */
+  .logs-panel {
+    position: fixed;
+    right: 0; top: 0; bottom: 0;
+    width: 340px;
+    background: ${T.surface};
+    border-left: 1px solid ${T.border};
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: -16px 0 48px rgba(0,0,0,0.4);
+  }
+  .logs-panel.open { transform: translateX(0); }
+  .logs-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid ${T.border};
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logs-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${T.textSec}; }
+  .logs-close { background: none; border: none; color: ${T.textMuted}; cursor: pointer; font-size: 18px; padding: 4px; border-radius: 4px; transition: color 0.15s; }
+  .logs-close:hover { color: ${T.text}; }
+  .logs-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .log-entry {
+    background: ${T.card};
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left: 3px solid transparent;
+    animation: slide-in 0.2s ease;
+  }
+  .log-entry.INFO { border-color: ${T.accent}; }
+  .log-entry.WARN { border-color: ${T.warning}; }
+  .log-entry.ACTION { border-color: ${T.teal}; }
+  .log-entry.CANCEL { border-color: ${T.danger}; }
+  .log-time { font-family: 'DM Mono', monospace; font-size: 10px; color: ${T.textMuted}; margin-bottom: 3px; }
+  .log-msg { font-size: 12px; color: ${T.textSec}; line-height: 1.4; }
+  .log-msg strong { color: ${T.text}; }
+  .log-comment { font-size: 11px; color: ${T.textMuted}; font-style: italic; margin-top: 3px; }
+
+  /* Header btns */
+  .header-btn {
+    background: ${T.elevated};
+    border: 1px solid ${T.border};
+    color: ${T.textSec};
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.3px;
+  }
+  .header-btn:hover { border-color: ${T.borderBright}; color: ${T.text}; }
+  .header-btn.active { background: ${T.accentDim}; border-color: ${T.accent}44; color: ${T.accent}; }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: ${T.success};
+    box-shadow: 0 0 8px ${T.success};
+    animation: pulse-red 2s infinite;
+  }
+  .live-dot-wrap { display: flex; align-items: center; gap: 6px; font-size: 11px; color: ${T.textMuted}; font-family: 'DM Mono', monospace; }
+`;
+
+// ─── CLOCK ─────────────────────────────────────────────────────────────────────
+function Clock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const hm = now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const date = now.toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "short" });
+  return (
+    <div style={{ textAlign: "right" }}>
+      <div className="kds-clock">{hm}</div>
+      <div className="kds-date">{date}</div>
+    </div>
+  );
+}
+
+// ─── TIMER BADGE ───────────────────────────────────────────────────────────────
+function TimerBadge({ createdAt }) {
+  const [secs, setSecs] = useState(elapsed(createdAt));
+  useEffect(() => {
+    const t = setInterval(() => setSecs(elapsed(createdAt)), 1000);
+    return () => clearInterval(t);
+  }, [createdAt]);
+  const { color, bg, pulse } = timerColor(secs);
+  return (
+    <div
+      className={`timer-badge${pulse ? " pulsing" : ""}`}
+      style={{ color, background: bg, border: `1px solid ${color}44` }}
+    >
+      {fmtTime(secs)}
+    </div>
+  );
+}
+
+// ─── CANCEL MODAL ──────────────────────────────────────────────────────────────
+function CancelModal({ item, ticketId, onConfirm, onClose }) {
+  const [motivo, setMotivo] = useState("");
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="modal-title">Anular Item</div>
+        <div className="modal-sub">
+          <strong>{item.qty}× {item.name}</strong> — Ticket #{ticketId}
+        </div>
+        <div className="modal-label">Motivo (obrigatório para log)</div>
+        <textarea
+          className="modal-textarea"
+          placeholder="Ex: Cliente desistiu, item esgotado, erro de lançamento..."
+          value={motivo}
+          onChange={e => setMotivo(e.target.value)}
+          autoFocus
+        />
+        <div className="modal-btns">
+          <button className="modal-btn-cancel" onClick={onClose}>Cancelar</button>
+          <button
+            className="modal-btn-confirm"
+            onClick={() => motivo.trim() && onConfirm(motivo)}
+            style={{ opacity: motivo.trim() ? 1 : 0.4 }}
+          >
+            Anular Item
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TICKET ────────────────────────────────────────────────────────────────────
+function KDSTicket({ ticket, onAdvance, onCancelItem }) {
+  const secs = elapsed(ticket.createdAt);
+  const { pulse } = timerColor(secs);
+  const { label, color, bg } = typeLabel(ticket.type, ticket.table);
+  const next = nextStatus(ticket.status);
+  const nextLbl = nextLabel(ticket.status);
+  const isDone = ticket.status === "pronto";
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  const activeItems = ticket.items.filter(i => !i.cancelled);
+
+  return (
+    <>
+      <div className={`kds-ticket${pulse ? " is-urgent" : ""}${isDone ? " is-done" : ""}`}>
+        <div className="ticket-top">
+          <div className="ticket-top-left">
+            <div className="ticket-type-badge" style={{ color, background: bg }}>
+              {label}
+            </div>
+            <div className="ticket-id">#{ticket.id}</div>
+          </div>
+          <TimerBadge createdAt={ticket.createdAt} />
+        </div>
+
+        <div className="ticket-waiter">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+          <span>{ticket.waiter}</span>
+        </div>
+
+        <div className="ticket-items">
+          {ticket.items.map(item => (
+            <div
+              key={item.id}
+              className={`ticket-item${item.cancelled ? " is-cancelled" : ""}`}
+            >
+              <div className="item-qty">{item.qty}×</div>
+              <div className="item-content">
+                <div className="item-name">{item.name}</div>
+                {item.notes && <div className="item-notes">⚠ {item.notes}</div>}
+              </div>
+              <button
+                className="item-cancel-btn"
+                onClick={() => setCancelTarget(item)}
+                disabled={item.cancelled || isDone}
+              >
+                ANULAR
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {activeItems.length === 0 && (
+          <div style={{ padding: "8px 12px 4px", fontSize: 11, color: T.textMuted, fontStyle: "italic" }}>
+            — Todos os itens anulados —
+          </div>
+        )}
+
+        <div className="ticket-footer">
+          {next && (
+            <button
+              className={`ticket-action-btn ${next === "em_preparacao" ? "btn-iniciar" : "btn-pronto"}`}
+              onClick={() => onAdvance(ticket.id, next)}
+            >
+              {next === "em_preparacao" ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+              {nextLbl}
+            </button>
+          )}
+          {isDone && (
+            <button
+              className="ticket-action-btn btn-servido"
+              onClick={() => onAdvance(ticket.id, "servido")}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Servido — Arquivar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {cancelTarget && (
+        <CancelModal
+          item={cancelTarget}
+          ticketId={ticket.id}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={(motivo) => {
+            onCancelItem(ticket.id, cancelTarget.id, motivo);
+            setCancelTarget(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── COLUMN ────────────────────────────────────────────────────────────────────
+function KDSColumn({ status, tickets, onAdvance, onCancelItem }) {
+  const col = {
+    pendente: { title: "Pendente", cls: "col-pendente" },
+    em_preparacao: { title: "Em Preparação", cls: "col-em_preparacao" },
+    pronto: { title: "Pronto", cls: "col-pronto" },
+  }[status];
+
+  return (
+    <div className={`kds-col ${col.cls}`}>
+      <div className="kds-col-header">
+        <div className="kds-col-title">{col.title}</div>
+        <div className="kds-col-count">{tickets.length}</div>
+      </div>
+      <div className="kds-col-body">
+        {tickets.length === 0 ? (
+          <div className="ticket-empty">
+            <div className="ticket-empty-icon">◎</div>
+            <div className="ticket-empty-text">Sem tickets</div>
+          </div>
+        ) : (
+          tickets.map(t => (
+            <KDSTicket
+              key={t.id}
+              ticket={t}
+              onAdvance={onAdvance}
+              onCancelItem={onCancelItem}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── TOAST SYSTEM ──────────────────────────────────────────────────────────────
+function Toasts({ toasts }) {
+  return (
+    <div className="toast-stack">
+      {toasts.map(t => (
+        <div key={t.id} className="toast">
+          <div className="toast-dot" style={{ background: t.color || T.teal }} />
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── LOGS PANEL ────────────────────────────────────────────────────────────────
+function LogsPanel({ logs, open, onClose }) {
+  const bodyRef = useRef();
+  useEffect(() => {
+    if (open && bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [logs, open]);
+
+  return (
+    <div className={`logs-panel${open ? " open" : ""}`}>
+      <div className="logs-header">
+        <div className="logs-title">Log do Sistema</div>
+        <button className="logs-close" onClick={onClose}>✕</button>
+      </div>
+      <div className="logs-body" ref={bodyRef}>
+        {logs.map(l => (
+          <div key={l.id} className={`log-entry ${l.level}`}>
+            <div className="log-time">{l.time}</div>
+            <div className="log-msg" dangerouslySetInnerHTML={{ __html: l.msg }} />
+            {l.comment && <div className="log-comment">"{l.comment}"</div>}
+          </div>
+        ))}
+        {logs.length === 0 && (
+          <div style={{ color: T.textMuted, fontSize: 12, textAlign: "center", marginTop: 40 }}>
+            Sem registos
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT ──────────────────────────────────────────────────────────────────────
+export default function KDS() {
+  const [tickets, setTickets] = useState(MOCK_TICKETS);
+  const [logs, setLogs] = useState([
+    {
+      id: 1, level: "INFO", time: "09:00:12",
+      msg: "Sistema KDS iniciado.",
+    },
+    {
+      id: 2, level: "INFO", time: "09:03:44",
+      msg: "Ticket <strong>#T001</strong> recebido — Mesa M4 (Sofia).",
+    },
+  ]);
+  const [toasts, setToasts] = useState([]);
+  const [logsOpen, setLogsOpen] = useState(false);
+  const logIdRef = useRef(100);
+  const toastIdRef = useRef(0);
+
+  const addLog = useCallback((level, msg, comment = null) => {
+    const time = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setLogs(prev => [...prev.slice(-199), { id: ++logIdRef.current, level, time, msg, comment }]);
+  }, []);
+
+  const addToast = useCallback((msg, color = T.teal) => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, msg, color }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }, []);
+
+  const handleAdvance = useCallback((ticketId, next) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      if (next === "servido") {
+        addLog("ACTION", `Ticket <strong>#${ticketId}</strong> arquivado (servido).`);
+        addToast(`Ticket #${ticketId} arquivado`, T.teal);
+        return null;
+      }
+      addLog(
+        "ACTION",
+        `Ticket <strong>#${ticketId}</strong> → <strong>${statusLabel(next)}</strong>.`
+      );
+      if (next === "pronto") {
+        addToast(`Ticket #${ticketId} — Mesa ${t.table || "—"} pronto! 🔔`, T.success);
+      }
+      return { ...t, status: next };
+    }).filter(Boolean));
+  }, [addLog, addToast]);
+
+  const handleCancelItem = useCallback((ticketId, itemId, motivo) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      const item = t.items.find(i => i.id === itemId);
+      addLog(
+        "CANCEL",
+        `Item <strong>${item?.name}</strong> anulado no ticket <strong>#${ticketId}</strong>.`,
+        motivo
+      );
+      addToast(`Item anulado — #${ticketId}`, T.danger);
+      return { ...t, items: t.items.map(i => i.id === itemId ? { ...i, cancelled: true } : i) };
+    }));
+  }, [addLog, addToast]);
+
+  const byStatus = (s) => tickets.filter(t => t.status === s);
+  const totalActive = tickets.filter(t => t.status !== "pronto").length;
+
+  return (
+    <>
+      <style>{css}</style>
+      <div className="kds-root">
+        {/* HEADER */}
+        <header className="kds-header">
+          <div className="kds-logo">
+            <div className="kds-logo-dot" />
+            KDS
+            <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 14, marginLeft: 4 }}>
+              — Cozinha
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="live-dot-wrap">
+              <div className="live-dot" />
+              {totalActive} activo{totalActive !== 1 ? "s" : ""}
+            </div>
+          </div>
+
+          <div className="kds-meta">
+            <button
+              className={`header-btn${logsOpen ? " active" : ""}`}
+              onClick={() => setLogsOpen(v => !v)}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Logs
+              {logs.length > 0 && (
+                <span style={{
+                  background: T.accent, color: "#fff", borderRadius: 10,
+                  fontSize: 10, padding: "1px 5px", minWidth: 18, textAlign: "center"
+                }}>{logs.length}</span>
+              )}
+            </button>
+            <Clock />
+          </div>
+        </header>
+
+        {/* COLUMNS */}
+        <div className="kds-cols-wrap">
+          {["pendente", "em_preparacao", "pronto"].map(s => (
+            <KDSColumn
+              key={s}
+              status={s}
+              tickets={byStatus(s)}
+              onAdvance={handleAdvance}
+              onCancelItem={handleCancelItem}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* LOGS PANEL */}
+      <LogsPanel logs={logs} open={logsOpen} onClose={() => setLogsOpen(false)} />
+
+      {/* TOASTS */}
+      <Toasts toasts={toasts} />
+    </>
+  );
+}
