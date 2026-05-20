@@ -15,111 +15,41 @@ const T = {
   text:"#EDEDF2",textSec:"#8888A0",textMuted:"#4A4A60",
 };
 
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const WEEK_DATA = [
-  {day:"Seg",revenue:1240,orders:38},{day:"Ter",revenue:980,orders:31},
-  {day:"Qua",revenue:1560,orders:47},{day:"Qui",revenue:1890,orders:54},
-  {day:"Sex",revenue:2340,orders:68},{day:"Sáb",revenue:2870,orders:82},{day:"Dom",revenue:2100,orders:61},
-];
-const HOUR_DATA = [
-  {h:"9h",v:80},{h:"10h",v:120},{h:"11h",v:200},{h:"12h",v:480},{h:"13h",v:620},
-  {h:"14h",v:540},{h:"15h",v:290},{h:"16h",v:180},{h:"17h",v:310},{h:"18h",v:420},
-  {h:"19h",v:680},{h:"20h",v:890},{h:"21h",v:960},{h:"22h",v:740},{h:"23h",v:380},
-];
-const PAY_DATA = [
-  {method:"Cartão",pct:58,color:T.accent},{method:"Numerário",pct:25,color:T.teal},
-  {method:"MB Way",pct:14,color:T.warning},{method:"Multibanco",pct:3,color:T.textSec},
-];
-const TOP_ITEMS = [
-  {name:"Bacalhau à Brás",qty:127,revenue:1714.50},
-  {name:"Bife do Lombo",qty:89,revenue:1646.50},
-  {name:"Francesinha",qty:115,revenue:1380.00},
-  {name:"Polvo Grelhado",qty:68,revenue:1088.00},
-  {name:"Galão",qty:203,revenue:284.20},
-];
-const MENU_CATS = ["Entradas","Sopas","Principais","Grelhados","Bebidas","Sobremesas"];
-const INIT_ITEMS = [
-  {id:"it01",cat:"Entradas",name:"Pão + Manteiga",price:2.50,vat:6,emoji:"🍞",stock:null,active:true},
-  {id:"it02",cat:"Entradas",name:"Chouriço Assado",price:6.50,vat:23,emoji:"🌭",stock:null,active:true},
-  {id:"it03",cat:"Entradas",name:"Tabua de Queijos",price:9.50,vat:23,emoji:"🧀",stock:6,active:true},
-  {id:"it04",cat:"Entradas",name:"Amêijoas à Bulhão Pato",price:13.50,vat:23,emoji:"🦪",stock:4,active:true},
-  {id:"it10",cat:"Sopas",name:"Sopa do Dia",price:4.00,vat:6,emoji:"🥣",stock:null,active:true},
-  {id:"it11",cat:"Sopas",name:"Caldo Verde",price:4.50,vat:6,emoji:"🥬",stock:null,active:true},
-  {id:"it20",cat:"Principais",name:"Bacalhau à Brás",price:13.50,vat:23,emoji:"🐟",stock:8,active:true},
-  {id:"it21",cat:"Principais",name:"Francesinha",price:12.00,vat:23,emoji:"🥪",stock:null,active:true},
-  {id:"it22",cat:"Principais",name:"Risotto de Cogumelos",price:11.50,vat:23,emoji:"🍄",stock:5,active:true},
-  {id:"it23",cat:"Principais",name:"Alheira com Ovos",price:10.50,vat:23,emoji:"🥚",stock:null,active:false},
-  {id:"it30",cat:"Grelhados",name:"Bife do Lombo",price:18.50,vat:23,emoji:"🥩",stock:null,active:true},
-  {id:"it31",cat:"Grelhados",name:"Polvo Grelhado",price:16.00,vat:23,emoji:"🐙",stock:4,active:true},
-  {id:"it32",cat:"Grelhados",name:"Frango no Churrasco",price:11.00,vat:23,emoji:"🍗",stock:null,active:true},
-  {id:"it40",cat:"Bebidas",name:"Água Natural 0.5L",price:1.20,vat:23,emoji:"💧",stock:null,active:true},
-  {id:"it42",cat:"Bebidas",name:"Cerveja Imperial",price:2.20,vat:23,emoji:"🍺",stock:null,active:true},
-  {id:"it43",cat:"Bebidas",name:"Vinho Tinto (copo)",price:3.50,vat:23,emoji:"🍷",stock:null,active:true},
-  {id:"it44",cat:"Bebidas",name:"Galão",price:1.40,vat:6,emoji:"☕",stock:null,active:true},
-  {id:"it50",cat:"Sobremesas",name:"Pastel de Nata",price:1.50,vat:6,emoji:"🥧",stock:null,active:true},
-  {id:"it51",cat:"Sobremesas",name:"Arroz Doce",price:4.00,vat:6,emoji:"🍚",stock:null,active:true},
-  {id:"it52",cat:"Sobremesas",name:"Tarte de Amêndoa",price:5.50,vat:6,emoji:"🎂",stock:3,active:true},
-];
-const INIT_STAFF = [
-  {id:"s1",name:"Sofia",role:"waiter",pin:"1234",active:true,since:"Jan 2025"},
-  {id:"s2",name:"João",role:"waiter",pin:"5678",active:true,since:"Mar 2025"},
-  {id:"s3",name:"Mariana",role:"waiter",pin:"9012",active:true,since:"Set 2024"},
-  {id:"s4",name:"Rui",role:"kitchen",pin:"3456",active:true,since:"Fev 2025"},
-  {id:"s5",name:"Carlos",role:"waiter",pin:"7890",active:false,since:"Nov 2024"},
-];
-const INIT_TABLES = [
-  {id:"M1",zone:"Interior",seats:4,status:"occupied"},{id:"M2",zone:"Interior",seats:2,status:"free"},
-  {id:"M3",zone:"Interior",seats:4,status:"bill"},{id:"M4",zone:"Interior",seats:6,status:"occupied"},
-  {id:"M5",zone:"Interior",seats:2,status:"locked"},{id:"M6",zone:"Interior",seats:4,status:"free"},
-  {id:"M7",zone:"Interior",seats:8,status:"reserved"},{id:"M8",zone:"Interior",seats:4,status:"free"},
-  {id:"E1",zone:"Esplanada",seats:4,status:"occupied"},{id:"E2",zone:"Esplanada",seats:4,status:"free"},
-  {id:"E3",zone:"Esplanada",seats:2,status:"free"},{id:"E4",zone:"Esplanada",seats:6,status:"free"},
-  {id:"B1",zone:"Bar",seats:0,status:"occupied"},{id:"B2",zone:"Bar",seats:0,status:"free"},
-];
-let _rid=10;
-const INIT_RESERVATIONS = [
-  {id:"R001",name:"Família Santos",phone:"912 345 678",date:"2026-05-18",time:"20:30",persons:6,tableId:"M7",notes:"Aniversário",status:"confirmed"},
-  {id:"R002",name:"João Pereira",phone:"965 432 187",date:"2026-05-18",time:"21:00",persons:2,tableId:"M2",notes:"",status:"confirmed"},
-  {id:"R003",name:"Ana Costa",phone:"934 567 890",date:"2026-05-19",time:"13:00",persons:4,tableId:"M4",notes:"Vegetariano",status:"pending"},
-  {id:"R004",name:"Pedro Lopes",phone:"910 000 123",date:"2026-05-20",time:"20:00",persons:8,tableId:"M7",notes:"Mesa junto à janela",status:"pending"},
-];
-const INIT_CAMPAIGNS = [
-  {id:"C001",name:"Happy Hour",type:"percent",value:20,target:"cat",targetLabel:"Bebidas",days:[1,2,3,4,5],start:"17:00",end:"19:00",active:true},
-  {id:"C002",name:"Menu do Dia",type:"fixed",value:2.00,target:"cat",targetLabel:"Principais",days:[1,2,3,4,5],start:"12:00",end:"15:00",active:true},
-  {id:"C003",name:"Desconto Fim de Semana",type:"percent",value:10,target:"all",targetLabel:"Tudo",days:[6,7],start:"00:00",end:"23:59",active:false},
-];
-const INIT_ORDER_HIST = [
-  {id:"H001",table:"M4",waiter:"Sofia",items:5,total:65.50,method:"Cartão",time:"21:42",date:"Hoje",lines:["2× Bacalhau à Brás","2× Vinho Tinto","1× Arroz Doce"]},
-  {id:"H002",table:"E1",waiter:"Mariana",items:3,total:38.20,method:"MB Way",time:"21:15",date:"Hoje",lines:["1× Polvo Grelhado","2× Cerveja Imperial","1× Sopa do Dia"]},
-  {id:"H003",table:"M1",waiter:"Sofia",items:4,total:52.00,method:"Numerário",time:"20:58",date:"Hoje",lines:["1× Bife do Lombo","1× Francesinha","2× Água Natural"]},
-  {id:"H004",table:"B1",waiter:"Rui",items:2,total:14.40,method:"Cartão",time:"20:30",date:"Hoje",lines:["4× Galão","4× Pastel de Nata"]},
-  {id:"H005",table:"M7",waiter:"João",items:8,total:127.80,method:"Cartão",time:"22:10",date:"Ontem",lines:["3× Bife do Lombo","3× Vinho Tinto","2× Tarte de Amêndoa"]},
-  {id:"H006",table:"E3",waiter:"Mariana",items:3,total:29.00,method:"Numerário",time:"13:45",date:"Ontem",lines:["2× Alheira com Ovos","1× Caldo Verde"]},
-];
-const INIT_LOGS = [
-  {id:1,level:"INFO",module:"POS",time:"09:00:12",msg:"Turno iniciado — Sofia — Fundo €100.00"},
-  {id:2,level:"INFO",module:"POS",time:"09:14:33",msg:"Novo pedido — Mesa M1 — Sofia"},
-  {id:3,level:"ACTION",module:"POS",time:"09:15:01",msg:"Pedido enviado cozinha — Mesa M1"},
-  {id:4,level:"INFO",module:"KDS",time:"09:22:18",msg:"Ticket #T001 → Em Preparação"},
-  {id:5,level:"ACTION",module:"KDS",time:"09:35:44",msg:"Ticket #T001 → Pronto"},
-  {id:6,level:"CANCEL",module:"KDS",time:"09:36:12",msg:"Item Sopa do Dia anulado — Mesa M1",comment:"Cliente desistiu"},
-  {id:7,level:"ACTION",module:"POS",time:"10:02:55",msg:"Pagamento — Mesa M1 — €52.00 — Numerário"},
-  {id:8,level:"WARN",module:"POS",time:"11:14:08",msg:"Stock baixo — Polvo Grelhado (2 restantes)"},
-  {id:9,level:"INFO",module:"POS",time:"11:45:22",msg:"Mesa M3 — Conta pedida — João"},
-  {id:10,level:"ACTION",module:"POS",time:"12:01:38",msg:"Mesa M4 transferida para Mariana por Sofia"},
-  {id:11,level:"ERROR",module:"KDS",time:"14:22:05",msg:"Ligação Supabase perdida — reconectando..."},
-  {id:12,level:"INFO",module:"KDS",time:"14:22:09",msg:"Ligação Supabase restabelecida"},
-];
-const INIT_SETTINGS = {
-  geral:{name:"RestaurantOS",address:"Rua das Flores 42, Lisboa",phone:"213 456 789",email:"geral@restaurantos.pt"},
-  fiscal:{nif:"512345678",regime:"normal",rates:[{id:"r1",label:"Reduzida",value:6,active:true},{id:"r2",label:"Intermédia",value:13,active:true},{id:"r3",label:"Normal",value:23,active:true}]},
-  kds:{alertYellow:5,alertRed:12,autoRefresh:3},
-  caixa:{defaultFundo:100,maxTurno:12,confirmAbertura:true},
-};
-
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function fmtEur(v){return `€${Number(v).toFixed(2)}`;}
 const DAYS_PT=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+// ─── UNIT SYSTEM ─────────────────────────────────────────────────────────────
+const UNIT_DEFS=[
+  // peso — base: g
+  {id:"mg", label:"mg — miligrama",  group:"weight", toBase:0.001},
+  {id:"g",  label:"g — grama",       group:"weight", toBase:1},
+  {id:"kg", label:"kg — quilograma", group:"weight", toBase:1000},
+  // volume — base: ml
+  {id:"ml", label:"ml — mililitro",  group:"volume", toBase:1},
+  {id:"cl", label:"cl — centilitro", group:"volume", toBase:10},
+  {id:"dl", label:"dl — decilitro",  group:"volume", toBase:100},
+  {id:"L",  label:"L — litro",       group:"volume", toBase:1000},
+  // contagem — base: un
+  {id:"un", label:"un — unidade",    group:"count",  toBase:1},
+  {id:"pcs",label:"pcs — peca",      group:"count",  toBase:1},
+  {id:"cx", label:"cx — caixa",      group:"count",  toBase:1},
+  {id:"dz", label:"dz — duzia",      group:"count",  toBase:12},
+];
+function fmtQty(v){
+  const n=Number(v);
+  if(!isFinite(n))return"—";
+  return n%1===0?String(n):n.toFixed(n<10?3:2).replace(/\.?0+$/,"");
+}
+function getConversions(unit,qty){
+  const def=UNIT_DEFS.find(u=>u.id===unit);
+  if(!def||!qty||isNaN(qty))return[];
+  const baseVal=qty*def.toBase;
+  return UNIT_DEFS
+    .filter(u=>u.group===def.group&&u.id!==unit)
+    .map(u=>({unit:u.id,val:baseVal/u.toBase}))
+    .filter(c=>c.val>=0.001&&c.val<1e6);
+}
 const STATUS_C={
   free:{label:"Livre",c:T.success,bg:T.successDim},
   occupied:{label:"Ocupada",c:T.warning,bg:T.warningDim},
@@ -252,6 +182,10 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
 .empty-state{text-align:center;padding:40px;color:${T.textMuted};font-size:13px;}
 .live-dot{width:7px;height:7px;border-radius:50%;background:${T.success};box-shadow:0 0 8px ${T.success};display:inline-block;}
 .mono{font-family:'DM Mono',monospace;}
+.tag{display:inline-flex;align-items:center;gap:4px;background:${T.elevated};border:1px solid ${T.border};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:${T.textSec};}
+.tag-del{background:none;border:none;color:${T.textMuted};cursor:pointer;font-size:13px;padding:0 0 0 2px;line-height:1;transition:color .12s;}
+.tag-del:hover{color:${T.danger};}
+.mod-block{background:${T.card};border:1px solid ${T.border};border-radius:8px;padding:10px 12px;margin-bottom:6px;}
 `;
 
 // ─── SMALL SHARED ─────────────────────────────────────────────────────────────
@@ -283,20 +217,40 @@ const Ic={
   ChevLeft:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>,
   ChevRight:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>,
   Export:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12"y1="15"x2="12"y2="3"/></svg>,
+  Leaf:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M17 8C8 10 5.9 16.17 3.82 19.32c1.51-1.26 3.99-2.1 6.77-1.3C13.11 18.89 16 21 19 21c1-5 0-13-2-13z"/></svg>,
+  Grid:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><rect x="3"y="3"width="7"height="7"rx="1"/><rect x="14"y="3"width="7"height="7"rx="1"/><rect x="14"y="14"width="7"height="7"rx="1"/><rect x="3"y="14"width="7"height="7"rx="1"/></svg>,
+  MapPin:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12"cy="10"r="3"/></svg>,
+  Combo:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12"y1="22.08"x2="12"y2="12"/></svg>,
 };
 
 const TOOLTIP_STYLE={background:T.elevated,border:`1px solid ${T.border}`,borderRadius:8,fontFamily:"'DM Mono',monospace",fontSize:12,color:T.text};
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard(){
+  const [summary,setSummary]=useState(null);
+  const [tables,setTables]=useState([]);
+  const [recent,setRecent]=useState([]);
+  const [onShift,setOnShift]=useState([]);
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/analytics/summary").then(r=>r.json()),
+      fetch("/api/tables").then(r=>r.json()),
+      fetch("/api/orders?status=paid&limit=4").then(r=>r.json()),
+      fetch("/api/staff").then(r=>r.json()),
+    ]).then(([sum,tbls,ords,staff])=>{
+      if(sum&&!sum.error)setSummary(sum);
+      setTables(Array.isArray(tbls)?tbls:[]);
+      setRecent(Array.isArray(ords)?ords.slice(0,4):[]);
+      setOnShift(Array.isArray(staff)?staff.filter(s=>s.active):[]);
+    }).catch(()=>{});
+  },[]);
+  const occ=tables.filter(t=>t.status!=="free"&&t.status!=="reserved").length;
   const kpis=[
-    {label:"Vendas Hoje",value:fmtEur(2840.20),sub:"vs €2,100 ontem",trend:"+35%",up:true,color:T.success},
-    {label:"Pedidos Hoje",value:"68",sub:"vs 61 ontem",trend:"+11%",up:true,color:T.accent},
-    {label:"Ticket Médio",value:fmtEur(41.77),sub:"vs €34.43 ontem",trend:"+21%",up:true,color:T.teal},
-    {label:"Mesas Ocupadas",value:"5/14",sub:"Interior + Esplanada",trend:"36%",up:null,color:T.warning},
+    {label:"Receita (7 dias)",value:summary?fmtEur(summary.revenue):"—",sub:`${summary?.orders||0} pedidos`,color:T.success},
+    {label:"Pedidos",value:String(summary?.orders??0),sub:`Ticket médio: ${summary?fmtEur(summary.avgTicket):"—"}`,color:T.accent},
+    {label:"Ticket Médio",value:summary?fmtEur(summary.avgTicket):"—",sub:"últimos 7 dias",color:T.teal},
+    {label:"Mesas Ocupadas",value:`${occ}/${tables.length}`,sub:"em tempo real",color:T.warning},
   ];
-  const recentOrders=INIT_ORDER_HIST.slice(0,4);
-  const onShift=INIT_STAFF.filter(s=>s.active&&s.id!=="s5");
   return(
     <div>
       <div className="kpi-grid">
@@ -305,60 +259,50 @@ function Dashboard(){
             <div className="kpi-label">{k.label}</div>
             <div className="kpi-value" style={{color:k.color}}>{k.value}</div>
             <div className="kpi-sub">{k.sub}</div>
-            {k.up!==null&&<div className="kpi-trend"style={{color:k.up?T.success:T.danger,background:k.up?T.successDim:T.dangerDim}}>{k.up?"↑":"↓"} {k.trend}</div>}
           </div>
         ))}
       </div>
       <div className="grid-2">
         <div className="card">
-          <div className="card-head"><div className="card-title">Receita — últimos 7 dias</div></div>
-          <div className="card-body">
-            <ResponsiveContainer width="100%"height={180}>
-              <BarChart data={WEEK_DATA} barSize={24}>
-                <CartesianGrid strokeDasharray="3 3"stroke={T.border}vertical={false}/>
-                <XAxis dataKey="day"tick={{fill:T.textMuted,fontSize:11,fontFamily:"'DM Mono',monospace"}}axisLine={false}tickLine={false}/>
-                <YAxis tick={{fill:T.textMuted,fontSize:10,fontFamily:"'DM Mono',monospace"}}axisLine={false}tickLine={false}tickFormatter={v=>`€${v}`}width={45}/>
-                <Tooltip contentStyle={TOOLTIP_STYLE}formatter={v=>[fmtEur(v),"Receita"]}/>
-                <Bar dataKey="revenue"fill={T.accent}radius={[4,4,0,0]}/>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div className="card">
-            <div className="card-head"><div className="card-title">Pedidos Recentes</div></div>
-            <table className="data-table">
-              <tbody>
-                {recentOrders.map(o=>(
+          <div className="card-head"><div className="card-title">Pedidos Recentes</div></div>
+          <table className="data-table">
+            <tbody>
+              {recent.length===0&&<tr><td colSpan={4}style={{color:T.textMuted,textAlign:"center",padding:16}}>Sem pedidos recentes</td></tr>}
+              {recent.map(o=>{
+                const total=(o.lines||[]).filter(l=>!l.cancelled).reduce((s,l)=>s+(l.unit_price+l.extra_price)*l.qty,0);
+                const t=new Date(o.paid_at||o.created_at);
+                return(
                   <tr key={o.id}>
-                    <td><span style={{fontWeight:700}}>{o.table}</span></td>
-                    <td style={{color:T.textSec,fontSize:12}}>{o.waiter}</td>
-                    <td><span className="mono"style={{color:T.accent}}>{fmtEur(o.total)}</span></td>
-                    <td><Badge color={T.textSec}bg={T.elevated}>{o.time}</Badge></td>
+                    <td><span style={{fontWeight:700}}>{o.table?.label||"—"}</span></td>
+                    <td style={{color:T.textSec,fontSize:12}}>{o.waiter?.name||"—"}</td>
+                    <td><span className="mono"style={{color:T.accent}}>{fmtEur(total)}</span></td>
+                    <td><Badge color={T.textSec}bg={T.elevated}>{t.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}</Badge></td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="card">
-            <div className="card-head"><div className="card-title">Equipa em Turno</div></div>
-            <div className="card-body"style={{display:"flex",gap:10,flexWrap:"wrap",padding:"12px 16px"}}>
-              {onShift.map(s=>(
-                <div key={s.id}style={{display:"flex",alignItems:"center",gap:8,background:T.elevated,borderRadius:8,padding:"6px 12px",border:`1px solid ${T.border}`}}>
-                  <div style={{width:28,height:28,borderRadius:"50%",background:T.accentDim,border:`1px solid ${T.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.accent}}>{s.name.slice(0,2).toUpperCase()}</div>
-                  <div><div style={{fontSize:12,fontWeight:600}}>{s.name}</div><div style={{fontSize:10,color:T.textMuted}}>{s.role}</div></div>
-                </div>
-              ))}
-            </div>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="card">
+          <div className="card-head"><div className="card-title">Equipa Activa</div></div>
+          <div className="card-body"style={{display:"flex",gap:10,flexWrap:"wrap",padding:"12px 16px"}}>
+            {onShift.length===0&&<div style={{color:T.textMuted,fontSize:12}}>Nenhum funcionário activo</div>}
+            {onShift.map(s=>(
+              <div key={s.id}style={{display:"flex",alignItems:"center",gap:8,background:T.elevated,borderRadius:8,padding:"6px 12px",border:`1px solid ${T.border}`}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:T.accentDim,border:`1px solid ${T.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.accent}}>{s.name.slice(0,2).toUpperCase()}</div>
+                <div><div style={{fontSize:12,fontWeight:600}}>{s.name}</div><div style={{fontSize:10,color:T.textMuted}}>{s.role}</div></div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
       <div className="card">
         <div className="card-head"><div className="card-title">Estado das Mesas — Live <span className="live-dot"style={{marginLeft:6}}/></div></div>
         <div className="card-body"style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(80px,1fr))",gap:8}}>
-          {INIT_TABLES.map(t=>{const st=STATUS_C[t.status];return(
+          {tables.length===0&&<div style={{color:T.textMuted,fontSize:12}}>A carregar...</div>}
+          {tables.map(t=>{const st=STATUS_C[t.status]||STATUS_C.free;return(
             <div key={t.id}style={{background:st.bg,border:`1px solid ${st.c}33`,borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
-              <div style={{fontSize:14,fontWeight:800,color:st.c}}>{t.id}</div>
+              <div style={{fontSize:14,fontWeight:800,color:st.c}}>{t.label}</div>
               <div style={{fontSize:9,color:st.c,fontWeight:600,marginTop:2,letterSpacing:.5}}>{st.label.toUpperCase()}</div>
             </div>
           );})}
@@ -371,16 +315,43 @@ function Dashboard(){
 // ─── ANALYTICS ───────────────────────────────────────────────────────────────
 function Analytics(){
   const [period,setPeriod]=useState("hoje");
+  const [summary,setSummary]=useState(null);
+  const [hourData,setHourData]=useState([]);
+  const [payData,setPayData]=useState([]);
+  const [topItems,setTopItems]=useState([]);
   const periods=["hoje","7d","30d"];
   const periodLabel={"hoje":"Hoje","7d":"7 Dias","30d":"30 Dias"};
-  const maxItem=Math.max(...TOP_ITEMS.map(i=>i.revenue));
+  useEffect(()=>{
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    let from;
+    if(period==="hoje")from=today.toISOString();
+    else if(period==="7d")from=new Date(+today-6*86400000).toISOString();
+    else from=new Date(+today-29*86400000).toISOString();
+    const to=new Date(+today+86400000).toISOString();
+    const q=`from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    Promise.all([
+      fetch(`/api/analytics/summary?${q}`).then(r=>r.json()),
+      fetch(`/api/analytics/hourly`).then(r=>r.json()),
+      fetch(`/api/analytics/payments?${q}`).then(r=>r.json()),
+      fetch(`/api/analytics/items?${q}&limit=5`).then(r=>r.json()),
+    ]).then(([sum,hour,pay,items])=>{
+      if(sum&&!sum.error)setSummary(sum);
+      setHourData(Array.isArray(hour)?hour.map(h=>({h:h.hour.slice(0,5),v:h.revenue})):[]);
+      const totalRev=Array.isArray(pay)?pay.reduce((s,p)=>s+p.total,0):0;
+      setPayData(Array.isArray(pay)?pay.map((p,i)=>({
+        method:p.method,pct:totalRev>0?Math.round((p.total/totalRev)*100):0,
+        color:[T.accent,T.teal,T.warning,T.success][i%4],
+      })):[]);
+      setTopItems(Array.isArray(items)?items:[]);
+    }).catch(()=>{});
+  },[period]);
   const exportCSV=()=>{
-    const rows=[["Item","Qtd","Receita"],...TOP_ITEMS.map(i=>[i.name,i.qty,i.revenue])];
+    const rows=[["Item","Qtd","Receita"],...topItems.map(i=>[i.name,i.qty,i.revenue])];
     const csv=rows.map(r=>r.join(",")).join("\n");
-    const a=document.createElement("a");
-    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
-    a.download="analytics.csv";a.click();
+    const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="analytics.csv";a.click();
   };
+  const maxItem=topItems.length>0?Math.max(...topItems.map(i=>i.revenue)):1;
   return(
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
@@ -391,10 +362,10 @@ function Analytics(){
       </div>
       <div className="kpi-grid">
         {[
-          {label:"Total Receita",value:fmtEur(period==="hoje"?2840:period==="7d"?12980:49200),color:T.success},
-          {label:"Pedidos",value:period==="hoje"?"68":period==="7d"?"381":"1420",color:T.accent},
-          {label:"Ticket Médio",value:fmtEur(period==="hoje"?41.77:period==="7d"?34.07:34.65),color:T.teal},
-          {label:"Itens Vendidos",value:period==="hoje"?"284":period==="7d"?"1540":"5900",color:T.warning},
+          {label:"Total Receita",value:summary?fmtEur(summary.revenue):"—",color:T.success},
+          {label:"Pedidos",value:String(summary?.orders??0),color:T.accent},
+          {label:"Ticket Médio",value:summary?fmtEur(summary.avgTicket):"—",color:T.teal},
+          {label:"Itens Vendidos",value:String(summary?.items??0),color:T.warning},
         ].map(k=>(
           <div key={k.label}className="kpi-card">
             <div className="kpi-label">{k.label}</div>
@@ -404,10 +375,10 @@ function Analytics(){
       </div>
       <div className="grid-2">
         <div className="card">
-          <div className="card-head"><div className="card-title">Receita por hora</div></div>
+          <div className="card-head"><div className="card-title">Receita por hora (hoje)</div></div>
           <div className="card-body">
             <ResponsiveContainer width="100%"height={180}>
-              <LineChart data={HOUR_DATA}>
+              <LineChart data={hourData}>
                 <CartesianGrid strokeDasharray="3 3"stroke={T.border}vertical={false}/>
                 <XAxis dataKey="h"tick={{fill:T.textMuted,fontSize:10,fontFamily:"'DM Mono',monospace"}}axisLine={false}tickLine={false}/>
                 <YAxis tick={{fill:T.textMuted,fontSize:10,fontFamily:"'DM Mono',monospace"}}axisLine={false}tickLine={false}tickFormatter={v=>`€${v}`}width={40}/>
@@ -420,7 +391,8 @@ function Analytics(){
         <div className="card">
           <div className="card-head"><div className="card-title">Métodos de Pagamento</div></div>
           <div className="card-body"style={{display:"flex",flexDirection:"column",gap:14}}>
-            {PAY_DATA.map(p=>(
+            {payData.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados</div>}
+            {payData.map(p=>(
               <div key={p.method}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:5}}>
                   <span style={{fontWeight:600}}>{p.method}</span>
@@ -435,9 +407,10 @@ function Analytics(){
         </div>
       </div>
       <div className="card">
-        <div className="card-head"><div className="card-title">Top 5 Itens</div></div>
+        <div className="card-head"><div className="card-title">Top Itens</div></div>
         <div className="card-body"style={{display:"flex",flexDirection:"column",gap:12}}>
-          {TOP_ITEMS.map((item,i)=>(
+          {topItems.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados</div>}
+          {topItems.map((item,i)=>(
             <div key={item.name}>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:5}}>
                 <span><span style={{color:T.textMuted,marginRight:8,fontFamily:"'DM Mono',monospace"}}>#{i+1}</span><span style={{fontWeight:600}}>{item.name}</span></span>
@@ -456,57 +429,188 @@ function Analytics(){
 
 // ─── MENU & STOCK ─────────────────────────────────────────────────────────────
 function MenuStock(){
-  const [items,setItems]=useState(INIT_ITEMS);
+  const [items,setItems]=useState([]);
+  const [categories,setCategories]=useState([]);
   const [activeCat,setActiveCat]=useState("Todas");
   const [editItem,setEditItem]=useState(null);
   const [form,setForm]=useState({});
-  const cats=["Todas",...MENU_CATS];
+  const [errMsg,setErrMsg]=useState("");
+  const [mods,setMods]=useState([]);
+  const [editMod,setEditMod]=useState(null);
+  const [modForm,setModForm]=useState({name:"",required:false,options:[{label:"",price:""}]});
+  const [allIngredients,setAllIngredients]=useState([]);
+  const [linkedIngredients,setLinkedIngredients]=useState([]);
+  const [selIngredient,setSelIngredient]=useState("");
+  const [selIngQty,setSelIngQty]=useState("1");
+  const [selIngUnit,setSelIngUnit]=useState("un");
+
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/menu/items?active=false").then(r=>r.json()),
+      fetch("/api/menu/categories").then(r=>r.json()),
+      fetch("/api/ingredients").then(r=>r.json()),
+    ]).then(([its,cats,ings])=>{
+      const catList=Array.isArray(cats)?cats:[];
+      setCategories(catList);
+      setAllIngredients(Array.isArray(ings)?ings:[]);
+      if(Array.isArray(its)){
+        setItems(its.map(i=>({
+          id:i.id,catId:i.category_id,cat:i.category?.name||"",
+          name:i.name,price:i.price,vat:i.vat_rate,
+          stock:i.stock,active:i.active,
+        })));
+      }
+    }).catch(()=>{});
+  },[]);
+
+  const cats=["Todas",...categories.map(c=>c.name)];
   const filtered=activeCat==="Todas"?items:items.filter(i=>i.cat===activeCat);
 
-  const openEdit=(item)=>{setForm({...item,stock:item.stock===null?"":item.stock});setEditItem(item.id);};
-  const openNew=()=>{setForm({id:`it${Date.now()}`,cat:MENU_CATS[0],name:"",price:"",vat:23,emoji:"🍽️",stock:"",active:true});setEditItem("new");};
-  const saveItem=()=>{
-    const item={...form,price:parseFloat(form.price)||0,vat:parseInt(form.vat)||23,stock:form.stock===""?null:parseInt(form.stock)||0};
-    if(editItem==="new")setItems(p=>[...p,item]);
-    else setItems(p=>p.map(i=>i.id===editItem?item:i));
+  const openEdit=async(item)=>{
+    setForm({...item,stock:item.stock===null||item.stock===undefined?"":item.stock});
+    setMods([]);setLinkedIngredients([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");setEditItem(item.id);
+    try{
+      const [detail,ings]=await Promise.all([
+        fetch(`/api/menu/items/${item.id}`).then(r=>r.json()),
+        fetch(`/api/menu/items/${item.id}/ingredients`).then(r=>r.json()),
+      ]);
+      setMods(detail.modifiers||[]);
+      setLinkedIngredients(Array.isArray(ings)?ings:[]);
+    }catch{}
+  };
+
+  const openNew=()=>{
+    const first=categories[0];
+    setForm({catId:first?.id||"",cat:first?.name||"",name:"",price:"",vat:23,stock:"",active:true});
+    setMods([]);setLinkedIngredients([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");
+    setEditItem("new");
+  };
+
+  const saveItem=async()=>{
+    setErrMsg("");
+    if(!form.name){setErrMsg("Nome obrigatório");return;}
+    if(!form.catId){setErrMsg("Selecciona uma categoria. Cria primeiro em Menu → Categorias.");return;}
+    const body={
+      category_id:form.catId,name:form.name,emoji:form.emoji,
+      price:parseFloat(form.price)||0,vat_rate:parseInt(form.vat)||23,
+      stock:form.stock===""||form.stock===undefined?null:parseInt(form.stock)||0,
+      active:form.active,
+    };
+    if(editItem==="new"){
+      const r=await fetch("/api/menu/items",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(data.error){setErrMsg(data.error);return;}
+      if(linkedIngredients.length>0){
+        await Promise.all(linkedIngredients.map(li=>
+          fetch(`/api/menu/items/${data.id}/ingredients`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ingredient_id:li.ingredient_id,qty:li.qty})}).catch(()=>{})
+        ));
+      }
+      setItems(p=>[...p,{id:data.id,catId:data.category_id,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active}]);
+    } else {
+      const r=await fetch(`/api/menu/items/${editItem}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(data.error){setErrMsg(data.error);return;}
+      setItems(p=>p.map(i=>i.id===editItem?{...i,catId:form.catId,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active}:i));
+    }
     setEditItem(null);
   };
-  const toggleActive=(id)=>setItems(p=>p.map(i=>i.id===id?{...i,active:!i.active}:i));
-  const updateStock=(id,delta)=>setItems(p=>p.map(i=>{
-    if(i.id!==id||i.stock===null) return i;
-    return {...i,stock:Math.max(0,i.stock+delta)};
-  }));
+
+  const toggleActive=(id)=>{
+    const item=items.find(i=>i.id===id);if(!item)return;
+    const v=!item.active;
+    setItems(p=>p.map(i=>i.id===id?{...i,active:v}:i));
+    fetch(`/api/menu/items/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:v})}).catch(()=>{
+      setItems(p=>p.map(i=>i.id===id?{...i,active:!v}:i));
+    });
+  };
+
+  const updateStock=(id,delta)=>{
+    const item=items.find(i=>i.id===id);
+    if(!item||item.stock===null||item.stock===undefined)return;
+    const ns=Math.max(0,item.stock+delta);
+    setItems(p=>p.map(i=>i.id===id?{...i,stock:ns}:i));
+    fetch(`/api/menu/items/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({stock:ns})}).catch(()=>{
+      setItems(p=>p.map(i=>i.id===id?{...i,stock:item.stock}:i));
+    });
+  };
+
+  const openNewMod=()=>{setModForm({name:"",required:false,options:[{label:"",price:""}]});setEditMod("new");};
+  const openEditMod=(m)=>{setModForm({name:m.name,required:m.required,options:(m.options||[]).map(o=>({label:o.label,price:o.extra_price||0}))});setEditMod(m.id);};
+  const saveMod=async()=>{
+    const body={name:modForm.name,required:modForm.required,options:modForm.options.filter(o=>o.label.trim()).map(o=>({label:o.label,extra_price:parseFloat(o.price)||0}))};
+    if(editMod==="new"){
+      const r=await fetch(`/api/menu/items/${editItem}/modifiers`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setMods(p=>[...p,data]);
+    } else {
+      const r=await fetch(`/api/menu/items/${editItem}/modifiers/${editMod}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setMods(p=>p.map(m=>m.id===editMod?data:m));
+    }
+    setEditMod(null);
+  };
+  const deleteMod=async(modId)=>{
+    setMods(p=>p.filter(m=>m.id!==modId));
+    await fetch(`/api/menu/items/${editItem}/modifiers/${modId}`,{method:"DELETE"}).catch(()=>{});
+  };
+  const addModOption=()=>setModForm(p=>({...p,options:[...p.options,{label:"",price:""}]}));
+  const removeModOption=(i)=>setModForm(p=>({...p,options:p.options.filter((_,j)=>j!==i)}));
+  const setModOpt=(i,k,v)=>setModForm(p=>({...p,options:p.options.map((o,j)=>j===i?{...o,[k]:v}:o)}));
+
+  const addIngredient=async()=>{
+    if(!selIngredient)return;
+    const ing=allIngredients.find(i=>i.id===selIngredient);
+    const enteredQty=parseFloat(selIngQty)||1;
+    // convert entered unit → ingredient's native unit
+    const fromDef=UNIT_DEFS.find(u=>u.id===selIngUnit);
+    const toDef=UNIT_DEFS.find(u=>u.id===(ing?.unit||"un"));
+    let qty=enteredQty;
+    if(fromDef&&toDef&&fromDef.group===toDef.group&&toDef.toBase>0){
+      qty=Math.round((enteredQty*fromDef.toBase/toDef.toBase)*10000)/10000;
+    }
+    if(editItem==="new"){
+      const local={ingredient_id:selIngredient,qty,ingredient:{id:selIngredient,name:ing?.name||"",unit:ing?.unit||"un"}};
+      setLinkedIngredients(p=>[...p.filter(li=>li.ingredient_id!==selIngredient),local]);
+      setSelIngredient("");setSelIngQty("1");setSelIngUnit("un");
+      return;
+    }
+    const r=await fetch(`/api/menu/items/${editItem}/ingredients`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ingredient_id:selIngredient,qty})});
+    const data=await r.json();
+    if(!data.error){setLinkedIngredients(p=>[...p.filter(li=>li.ingredient_id!==selIngredient),data]);setSelIngredient("");setSelIngQty("1");setSelIngUnit("un");}
+  };
+  const removeIngredient=async(ingId)=>{
+    setLinkedIngredients(p=>p.filter(li=>li.ingredient_id!==ingId));
+    if(editItem!=="new"){
+      await fetch(`/api/menu/items/${editItem}/ingredients`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({ingredient_id:ingId})}).catch(()=>{});
+    }
+  };
 
   return(
     <div style={{display:"flex",gap:0,height:"100%",margin:"-20px"}}>
-      {/* Category sidebar */}
       <div style={{width:160,background:T.surface,borderRight:`1px solid ${T.border}`,padding:"12px 8px",flexShrink:0}}>
         {cats.map(c=>(
           <div key={c}onClick={()=>setActiveCat(c)}style={{padding:"9px 12px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:600,color:activeCat===c?T.accent:T.textSec,background:activeCat===c?T.accentDim:"transparent",marginBottom:2,transition:"all .12s"}}>
-            {c}
-            <span style={{marginLeft:6,fontSize:10,color:T.textMuted}}>({c==="Todas"?items.length:items.filter(i=>i.cat===c).length})</span>
+            {c}<span style={{marginLeft:6,fontSize:10,color:T.textMuted}}>({c==="Todas"?items.length:items.filter(i=>i.cat===c).length})</span>
           </div>
         ))}
       </div>
-      {/* Items */}
       <div style={{flex:1,overflow:"auto",padding:20}}>
         <div className="section-head">
           <div className="section-h">{activeCat} — {filtered.length} itens</div>
           <button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Item</button>
         </div>
+        {categories.length===0&&<div style={{background:T.warningDim,border:`1px solid ${T.warning}44`,borderRadius:8,padding:"10px 14px",fontSize:12,color:T.warning,marginBottom:12}}>Não existem categorias. Adiciona primeiro em <strong>Menu → Categorias</strong>.</div>}
         <table className="data-table">
-          <thead><tr>
-            <th>Item</th><th>Categoria</th><th>Preço</th><th>IVA</th><th>Stock</th><th>Estado</th><th></th>
-          </tr></thead>
+          <thead><tr><th>Item</th><th>Categoria</th><th>Preço</th><th>IVA</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             {filtered.map(item=>(
               <tr key={item.id}>
-                <td><span style={{fontSize:18,marginRight:8}}>{item.emoji}</span><span style={{fontWeight:600}}>{item.name}</span></td>
+                <td><span style={{fontWeight:600}}>{item.name}</span></td>
                 <td><Badge color={T.textSec}bg={T.elevated}>{item.cat}</Badge></td>
                 <td><span className="mono"style={{color:T.accent}}>{fmtEur(item.price)}</span></td>
                 <td><span className="mono"style={{color:T.textMuted}}>{item.vat}%</span></td>
                 <td>
-                  {item.stock===null?<span style={{color:T.textMuted,fontSize:11}}>—</span>:(
+                  {item.stock===null||item.stock===undefined?<span style={{color:T.textMuted,fontSize:11}}>—</span>:(
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>updateStock(item.id,-1)}>−</button>
                       <span className="mono"style={{color:item.stock<=3?T.danger:item.stock<=5?T.warning:T.text,fontWeight:700,minWidth:20,textAlign:"center"}}>{item.stock}</span>
@@ -523,18 +627,100 @@ function MenuStock(){
       </div>
       {editItem&&(
         <div className="overlay"onClick={()=>setEditItem(null)}>
-          <div className="modal"style={{width:480}}onClick={e=>e.stopPropagation()}>
+          <div className="modal"style={{width:520}}onClick={e=>e.stopPropagation()}>
             <div className="modal-hd"><div><div className="modal-title">{editItem==="new"?"Novo Item":"Editar Item"}</div></div><CloseBtn onClick={()=>setEditItem(null)}/></div>
             <div className="modal-body">
-              <div className="form-row"><Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/><Inp label="Emoji"value={form.emoji||""}onChange={e=>setForm(p=>({...p,emoji:e.target.value}))}/></div>
+              <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
               <div className="form-row">
-                <Sel label="Categoria"value={form.cat||""}onChange={e=>setForm(p=>({...p,cat:e.target.value}))}>{MENU_CATS.map(c=><option key={c}value={c}>{c}</option>)}</Sel>
+                <Sel label="Categoria"value={form.catId||""}onChange={e=>{const c=categories.find(x=>x.id===e.target.value);setForm(p=>({...p,catId:e.target.value,cat:c?.name||""}));}}>{categories.map(c=><option key={c.id}value={c.id}>{c.name}</option>)}</Sel>
                 <Sel label="IVA"value={form.vat||23}onChange={e=>setForm(p=>({...p,vat:e.target.value}))}><option value={6}>6%</option><option value={13}>13%</option><option value={23}>23%</option></Sel>
               </div>
               <div className="form-row"><Inp label="Preço (€)"type="number"step="0.01"value={form.price||""}onChange={e=>setForm(p=>({...p,price:e.target.value}))}/><Inp label="Stock (vazio = sem tracking)"type="number"value={form.stock===undefined?"":form.stock}onChange={e=>setForm(p=>({...p,stock:e.target.value}))}/></div>
               <div style={{display:"flex",alignItems:"center",gap:10}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Item activo no POS</span></div>
+              {errMsg&&<div style={{marginTop:8,fontSize:12,color:T.danger,background:T.dangerDim,borderRadius:6,padding:"6px 10px"}}>{errMsg}</div>}
+              {editItem!=="new"&&(
+                <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <span className="form-label"style={{margin:0}}>Modificadores</span>
+                    <button className="btn btn-ghost btn-sm"onClick={openNewMod}><Ic.Plus/>Adicionar</button>
+                  </div>
+                  {mods.length===0&&<div style={{fontSize:12,color:T.textMuted,padding:"4px 0 8px"}}>Sem modificadores.</div>}
+                  {mods.map(m=>(
+                    <div key={m.id}className="mod-block">
+                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+                        <div>
+                          <span style={{fontWeight:700,fontSize:13}}>{m.name}</span>
+                          {m.required&&<Badge color={T.danger}bg={T.dangerDim}style={{marginLeft:6}}>Obrigatório</Badge>}
+                          <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>{(m.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}</div>
+                        </div>
+                        <div style={{display:"flex",gap:4,flexShrink:0,marginLeft:8}}>
+                          <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEditMod(m)}><Ic.Edit/></button>
+                          <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteMod(m.id)}><Ic.Trash/></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
+                <span className="form-label"style={{display:"block",marginBottom:8}}>Ingredientes</span>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                  {linkedIngredients.map(li=>(
+                    <span key={li.ingredient_id}className="tag">{li.qty||1} {li.ingredient?.unit||"un"} {li.ingredient?.name||"?"}<button className="tag-del"onClick={()=>removeIngredient(li.ingredient_id)}>×</button></span>
+                  ))}
+                  {linkedIngredients.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem ingredientes.</span>}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <select className="form-select"style={{flex:2}}value={selIngredient}onChange={e=>{
+                    setSelIngredient(e.target.value);
+                    const ing=allIngredients.find(i=>i.id===e.target.value);
+                    setSelIngUnit(ing?.unit||"un");
+                  }}>
+                    <option value="">Selecionar ingrediente...</option>
+                    {allIngredients.filter(i=>!linkedIngredients.find(li=>li.ingredient_id===i.id)).map(i=>(
+                      <option key={i.id}value={i.id}>{i.name}</option>
+                    ))}
+                  </select>
+                  <input className="form-input"style={{width:62}}type="number"step="any"min="0.001"placeholder="Qtd"value={selIngQty}onChange={e=>setSelIngQty(e.target.value)}/>
+                  <select className="form-select"style={{width:60}}value={selIngUnit}onChange={e=>setSelIngUnit(e.target.value)}disabled={!selIngredient}>
+                    {(()=>{
+                      const ing=allIngredients.find(i=>i.id===selIngredient);
+                      const def=UNIT_DEFS.find(u=>u.id===(ing?.unit||"un"));
+                      const grp=def?.group||"count";
+                      return UNIT_DEFS.filter(u=>u.group===grp).map(u=><option key={u.id}value={u.id}>{u.id}</option>);
+                    })()}
+                  </select>
+                  <button className="btn btn-ghost"onClick={addIngredient}disabled={!selIngredient}>Adicionar</button>
+                </div>
+                {allIngredients.length===0&&<div style={{fontSize:11,color:T.textMuted,marginTop:6}}>Adiciona ingredientes em <strong>Ingredientes</strong>.</div>}
+              </div>
             </div>
             <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditItem(null)}>Cancelar</button><button className="btn btn-solid"onClick={saveItem}>Guardar</button></div>
+          </div>
+        </div>
+      )}
+      {editMod!==null&&(
+        <div className="overlay"onClick={()=>setEditMod(null)}style={{zIndex:110}}>
+          <div className="modal"style={{width:440}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{editMod==="new"?"Novo Modificador":"Editar Modificador"}</div><CloseBtn onClick={()=>setEditMod(null)}/></div>
+            <div className="modal-body">
+              <div className="form-row">
+                <Inp label="Nome do Grupo"value={modForm.name}onChange={e=>setModForm(p=>({...p,name:e.target.value}))}/>
+                <div className="form-group"style={{display:"flex",alignItems:"center",gap:10,paddingTop:22}}>
+                  <Toggle on={modForm.required}onChange={v=>setModForm(p=>({...p,required:v}))}/><span style={{fontSize:13,color:T.textSec}}>Obrigatório</span>
+                </div>
+              </div>
+              <div className="form-label"style={{marginBottom:8}}>Opções</div>
+              {modForm.options.map((opt,i)=>(
+                <div key={i}style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-end"}}>
+                  <div style={{flex:2}}><input className="form-input"placeholder="Etiqueta"value={opt.label}onChange={e=>setModOpt(i,"label",e.target.value)}/></div>
+                  <div style={{flex:1}}><input className="form-input"placeholder="+€ extra"type="number"step="0.01"value={opt.price}onChange={e=>setModOpt(i,"price",e.target.value)}/></div>
+                  <button className="btn btn-danger btn-icon btn-sm"style={{flexShrink:0}}onClick={()=>removeModOption(i)}><Ic.Trash/></button>
+                </div>
+              ))}
+              <button className="btn btn-ghost btn-sm"style={{marginTop:4}}onClick={addModOption}><Ic.Plus/>Opção</button>
+            </div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditMod(null)}>Cancelar</button><button className="btn btn-solid"onClick={saveMod}disabled={!modForm.name}>Guardar</button></div>
           </div>
         </div>
       )}
@@ -544,31 +730,70 @@ function MenuStock(){
 
 // ─── TABLES MGMT ─────────────────────────────────────────────────────────────
 function TablesMgmt(){
-  const [tables,setTables]=useState(INIT_TABLES);
-  const [zone,setZone]=useState("Interior");
+  const [tables,setTables]=useState([]);
+  const [zones,setZones]=useState([]);
+  const [zone,setZone]=useState(null);
   const [editTable,setEditTable]=useState(null);
   const [stateModal,setStateModal]=useState(null);
   const [newStatus,setNewStatus]=useState("");
   const [comment,setComment]=useState("");
-  const zones=["Interior","Esplanada","Bar"];
-  const filtered=tables.filter(t=>t.zone===zone);
-
-  const saveStateChange=()=>{
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/tables").then(r=>r.json()),
+      fetch("/api/zones").then(r=>r.json()),
+    ]).then(([tablesData,zonesData])=>{
+      if(Array.isArray(zonesData)){
+        setZones(zonesData);
+        if(zonesData.length>0)setZone(zonesData[0].name);
+      }
+      if(!Array.isArray(tablesData))return;
+      const mapped=tablesData.map(t=>({id:t.label,dbId:t.id,zoneId:t.zone?.id,zone:t.zone?.name||"",seats:t.seats,status:t.status}));
+      setTables(mapped);
+    }).catch(()=>{});
+  },[]);
+  const filtered=zone?tables.filter(t=>t.zone===zone):tables;
+  const saveStateChange=async()=>{
+    const prev=tables.find(t=>t.id===stateModal.id);
     setTables(p=>p.map(t=>t.id===stateModal.id?{...t,status:newStatus}:t));
+    const r=await fetch(`/api/tables/${stateModal.dbId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:newStatus})});
+    if(!r.ok&&prev)setTables(p=>p.map(t=>t.id===stateModal.id?prev:t));
     setStateModal(null);setComment("");
   };
-
+  const saveTableEdit=async()=>{
+    if(!editTable.id)return;
+    const zoneObj=zones.find(z=>z.name===editTable.zone)||zones.find(z=>z.id===editTable.zoneId);
+    const body={label:editTable.id,seats:editTable.seats,zone_id:zoneObj?.id};
+    if(editTable.dbId){
+      const r=await fetch(`/api/tables/${editTable.dbId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setTables(p=>p.map(t=>t.dbId===editTable.dbId?{...t,id:data.label,seats:data.seats,zone:zoneObj?.name||t.zone}:t));
+    } else {
+      const r=await fetch("/api/tables",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setTables(p=>[...p,{id:data.label,dbId:data.id,zoneId:data.zone_id,zone:zoneObj?.name||"",seats:data.seats,status:"free"}]);
+    }
+    setEditTable(null);
+  };
+  const deleteTable=async(dbId)=>{
+    const r=await fetch(`/api/tables/${dbId}`,{method:"DELETE"});
+    if(r.status===204||r.ok){
+      setTables(p=>p.filter(t=>t.dbId!==dbId));
+    } else {
+      const data=await r.json().catch(()=>({}));
+      alert(`Não foi possível apagar a mesa: ${data.error||"erro desconhecido"}. Pode existir um pedido associado.`);
+    }
+  };
   return(
     <div>
       <div className="section-head">
         <div style={{display:"flex",gap:6}}>
-          {zones.map(z=><button key={z}className={`filter-chip${zone===z?" active":""}`}onClick={()=>setZone(z)}>{z} ({tables.filter(t=>t.zone===z).length})</button>)}
+          {zones.map(z=><button key={z.id}className={`filter-chip${zone===z.name?" active":""}`}onClick={()=>setZone(z.name)}>{z.name} ({tables.filter(t=>t.zone===z.name).length})</button>)}
         </div>
-        <button className="btn btn-solid"onClick={()=>setEditTable({id:"",zone,seats:4,status:"free"})}><Ic.Plus/>Nova Mesa</button>
+        <button className="btn btn-solid"onClick={()=>setEditTable({id:"",zoneId:zones[0]?.id||"",zone:zones[0]?.name||"",seats:4,status:"free",dbId:null})}><Ic.Plus/>Nova Mesa</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
-        {filtered.map(t=>{const st=STATUS_C[t.status];return(
-          <div key={t.id}className="card"style={{border:`1px solid ${st.c}33`}}>
+        {filtered.map(t=>{const st=STATUS_C[t.status]||STATUS_C.free;return(
+          <div key={t.dbId}className="card"style={{border:`1px solid ${st.c}33`}}>
             <div style={{padding:"14px 14px 10px"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                 <div style={{fontSize:20,fontWeight:800,color:st.c}}>{t.id}</div>
@@ -577,14 +802,13 @@ function TablesMgmt(){
               {t.seats>0&&<div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>{t.seats} lugares · {t.zone}</div>}
               <div style={{display:"flex",gap:6}}>
                 <button className="btn btn-ghost btn-sm"style={{flex:1}}onClick={()=>{setStateModal(t);setNewStatus(t.status);}}>Estado</button>
-                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>setEditTable(t)}><Ic.Edit/></button>
-                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>setTables(p=>p.filter(x=>x.id!==t.id))}><Ic.Trash/></button>
+                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>setEditTable({...t})}><Ic.Edit/></button>
+                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteTable(t.dbId)}><Ic.Trash/></button>
               </div>
             </div>
           </div>
         );})}
       </div>
-
       {stateModal&&(
         <div className="overlay"onClick={()=>setStateModal(null)}>
           <div className="modal"style={{width:380}}onClick={e=>e.stopPropagation()}>
@@ -609,18 +833,250 @@ function TablesMgmt(){
       {editTable&&(
         <div className="overlay"onClick={()=>setEditTable(null)}>
           <div className="modal"style={{width:360}}onClick={e=>e.stopPropagation()}>
-            <div className="modal-hd"><div className="modal-title">{editTable.id?"Editar Mesa":"Nova Mesa"}</div><CloseBtn onClick={()=>setEditTable(null)}/></div>
+            <div className="modal-hd"><div className="modal-title">{editTable.dbId?"Editar Mesa":"Nova Mesa"}</div><CloseBtn onClick={()=>setEditTable(null)}/></div>
             <div className="modal-body">
               <div className="form-row">
                 <Inp label="ID da Mesa"value={editTable.id}onChange={e=>setEditTable(p=>({...p,id:e.target.value}))}placeholder="M9"/>
                 <Inp label="Lugares"type="number"value={editTable.seats}onChange={e=>setEditTable(p=>({...p,seats:parseInt(e.target.value)||0}))}/>
               </div>
-              <Sel label="Zona"value={editTable.zone}onChange={e=>setEditTable(p=>({...p,zone:e.target.value}))}>{["Interior","Esplanada","Bar"].map(z=><option key={z}>{z}</option>)}</Sel>
+              <Sel label="Zona"value={editTable.zoneId||""}onChange={e=>{const z=zones.find(x=>x.id===e.target.value);setEditTable(p=>({...p,zoneId:e.target.value,zone:z?.name||""}));}}>{zones.map(z=><option key={z.id}value={z.id}>{z.name}</option>)}</Sel>
             </div>
             <div className="modal-foot">
               <button className="btn btn-ghost"onClick={()=>setEditTable(null)}>Cancelar</button>
-              <button className="btn btn-solid"onClick={()=>{if(!editTable.id)return;const exists=tables.find(t=>t.id===editTable.id);if(exists)setTables(p=>p.map(t=>t.id===editTable.id?editTable:t));else setTables(p=>[...p,editTable]);setEditTable(null);}}>Guardar</button>
+              <button className="btn btn-solid"onClick={saveTableEdit}>Guardar</button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CATEGORIES MGMT ─────────────────────────────────────────────────────────
+function CategoriesMgmt(){
+  const [cats,setCats]=useState([]);
+  const [editCat,setEditCat]=useState(null);
+  const [form,setForm]=useState({});
+  useEffect(()=>{
+    fetch("/api/menu/categories").then(r=>r.json()).then(data=>{
+      if(Array.isArray(data))setCats(data.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",position:c.position||0})));
+    }).catch(()=>{});
+  },[]);
+  const save=async()=>{
+    const body={name:form.name,emoji:form.emoji,position:parseInt(form.position)||0};
+    if(editCat==="new"){
+      const r=await fetch("/api/menu/categories",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setCats(p=>[...p,{id:data.id,name:data.name,emoji:data.emoji||"",position:data.position}]);
+    } else {
+      const r=await fetch(`/api/menu/categories/${editCat}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setCats(p=>p.map(c=>c.id===editCat?{...c,name:data.name,emoji:data.emoji||"",position:data.position}:c));
+    }
+    setEditCat(null);
+  };
+  const deleteCat=async(id)=>{
+    const r=await fetch(`/api/menu/categories/${id}`,{method:"DELETE"});
+    if(r.status===204||r.ok){
+      setCats(p=>p.filter(c=>c.id!==id));
+    } else {
+      const data=await r.json().catch(()=>({}));
+      alert(`Não foi possível apagar: ${data.error||"existem itens associados"}`);
+    }
+  };
+  return(
+    <div>
+      <div className="section-head">
+        <div className="section-h">{cats.length} categorias</div>
+        <button className="btn btn-solid"onClick={()=>{setForm({name:"",emoji:"",position:cats.length});setEditCat("new");}}><Ic.Plus/>Nova Categoria</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+        {[...cats].sort((a,b)=>a.position-b.position).map(c=>(
+          <div key={c.id}className="card"style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div><div style={{fontWeight:700,fontSize:13}}>{c.name}</div><div style={{fontSize:11,color:T.textMuted}}>pos. {c.position}</div></div>
+            <div style={{display:"flex",gap:4}}>
+              <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...c});setEditCat(c.id);}}><Ic.Edit/></button>
+              <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteCat(c.id)}><Ic.Trash/></button>
+            </div>
+          </div>
+        ))}
+        {cats.length===0&&<div className="empty-state">Sem categorias. Adicione a primeira.</div>}
+      </div>
+      {editCat&&(
+        <div className="overlay"onClick={()=>setEditCat(null)}>
+          <div className="modal"style={{width:380}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{editCat==="new"?"Nova Categoria":"Editar Categoria"}</div><CloseBtn onClick={()=>setEditCat(null)}/></div>
+            <div className="modal-body">
+              <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <Inp label="Posição (ordem no menu)"type="number"value={form.position===undefined?"":form.position}onChange={e=>setForm(p=>({...p,position:e.target.value}))}/>
+            </div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditCat(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ZONES MGMT ───────────────────────────────────────────────────────────────
+function ZonesMgmt(){
+  const [zones,setZones]=useState([]);
+  const [editZone,setEditZone]=useState(null);
+  const [form,setForm]=useState({});
+  useEffect(()=>{
+    fetch("/api/zones").then(r=>r.json()).then(data=>{
+      if(Array.isArray(data))setZones(data);
+    }).catch(()=>{});
+  },[]);
+  const save=async()=>{
+    if(editZone==="new"){
+      const r=await fetch("/api/zones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name})});
+      const data=await r.json();
+      if(!data.error)setZones(p=>[...p,data]);
+    } else {
+      const r=await fetch(`/api/zones/${editZone}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name})});
+      const data=await r.json();
+      if(!data.error)setZones(p=>p.map(z=>z.id===editZone?data:z));
+    }
+    setEditZone(null);
+  };
+  const deleteZone=async(id)=>{
+    const r=await fetch(`/api/zones/${id}`,{method:"DELETE"});
+    if(r.status===204||r.ok){
+      setZones(p=>p.filter(z=>z.id!==id));
+    } else {
+      const data=await r.json().catch(()=>({}));
+      alert(`Não foi possível apagar: ${data.error||"existem mesas associadas a esta zona"}`);
+    }
+  };
+  return(
+    <div>
+      <div className="section-head">
+        <div className="section-h">{zones.length} zonas</div>
+        <button className="btn btn-solid"onClick={()=>{setForm({name:""});setEditZone("new");}}><Ic.Plus/>Nova Zona</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
+        {zones.map(z=>(
+          <div key={z.id}className="card"style={{padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontWeight:700,fontSize:14}}>{z.name}</span>
+            <div style={{display:"flex",gap:4}}>
+              <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({name:z.name});setEditZone(z.id);}}><Ic.Edit/></button>
+              <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteZone(z.id)}><Ic.Trash/></button>
+            </div>
+          </div>
+        ))}
+        {zones.length===0&&<div className="empty-state">Sem zonas. Adicione a primeira (ex: Interior, Esplanada).</div>}
+      </div>
+      {editZone&&(
+        <div className="overlay"onClick={()=>setEditZone(null)}>
+          <div className="modal"style={{width:340}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{editZone==="new"?"Nova Zona":"Editar Zona"}</div><CloseBtn onClick={()=>setEditZone(null)}/></div>
+            <div className="modal-body"><Inp label="Nome da Zona"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}placeholder="ex: Interior"/></div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditZone(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── INGREDIENTS MGMT ────────────────────────────────────────────────────────
+function IngredientsMgmt(){
+  const [ings,setIngs]=useState([]);
+  const [editIng,setEditIng]=useState(null);
+  const [form,setForm]=useState({});
+  const [search,setSearch]=useState("");
+  useEffect(()=>{
+    fetch("/api/ingredients").then(r=>r.json()).then(data=>{
+      if(Array.isArray(data))setIngs(data);
+    }).catch(()=>{});
+  },[]);
+  const save=async()=>{
+    const body={name:form.name,unit:form.unit||"un",stock_qty:parseFloat(form.stock_qty)||0};
+    if(editIng==="new"){
+      const r=await fetch("/api/ingredients",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setIngs(p=>[...p,data]);
+    } else {
+      const r=await fetch(`/api/ingredients/${editIng}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setIngs(p=>p.map(i=>i.id===editIng?data:i));
+    }
+    setEditIng(null);
+  };
+  const UNIT_STEP={mg:100,g:1,kg:0.1,ml:10,cl:1,dl:0.1,L:0.1,un:1,pcs:1,cx:1,dz:1};
+  const adjustStock=async(id,delta)=>{
+    const ing=ings.find(i=>i.id===id);if(!ing)return;
+    const step=(UNIT_STEP[ing.unit]||1)*delta;
+    const ns=Math.max(0,Math.round(((ing.stock_qty||0)+step)*1000)/1000);
+    setIngs(p=>p.map(i=>i.id===id?{...i,stock_qty:ns}:i));
+    await fetch(`/api/ingredients/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({stock_qty:ns})}).catch(()=>setIngs(p=>p.map(i=>i.id===id?{...i,stock_qty:ing.stock_qty}:i)));
+  };
+  const deleteIng=async(id)=>{
+    const r=await fetch(`/api/ingredients/${id}`,{method:"DELETE"});
+    if(r.status===204||r.ok){
+      setIngs(p=>p.filter(i=>i.id!==id));
+    } else {
+      const data=await r.json().catch(()=>({}));
+      alert(`Não foi possível apagar: ${data.error||"erro desconhecido"}`);
+    }
+  };
+  const filtered=ings.filter(i=>!search||i.name.toLowerCase().includes(search.toLowerCase()));
+  return(
+    <div>
+      <div className="section-head">
+        <div className="section-h">{ings.length} ingredientes</div>
+        <button className="btn btn-solid"onClick={()=>{setForm({name:"",unit:"g",stock_qty:0});setEditIng("new");}}><Ic.Plus/>Novo Ingrediente</button>
+      </div>
+      <div className="filters-row">
+        <input className="filter-input"placeholder="Pesquisar ingrediente..."value={search}onChange={e=>setSearch(e.target.value)}style={{width:260}}/>
+      </div>
+      <div className="card">
+        <table className="data-table">
+          <thead><tr><th>Nome</th><th>Unidade</th><th>Stock</th><th></th></tr></thead>
+          <tbody>
+            {filtered.length===0&&<tr><td colSpan={4}><div className="empty-state">Sem ingredientes</div></td></tr>}
+            {filtered.map(i=>(
+              <tr key={i.id}>
+                <td style={{fontWeight:600}}>{i.name}</td>
+                <td><Badge color={T.teal}bg={T.tealDim}>{i.unit||"un"}</Badge></td>
+                <td>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>adjustStock(i.id,-1)}>−</button>
+                    <div style={{textAlign:"center",minWidth:80}}>
+                      <span className="mono"style={{color:(i.stock_qty||0)<=5?T.warning:T.text,fontWeight:700}}>{fmtQty(i.stock_qty||0)} {i.unit||"un"}</span>
+                      {(()=>{const cv=getConversions(i.unit,i.stock_qty||0);return cv.length>0?<div style={{fontSize:10,color:T.textMuted,marginTop:1}}>{cv.slice(0,2).map(c=>`${fmtQty(c.val)} ${c.unit}`).join(" · ")}</div>:null;})()}
+                    </div>
+                    <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>adjustStock(i.id,1)}>+</button>
+                  </div>
+                </td>
+                <td><div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                  <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({name:i.name,unit:i.unit||"un",stock_qty:i.stock_qty||0});setEditIng(i.id);}}><Ic.Edit/></button>
+                  <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteIng(i.id)}><Ic.Trash/></button>
+                </div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editIng&&(
+        <div className="overlay"onClick={()=>setEditIng(null)}>
+          <div className="modal"style={{width:360}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{editIng==="new"?"Novo Ingrediente":"Editar Ingrediente"}</div><CloseBtn onClick={()=>setEditIng(null)}/></div>
+            <div className="modal-body">
+              <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <Sel label="Unidade"value={form.unit||"g"}onChange={e=>setForm(p=>({...p,unit:e.target.value}))}>
+                <optgroup label="Peso">{UNIT_DEFS.filter(u=>u.group==="weight").map(u=><option key={u.id}value={u.id}>{u.label}</option>)}</optgroup>
+                <optgroup label="Volume">{UNIT_DEFS.filter(u=>u.group==="volume").map(u=><option key={u.id}value={u.id}>{u.label}</option>)}</optgroup>
+                <optgroup label="Contagem">{UNIT_DEFS.filter(u=>u.group==="count").map(u=><option key={u.id}value={u.id}>{u.label}</option>)}</optgroup>
+              </Sel>
+              <div className="form-group">
+                <label className="form-label">Stock atual</label>
+                <input className="form-input"type="number"step="0.001"min="0"value={form.stock_qty===undefined?"":form.stock_qty}onChange={e=>setForm(p=>({...p,stock_qty:e.target.value}))}/>
+                {(()=>{const cv=getConversions(form.unit,parseFloat(form.stock_qty)||0);return cv.length>0?<div style={{fontSize:11,color:T.textMuted,marginTop:5}}>{fmtQty(parseFloat(form.stock_qty)||0)} {form.unit} = {cv.map(c=>`${fmtQty(c.val)} ${c.unit}`).join(" = ")}</div>:null;})()}
+              </div>
+            </div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditIng(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
           </div>
         </div>
       )}
@@ -630,12 +1086,41 @@ function TablesMgmt(){
 
 // ─── STAFF ────────────────────────────────────────────────────────────────────
 function StaffMgmt(){
-  const [staff,setStaff]=useState(INIT_STAFF);
+  const [staff,setStaff]=useState([]);
   const [editStaff,setEditStaff]=useState(null);
   const [form,setForm]=useState({});
-  const openEdit=(s)=>{setForm({...s});setEditStaff(s.id);};
-  const openNew=()=>{setForm({id:`s${Date.now()}`,name:"",role:"waiter",pin:"",active:true,since:"Mai 2026"});setEditStaff("new");};
-  const save=()=>{if(editStaff==="new")setStaff(p=>[...p,form]);else setStaff(p=>p.map(s=>s.id===editStaff?form:s));setEditStaff(null);};
+  useEffect(()=>{
+    fetch("/api/staff").then(r=>r.json()).then(data=>{
+      if(!Array.isArray(data))return;
+      setStaff(data.map(s=>({id:s.id,name:s.name,role:s.role,active:s.active,since:new Date(s.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})})));
+    }).catch(()=>{});
+  },[]);
+  const openEdit=(s)=>{setForm({...s,pin:""});setEditStaff(s.id);};
+  const openNew=()=>{setForm({name:"",role:"waiter",pin:"",active:true});setEditStaff("new");};
+  const save=async()=>{
+    if(editStaff==="new"){
+      const r=await fetch("/api/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,role:form.role,pin:form.pin})});
+      const data=await r.json();
+      if(!data.error)setStaff(p=>[...p,{id:data.id,name:data.name,role:data.role,active:data.active,since:new Date(data.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})}]);
+    } else {
+      const body={name:form.name,role:form.role,active:form.active};
+      if(form.pin)body.pin=form.pin;
+      const r=await fetch(`/api/staff/${editStaff}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setStaff(p=>p.map(s=>s.id===editStaff?{...s,name:data.name,role:data.role,active:data.active}:s));
+    }
+    setEditStaff(null);
+  };
+  const toggleActive=async(id,v)=>{
+    setStaff(p=>p.map(s=>s.id===id?{...s,active:v}:s));
+    await fetch(`/api/staff/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:v})}).catch(()=>{
+      setStaff(p=>p.map(s=>s.id===id?{...s,active:!v}:s));
+    });
+  };
+  const deleteStaff=async(id)=>{
+    setStaff(p=>p.filter(s=>s.id!==id));
+    await fetch(`/api/staff/${id}`,{method:"DELETE"}).catch(()=>{});
+  };
   return(
     <div>
       <div className="section-head"><div className="section-h">{staff.length} funcionários</div><button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Funcionário</button></div>
@@ -652,8 +1137,8 @@ function StaffMgmt(){
                 <td><Badge color={s.role==="kitchen"?T.warning:T.teal}bg={s.role==="kitchen"?T.warningDim:T.tealDim}>{s.role}</Badge></td>
                 <td><span className="mono"style={{letterSpacing:4,color:T.textMuted}}>••••</span></td>
                 <td style={{color:T.textSec,fontSize:12}}>{s.since}</td>
-                <td><div style={{display:"flex",alignItems:"center",gap:8}}><Toggle on={s.active}onChange={v=>setStaff(p=>p.map(x=>x.id===s.id?{...x,active:v}:x))}/><span style={{fontSize:11,color:s.active?T.success:T.textMuted}}>{s.active?"Activo":"Inactivo"}</span></div></td>
-                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(s)}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>setStaff(p=>p.filter(x=>x.id!==s.id))}><Ic.Trash/></button></div></td>
+                <td><div style={{display:"flex",alignItems:"center",gap:8}}><Toggle on={s.active}onChange={v=>toggleActive(s.id,v)}/><span style={{fontSize:11,color:s.active?T.success:T.textMuted}}>{s.active?"Activo":"Inactivo"}</span></div></td>
+                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(s)}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteStaff(s.id)}><Ic.Trash/></button></div></td>
               </tr>
             ))}
           </tbody>
@@ -667,7 +1152,7 @@ function StaffMgmt(){
               <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
               <div className="form-row">
                 <Sel label="Função"value={form.role||"waiter"}onChange={e=>setForm(p=>({...p,role:e.target.value}))}><option value="waiter">Waiter</option><option value="kitchen">Cozinha</option><option value="manager">Gestor</option></Sel>
-                <Inp label="PIN (4 dígitos)"type="password"maxLength={4}value={form.pin||""}onChange={e=>setForm(p=>({...p,pin:e.target.value}))}/>
+                <Inp label={editStaff==="new"?"PIN (4 dígitos)":"Novo PIN (vazio = manter)"}type="password"maxLength={4}value={form.pin||""}onChange={e=>setForm(p=>({...p,pin:e.target.value}))}/>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,marginTop:4}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Activo</span></div>
             </div>
@@ -681,12 +1166,47 @@ function StaffMgmt(){
 
 // ─── RESERVATIONS ─────────────────────────────────────────────────────────────
 function Reservations(){
-  const [reservas,setReservas]=useState(INIT_RESERVATIONS);
+  const [reservas,setReservas]=useState([]);
+  const [tableMap,setTableMap]=useState({});
+  const [allTables,setAllTables]=useState([]);
   const [editR,setEditR]=useState(null);
   const [form,setForm]=useState({});
-  const openNew=()=>{setForm({id:`R${++_rid}`,name:"",phone:"",date:"2026-05-18",time:"20:00",persons:2,tableId:"",notes:"",status:"pending"});setEditR("new");};
-  const save=()=>{if(editR==="new")setReservas(p=>[...p,form]);else setReservas(p=>p.map(r=>r.id===editR?form:r));setEditR(null);};
-  const toggleStatus=(id)=>setReservas(p=>p.map(r=>r.id===id?{...r,status:r.status==="confirmed"?"pending":"confirmed"}:r));
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/reservations").then(r=>r.json()),
+      fetch("/api/tables").then(r=>r.json()),
+    ]).then(([res,tbls])=>{
+      if(Array.isArray(res))setReservas(res.map(r=>({id:r.id,name:r.name,phone:r.phone||"",date:r.date,time:r.time,persons:r.persons,tableId:r.table?.label||"",tableDbId:r.table_id||null,notes:r.notes||"",status:r.status})));
+      if(Array.isArray(tbls)){
+        const m={};tbls.forEach(t=>{m[t.label]=t.id;});
+        setTableMap(m);
+        setAllTables(tbls.map(t=>({id:t.id,label:t.label})).sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true})));
+      }
+    }).catch(()=>{});
+  },[]);
+  const openNew=()=>{setForm({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:"",status:"pending"});setEditR("new");};
+  const save=async()=>{
+    const body={name:form.name,phone:form.phone,date:form.date,time:form.time,persons:parseInt(form.persons)||2,notes:form.notes,status:form.status,table_id:tableMap[form.tableId]||null};
+    if(editR==="new"){
+      const r=await fetch("/api/reservations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!data.error)setReservas(p=>[...p,{...form,id:data.id}]);
+    } else {
+      await fetch(`/api/reservations/${editR}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      setReservas(p=>p.map(x=>x.id===editR?{...form,id:editR}:x));
+    }
+    setEditR(null);
+  };
+  const toggleStatus=async(id)=>{
+    const r=reservas.find(x=>x.id===id);if(!r)return;
+    const ns=r.status==="confirmed"?"pending":"confirmed";
+    setReservas(p=>p.map(x=>x.id===id?{...x,status:ns}:x));
+    await fetch(`/api/reservations/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:ns})}).catch(()=>{});
+  };
+  const deleteR=async(id)=>{
+    setReservas(p=>p.filter(x=>x.id!==id));
+    await fetch(`/api/reservations/${id}`,{method:"DELETE"}).catch(()=>{});
+  };
   const sorted=[...reservas].sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
   return(
     <div>
@@ -695,6 +1215,7 @@ function Reservations(){
         <table className="data-table">
           <thead><tr><th>Nome</th><th>Data / Hora</th><th>Pessoas</th><th>Mesa</th><th>Notas</th><th>Estado</th><th></th></tr></thead>
           <tbody>
+            {sorted.length===0&&<tr><td colSpan={7}><div className="empty-state">Sem reservas</div></td></tr>}
             {sorted.map(r=>(
               <tr key={r.id}>
                 <td><div style={{fontWeight:600}}>{r.name}</div><div style={{fontSize:11,color:T.textMuted}}>{r.phone}</div></td>
@@ -703,7 +1224,7 @@ function Reservations(){
                 <td><Badge color={T.accent}bg={T.accentDim}>{r.tableId||"—"}</Badge></td>
                 <td style={{color:T.textSec,fontSize:12,maxWidth:140}}>{r.notes||"—"}</td>
                 <td><div onClick={()=>toggleStatus(r.id)}style={{cursor:"pointer"}}><Badge color={r.status==="confirmed"?T.success:T.warning}bg={r.status==="confirmed"?T.successDim:T.warningDim}>{r.status==="confirmed"?"Confirmada":"Pendente"}</Badge></div></td>
-                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...r});setEditR(r.id);}}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>setReservas(p=>p.filter(x=>x.id!==r.id))}><Ic.Trash/></button></div></td>
+                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...r});setEditR(r.id);}}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteR(r.id)}><Ic.Trash/></button></div></td>
               </tr>
             ))}
           </tbody>
@@ -716,7 +1237,13 @@ function Reservations(){
             <div className="modal-body">
               <div className="form-row"><Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/><Inp label="Telefone"value={form.phone||""}onChange={e=>setForm(p=>({...p,phone:e.target.value}))}/></div>
               <div className="form-row"><Inp label="Data"type="date"value={form.date||""}onChange={e=>setForm(p=>({...p,date:e.target.value}))}/><Inp label="Hora"type="time"value={form.time||""}onChange={e=>setForm(p=>({...p,time:e.target.value}))}/></div>
-              <div className="form-row"><Inp label="Nº Pessoas"type="number"value={form.persons||""}onChange={e=>setForm(p=>({...p,persons:e.target.value}))}/><Inp label="Mesa"value={form.tableId||""}onChange={e=>setForm(p=>({...p,tableId:e.target.value}))}placeholder="M7"/></div>
+              <div className="form-row">
+                <Inp label="Nº Pessoas"type="number"value={form.persons||""}onChange={e=>setForm(p=>({...p,persons:e.target.value}))}/>
+                <Sel label="Mesa"value={form.tableId||""}onChange={e=>setForm(p=>({...p,tableId:e.target.value}))}>
+                  <option value="">Sem mesa atribuída</option>
+                  {allTables.map(t=><option key={t.id}value={t.label}>{t.label}</option>)}
+                </Sel>
+              </div>
               <Inp label="Notas"value={form.notes||""}onChange={e=>setForm(p=>({...p,notes:e.target.value}))}placeholder="Alergias, preferências..."/>
               <Sel label="Estado"value={form.status||"pending"}onChange={e=>setForm(p=>({...p,status:e.target.value}))}><option value="pending">Pendente</option><option value="confirmed">Confirmada</option></Sel>
             </div>
@@ -728,29 +1255,190 @@ function Reservations(){
   );
 }
 
-// ─── CAMPAIGNS ───────────────────────────────────────────────────────────────
-function Campaigns(){
-  const [camps,setCamps]=useState(INIT_CAMPAIGNS);
-  const [editC,setEditC]=useState(null);
+// ─── COMBOS MGMT ─────────────────────────────────────────────────────────────
+function CombosMgmt(){
+  const [combos,setCombos]=useState([]);
+  const [allItems,setAllItems]=useState([]);
+  const [editCombo,setEditCombo]=useState(null);
   const [form,setForm]=useState({});
-  const toggleDay=(d)=>setForm(p=>({...p,days:p.days.includes(d)?p.days.filter(x=>x!==d):[...p.days,d].sort()}));
-  const save=()=>{if(editC==="new")setCamps(p=>[...p,form]);else setCamps(p=>p.map(c=>c.id===editC?form:c));setEditC(null);};
+  const [comboItems,setComboItems]=useState([]);
+  const [selItem,setSelItem]=useState("");
+  const [selQty,setSelQty]=useState("1");
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/combos").then(r=>r.json()),
+      fetch("/api/menu/items?active=false").then(r=>r.json()),
+    ]).then(([cs,its])=>{
+      if(Array.isArray(cs))setCombos(cs);
+      if(Array.isArray(its))setAllItems(its.map(i=>({id:i.id,name:i.name,price:i.price,cat:i.category?.name||""})));
+    }).catch(()=>{});
+  },[]);
+  const openNew=()=>{setForm({name:"",description:"",price:"",active:true});setComboItems([]);setSelItem("");setSelQty("1");setEditCombo("new");};
+  const openEdit=(combo)=>{setForm({name:combo.name,description:combo.description||"",price:combo.price,active:combo.active});setComboItems((combo.items||[]).map(ci=>({item_id:ci.item_id,qty:ci.qty,item:ci.item})));setSelItem("");setSelQty("1");setEditCombo(combo.id);};
+  const addItem=async()=>{
+    if(!selItem)return;
+    const item=allItems.find(i=>i.id===selItem);
+    const qty=parseInt(selQty)||1;
+    const ci={item_id:selItem,qty,item:{id:selItem,name:item?.name||"",price:item?.price||0}};
+    if(editCombo==="new"){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");return;}
+    const r=await fetch(`/api/combos/${editCombo}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:selItem,qty})});
+    const data=await r.json();
+    if(!data.error){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),{...data,item_id:data.item_id||selItem}]);setSelItem("");setSelQty("1");}
+  };
+  const removeItem=async(itemId)=>{
+    setComboItems(p=>p.filter(x=>x.item_id!==itemId));
+    if(editCombo!=="new") await fetch(`/api/combos/${editCombo}/items`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:itemId})}).catch(()=>{});
+  };
+  const save=async()=>{
+    const body={name:form.name,description:form.description||null,price:parseFloat(form.price)||0,active:form.active};
+    if(editCombo==="new"){
+      const r=await fetch("/api/combos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(data.error)return;
+      await Promise.all(comboItems.map(ci=>fetch(`/api/combos/${data.id}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:ci.item_id,qty:ci.qty})}).catch(()=>{})));
+      setCombos(p=>[...p,{...data,items:comboItems}]);
+    } else {
+      const r=await fetch(`/api/combos/${editCombo}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(data.error)return;
+      setCombos(p=>p.map(c=>c.id===editCombo?{...c,...data,items:comboItems}:c));
+    }
+    setEditCombo(null);
+  };
+  const deleteCombo=async(id)=>{
+    const r=await fetch(`/api/combos/${id}`,{method:"DELETE"});
+    if(r.status===204||r.ok){setCombos(p=>p.filter(c=>c.id!==id));}
+    else{const d=await r.json().catch(()=>({}));alert(`Erro: ${d.error||"erro desconhecido"}`);}
+  };
+  const toggleActive=async(id,v)=>{
+    setCombos(p=>p.map(c=>c.id===id?{...c,active:v}:c));
+    await fetch(`/api/combos/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:v})}).catch(()=>setCombos(p=>p.map(c=>c.id===id?{...c,active:!v}:c)));
+  };
   return(
     <div>
-      <div className="section-head"><div className="section-h">{camps.length} campanhas</div><button className="btn btn-solid"onClick={()=>{setForm({id:`C${Date.now()}`,name:"",type:"percent",value:0,target:"all",targetLabel:"Tudo",days:[],start:"00:00",end:"23:59",active:true});setEditC("new");}}><Ic.Plus/>Nova Campanha</button></div>
+      <div className="section-head"><div className="section-h">{combos.length} menus</div><button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Menu</button></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
+        {combos.length===0&&<div className="empty-state">Sem menus. Um menu combina itens (ex: Entrada + Prato + Sobremesa).</div>}
+        {combos.map(c=>{const items=(c.items||[]);return(
+          <div key={c.id}className="card"style={{padding:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+              <div><div style={{fontWeight:700,fontSize:14}}>{c.name}</div>{c.description&&<div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{c.description}</div>}</div>
+              <span className="mono"style={{color:T.accent,fontWeight:700,fontSize:14,flexShrink:0,marginLeft:8}}>{fmtEur(c.price)}</span>
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:12}}>
+              {items.map(ci=><span key={ci.item_id||ci.item?.id}className="tag">{ci.qty}x {ci.item?.name||"?"}</span>)}
+              {items.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens</span>}
+            </div>
+            <div style={{display:"flex",gap:6,justifyContent:"space-between",alignItems:"center"}}>
+              <Toggle on={!!c.active}onChange={v=>toggleActive(c.id,v)}/>
+              <div style={{display:"flex",gap:4}}>
+                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(c)}><Ic.Edit/></button>
+                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteCombo(c.id)}><Ic.Trash/></button>
+              </div>
+            </div>
+          </div>
+        );})}
+      </div>
+      {editCombo&&(
+        <div className="overlay"onClick={()=>setEditCombo(null)}>
+          <div className="modal"style={{width:520}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{editCombo==="new"?"Novo Menu":"Editar Menu"}</div><CloseBtn onClick={()=>setEditCombo(null)}/></div>
+            <div className="modal-body">
+              <div className="form-row"><Inp label="Nome do Menu"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/><Inp label="Preco (€)"type="number"step="0.01"value={form.price||""}onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
+              <Inp label="Descricao (opcional)"value={form.description||""}onChange={e=>setForm(p=>({...p,description:e.target.value}))}/>
+              <div style={{marginTop:14,borderTop:`1px solid ${T.border}`,paddingTop:12}}>
+                <span className="form-label"style={{display:"block",marginBottom:8}}>Itens incluidos</span>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                  {comboItems.map(ci=><span key={ci.item_id}className="tag">{ci.qty}x {ci.item?.name||"?"}<button className="tag-del"onClick={()=>removeItem(ci.item_id)}>x</button></span>)}
+                  {comboItems.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens.</span>}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <select className="form-select"style={{flex:2}}value={selItem}onChange={e=>setSelItem(e.target.value)}>
+                    <option value="">Selecionar item...</option>
+                    {allItems.filter(i=>!comboItems.find(ci=>ci.item_id===i.id)).map(i=><option key={i.id}value={i.id}>{i.name} — {fmtEur(i.price)}</option>)}
+                  </select>
+                  <input className="form-input"style={{width:60}}type="number"min="1"placeholder="Qtd"value={selQty}onChange={e=>setSelQty(e.target.value)}/>
+                  <button className="btn btn-ghost"onClick={addItem}disabled={!selItem}>Adicionar</button>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Activo no POS</span></div>
+            </div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditCombo(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DESCONTOS ────────────────────────────────────────────────────────────────
+function Campaigns(){
+  const [camps,setCamps]=useState([]);
+  const [menuItems,setMenuItems]=useState([]);
+  const [combosRef,setCombosRef]=useState([]);
+  const [editC,setEditC]=useState(null);
+  const [form,setForm]=useState({});
+  const [errMsg,setErrMsg]=useState("");
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/campaigns?active=false").then(r=>r.json()),
+      fetch("/api/menu/items?active=false").then(r=>r.json()),
+      fetch("/api/combos").then(r=>r.json()),
+    ]).then(([cs,its,cbs])=>{
+      if(Array.isArray(cs))setCamps(cs.map(c=>({id:c.id,name:c.name,type:c.type,value:c.value,target:c.target||"all",targetId:c.target_id||null,days:c.days||[],start:c.start_time||"00:00",end:c.end_time||"23:59",active:c.active})));
+      if(Array.isArray(its))setMenuItems(its.map(i=>({id:i.id,name:i.name})));
+      if(Array.isArray(cbs))setCombosRef(cbs.map(c=>({id:c.id,name:c.name})));
+    }).catch(()=>{});
+  },[]);
+  const getTargetLabel=(c)=>{
+    if(c.target==="all")return"Toda a encomenda";
+    if(c.target==="item"){const it=menuItems.find(i=>i.id===c.targetId);return it?`Item: ${it.name}`:"Item";}
+    if(c.target==="combo"){const cb=combosRef.find(x=>x.id===c.targetId);return cb?`Menu: ${cb.name}`:"Menu";}
+    return c.target;
+  };
+  const toggleDay=(d)=>setForm(p=>({...p,days:p.days.includes(d)?p.days.filter(x=>x!==d):[...p.days,d].sort()}));
+  const save=async()=>{
+    if(!form.name){setErrMsg("Nome obrigatório");return;}
+    setErrMsg("");
+    const body={name:form.name,type:form.type,value:parseFloat(form.value)||0,target:form.target,target_id:form.targetId||null,days:form.days,start_time:form.start,end_time:form.end};
+    if(editC==="new"){
+      const r=await fetch("/api/campaigns",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(data.error){setErrMsg(data.error);return;}
+      setCamps(p=>[...p,{...form,id:data.id,active:true}]);
+    } else {
+      const r=await fetch(`/api/campaigns/${editC}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(data.error){setErrMsg(data.error);return;}
+      setCamps(p=>p.map(c=>c.id===editC?{...form,id:editC}:c));
+    }
+    setEditC(null);
+  };
+  const toggleActive=async(id,v)=>{
+    setCamps(p=>p.map(c=>c.id===id?{...c,active:v}:c));
+    await fetch(`/api/campaigns/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:v})}).catch(()=>{});
+  };
+  const deleteC=async(id)=>{
+    setCamps(p=>p.filter(c=>c.id!==id));
+    await fetch(`/api/campaigns/${id}`,{method:"DELETE"}).catch(()=>{});
+  };
+  return(
+    <div>
+      <div className="section-head"><div className="section-h">{camps.length} descontos</div><button className="btn btn-solid"onClick={()=>{setForm({name:"",type:"percent",value:0,target:"all",targetId:null,days:[],start:"00:00",end:"23:59",active:true});setEditC("new");}}><Ic.Plus/>Novo Desconto</button></div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th>Nome</th><th>Desconto</th><th>Alvo</th><th>Dias</th><th>Horário</th><th>Activa</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Desconto</th><th>Alvo</th><th>Dias</th><th>Horario</th><th>Activa</th><th></th></tr></thead>
           <tbody>
+            {camps.length===0&&<tr><td colSpan={7}><div className="empty-state">Sem descontos</div></td></tr>}
             {camps.map(c=>(
               <tr key={c.id}>
                 <td style={{fontWeight:600}}>{c.name}</td>
-                <td><span style={{color:T.warning,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{c.type==="percent"?`${c.value}%`:`-€${c.value.toFixed(2)}`}</span></td>
-                <td><Badge color={T.teal}bg={T.tealDim}>{c.targetLabel}</Badge></td>
-                <td><span style={{fontSize:11,color:T.textSec}}>{c.days.map(d=>DAYS_PT[d%7]).join(", ")||"—"}</span></td>
+                <td><span style={{color:T.warning,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{c.type==="percent"?`${c.value}%`:`-€${Number(c.value).toFixed(2)}`}</span></td>
+                <td><Badge color={T.teal}bg={T.tealDim}>{getTargetLabel(c)}</Badge></td>
+                <td><span style={{fontSize:11,color:T.textSec}}>{(c.days||[]).map(d=>DAYS_PT[d%7]).join(", ")||"—"}</span></td>
                 <td><span className="mono"style={{fontSize:11,color:T.textMuted}}>{c.start}–{c.end}</span></td>
-                <td><div style={{display:"flex",alignItems:"center",gap:8}}><Toggle on={c.active}onChange={v=>setCamps(p=>p.map(x=>x.id===c.id?{...x,active:v}:x))}/></div></td>
-                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...c});setEditC(c.id);}}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>setCamps(p=>p.filter(x=>x.id!==c.id))}><Ic.Trash/></button></div></td>
+                <td><Toggle on={c.active}onChange={v=>toggleActive(c.id,v)}/></td>
+                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...c});setEditC(c.id);}}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteC(c.id)}><Ic.Trash/></button></div></td>
               </tr>
             ))}
           </tbody>
@@ -758,21 +1446,26 @@ function Campaigns(){
       </div>
       {editC&&(
         <div className="overlay"onClick={()=>setEditC(null)}>
-          <div className="modal"style={{width:460}}onClick={e=>e.stopPropagation()}>
-            <div className="modal-hd"><div className="modal-title">{editC==="new"?"Nova Campanha":"Editar Campanha"}</div><CloseBtn onClick={()=>setEditC(null)}/></div>
+          <div className="modal"style={{width:480}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{editC==="new"?"Novo Desconto":"Editar Desconto"}</div><CloseBtn onClick={()=>setEditC(null)}/></div>
             <div className="modal-body">
-              <Inp label="Nome da Campanha"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
               <div className="form-row">
                 <Sel label="Tipo"value={form.type||"percent"}onChange={e=>setForm(p=>({...p,type:e.target.value}))}><option value="percent">Percentagem (%)</option><option value="fixed">Valor Fixo (€)</option></Sel>
                 <Inp label={form.type==="fixed"?"Valor (€)":"Percentagem (%)"}type="number"value={form.value||""}onChange={e=>setForm(p=>({...p,value:parseFloat(e.target.value)||0}))}/>
               </div>
-              <div className="form-row">
-                <Sel label="Alvo"value={form.target||"all"}onChange={e=>setForm(p=>({...p,target:e.target.value,targetLabel:e.target.value==="all"?"Tudo":e.target.options[e.target.selectedIndex].text}))}><option value="all">Tudo</option>{MENU_CATS.map(c=><option key={c}value={c}>{c}</option>)}</Sel>
-                <div><label className="form-label">Dias</label><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{DAYS_PT.slice(1).map((d,i)=><button key={i+1}onClick={()=>toggleDay(i+1)}style={{padding:"4px 8px",borderRadius:5,border:`1px solid ${(form.days||[]).includes(i+1)?T.accent:T.border}`,background:(form.days||[]).includes(i+1)?T.accentDim:T.card,color:(form.days||[]).includes(i+1)?T.accent:T.textSec,fontSize:11,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
-              </div>
-              <div className="form-row"><Inp label="Hora Início"type="time"value={form.start||"00:00"}onChange={e=>setForm(p=>({...p,start:e.target.value}))}/><Inp label="Hora Fim"type="time"value={form.end||"23:59"}onChange={e=>setForm(p=>({...p,end:e.target.value}))}/></div>
+              <Sel label="Alvo do desconto"value={form.target||"all"}onChange={e=>setForm(p=>({...p,target:e.target.value,targetId:null}))}>
+                <option value="all">Toda a encomenda</option>
+                <option value="item">Item especifico</option>
+                <option value="combo">Menu especifico</option>
+              </Sel>
+              {form.target==="item"&&<Sel label="Item"value={form.targetId||""}onChange={e=>setForm(p=>({...p,targetId:e.target.value}))}><option value="">Selecionar...</option>{menuItems.map(i=><option key={i.id}value={i.id}>{i.name}</option>)}</Sel>}
+              {form.target==="combo"&&<Sel label="Menu"value={form.targetId||""}onChange={e=>setForm(p=>({...p,targetId:e.target.value}))}><option value="">Selecionar...</option>{combosRef.map(c=><option key={c.id}value={c.id}>{c.name}</option>)}</Sel>}
+              <div><label className="form-label">Dias validos</label><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{DAYS_PT.slice(1).map((d,i)=><button key={i+1}onClick={()=>toggleDay(i+1)}style={{padding:"4px 8px",borderRadius:5,border:`1px solid ${(form.days||[]).includes(i+1)?T.accent:T.border}`,background:(form.days||[]).includes(i+1)?T.accentDim:T.card,color:(form.days||[]).includes(i+1)?T.accent:T.textSec,fontSize:11,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
+              <div className="form-row"style={{marginTop:8}}><Inp label="Hora Inicio"type="time"value={form.start||"00:00"}onChange={e=>setForm(p=>({...p,start:e.target.value}))}/><Inp label="Hora Fim"type="time"value={form.end||"23:59"}onChange={e=>setForm(p=>({...p,end:e.target.value}))}/></div>
+              {errMsg&&<div style={{marginTop:8,fontSize:12,color:T.danger,background:T.dangerDim,borderRadius:6,padding:"6px 10px"}}>{errMsg}</div>}
             </div>
-            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditC(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}>Guardar</button></div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>{setEditC(null);setErrMsg("");}}>Cancelar</button><button className="btn btn-solid"onClick={save}>Guardar</button></div>
           </div>
         </div>
       )}
@@ -782,12 +1475,32 @@ function Campaigns(){
 
 // ─── ORDER HISTORY ────────────────────────────────────────────────────────────
 function OrderHistory(){
+  const [orders,setOrders]=useState([]);
   const [search,setSearch]=useState("");
   const [dateFilter,setDateFilter]=useState("Todos");
   const [expanded,setExpanded]=useState(null);
+  useEffect(()=>{
+    fetch("/api/orders?status=paid&limit=100").then(r=>r.json()).then(data=>{
+      if(!Array.isArray(data))return;
+      setOrders(data.map(o=>{
+        const lines=(o.lines||[]).filter(l=>!l.cancelled);
+        const total=lines.reduce((s,l)=>s+(l.unit_price+l.extra_price)*l.qty,0);
+        const items=lines.reduce((s,l)=>s+l.qty,0);
+        const d=new Date(o.paid_at||o.created_at);
+        return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method:"—",
+          time:d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}),
+          date:d.toLocaleDateString("pt-PT"),
+          lines:lines.map(l=>`${l.qty}x ${l.name}`),
+        };
+      }));
+    }).catch(()=>{});
+  },[]);
+  const todayStr=new Date().toLocaleDateString("pt-PT");
+  const yestStr=new Date(Date.now()-86400000).toLocaleDateString("pt-PT");
   const dates=["Todos","Hoje","Ontem"];
-  const filtered=INIT_ORDER_HIST.filter(o=>{
-    if(dateFilter!=="Todos"&&o.date!==dateFilter)return false;
+  const filtered=orders.filter(o=>{
+    if(dateFilter==="Hoje"&&o.date!==todayStr)return false;
+    if(dateFilter==="Ontem"&&o.date!==yestStr)return false;
     if(search&&!o.table.toLowerCase().includes(search.toLowerCase())&&!o.waiter.toLowerCase().includes(search.toLowerCase()))return false;
     return true;
   });
@@ -806,7 +1519,7 @@ function OrderHistory(){
               <>
                 <tr key={o.id}>
                   <td style={{width:32}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>setExpanded(expanded===o.id?null:o.id)}>{expanded===o.id?<Ic.Up/>:<Ic.Down/>}</button></td>
-                  <td><span className="mono"style={{color:T.textMuted,fontSize:11}}>{o.id}</span></td>
+                  <td><span className="mono"style={{color:T.textMuted,fontSize:11}}>{o.id.slice(0,8)}</span></td>
                   <td style={{fontWeight:700}}>{o.table}</td>
                   <td style={{color:T.textSec}}>{o.waiter}</td>
                   <td><span className="mono">{o.items}</span></td>
@@ -836,10 +1549,16 @@ function OrderHistory(){
 
 // ─── LOGS ─────────────────────────────────────────────────────────────────────
 function LogsSection(){
-  const [logs]=useState(INIT_LOGS);
+  const [logs,setLogs]=useState([]);
   const [level,setLevel]=useState("Todos");
   const [module,setModule]=useState("Todos");
   const [search,setSearch]=useState("");
+  useEffect(()=>{
+    fetch("/api/logs?limit=200").then(r=>r.json()).then(data=>{
+      if(!Array.isArray(data))return;
+      setLogs(data.map(l=>({id:l.id,level:l.level,module:l.module,time:new Date(l.created_at).toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit",second:"2-digit"}),msg:l.message,comment:l.comment})));
+    }).catch(()=>{});
+  },[]);
   const levels=["Todos","INFO","ACTION","WARN","ERROR","CANCEL"];
   const modules=["Todos","POS","KDS","BACKOFFICE"];
   const filtered=logs.filter(l=>{
@@ -867,6 +1586,7 @@ function LogsSection(){
         <table className="data-table mono">
           <thead><tr><th>Nível</th><th>Módulo</th><th>Hora</th><th>Mensagem</th></tr></thead>
           <tbody>
+            {filtered.length===0&&<tr><td colSpan={4}><div className="empty-state">Sem logs para os filtros seleccionados</div></td></tr>}
             {filtered.map(l=>{const lc=LEVEL_C[l.level]||LEVEL_C.INFO;return(
               <tr key={l.id}>
                 <td><Badge color={lc.c}bg={lc.bg}>{l.level}</Badge></td>
@@ -880,16 +1600,39 @@ function LogsSection(){
             );})}
           </tbody>
         </table>
-        {filtered.length===0&&<div className="empty-state">Sem logs para os filtros seleccionados</div>}
       </div>
     </div>
   );
 }
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
+const SETTINGS_DEFAULTS={
+  geral:{name:"RestaurantOS",address:"",phone:"",email:""},
+  fiscal:{nif:"",regime:"normal",rates:[
+    {id:"r6",label:"Taxa Reduzida",value:6,active:true},
+    {id:"r13",label:"Taxa Intermédia",value:13,active:true},
+    {id:"r23",label:"Taxa Normal",value:23,active:true},
+  ]},
+  kds:{alertYellow:5,alertRed:12,autoRefresh:3},
+  caixa:{defaultFundo:50,maxTurno:8,confirmAbertura:true},
+};
 function SettingsSection(){
   const [tab,setTab]=useState("geral");
-  const [s,setS]=useState(INIT_SETTINGS);
+  const [s,setS]=useState(SETTINGS_DEFAULTS);
+  const [saving,setSaving]=useState(false);
+  useEffect(()=>{
+    fetch("/api/settings").then(r=>r.json()).then(flat=>{
+      if(!flat||flat.error)return;
+      setS(prev=>({
+        geral:{name:flat["geral.name"]??prev.geral.name,address:flat["geral.address"]??prev.geral.address,phone:flat["geral.phone"]??prev.geral.phone,email:flat["geral.email"]??prev.geral.email},
+        fiscal:{nif:flat["fiscal.nif"]??prev.fiscal.nif,regime:flat["fiscal.regime"]??prev.fiscal.regime,rates:flat["fiscal.rates"]??prev.fiscal.rates},
+        kds:{alertYellow:flat["kds.alertYellow"]??prev.kds.alertYellow,alertRed:flat["kds.alertRed"]??prev.kds.alertRed,autoRefresh:flat["kds.autoRefresh"]??prev.kds.autoRefresh},
+        caixa:{defaultFundo:flat["caixa.defaultFundo"]??prev.caixa.defaultFundo,maxTurno:flat["caixa.maxTurno"]??prev.caixa.maxTurno,confirmAbertura:flat["caixa.confirmAbertura"]??prev.caixa.confirmAbertura},
+      }));
+    }).catch(()=>{});
+  },[]);
+  const patchKey=async(key,value)=>fetch(`/api/settings/${encodeURIComponent(key)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({value})});
+  const saveSection=async(keys,section)=>{setSaving(true);await Promise.all(keys.map(k=>patchKey(`${section}.${k}`,s[section][k]))).catch(()=>{});setSaving(false);};
   const setG=(k,v)=>setS(p=>({...p,geral:{...p.geral,[k]:v}}));
   const setF=(k,v)=>setS(p=>({...p,fiscal:{...p.fiscal,[k]:v}}));
   const setK=(k,v)=>setS(p=>({...p,kds:{...p.kds,[k]:v}}));
@@ -902,13 +1645,13 @@ function SettingsSection(){
           <Inp label="Nome do Restaurante"value={s.geral.name}onChange={e=>setG("name",e.target.value)}/>
           <Inp label="Morada"value={s.geral.address}onChange={e=>setG("address",e.target.value)}/>
           <div className="form-row"><Inp label="Telefone"value={s.geral.phone}onChange={e=>setG("phone",e.target.value)}/><Inp label="Email"value={s.geral.email}onChange={e=>setG("email",e.target.value)}/></div>
-          <button className="btn btn-solid"onClick={()=>alert("✓ Definições guardadas")}>Guardar</button>
+          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["name","address","phone","email"],"geral")}>{saving?"A guardar...":"Guardar"}</button>
         </div></div>}
         {tab==="fiscal"&&<div className="card"><div className="card-body">
           <Inp label="NIF do Restaurante"value={s.fiscal.nif}onChange={e=>setF("nif",e.target.value)}/>
           <Sel label="Regime de IVA"value={s.fiscal.regime}onChange={e=>setF("regime",e.target.value)}><option value="normal">Regime Normal</option><option value="simplificado">Regime Simplificado</option><option value="isento">Isento</option></Sel>
           <div className="form-group"><label className="form-label">Taxas de IVA Activas</label>
-            {s.fiscal.rates.map(r=>(
+            {(s.fiscal.rates||[]).map(r=>(
               <div key={r.id}style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
                 <Toggle on={r.active}onChange={v=>setS(p=>({...p,fiscal:{...p.fiscal,rates:p.fiscal.rates.map(x=>x.id===r.id?{...x,active:v}:x)}}))}/>
                 <span style={{flex:1,fontSize:13,fontWeight:600}}>{r.label}</span>
@@ -916,7 +1659,7 @@ function SettingsSection(){
               </div>
             ))}
           </div>
-          <button className="btn btn-solid"onClick={()=>alert("✓ Definições fiscais guardadas")}>Guardar</button>
+          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["nif","regime","rates"],"fiscal")}>{saving?"A guardar...":"Guardar"}</button>
         </div></div>}
         {tab==="kds"&&<div className="card"><div className="card-body">
           <div className="form-row">
@@ -927,13 +1670,13 @@ function SettingsSection(){
           <div style={{background:T.elevated,borderRadius:8,padding:"12px 14px",fontSize:12,color:T.textSec,marginTop:4}}>
             Ticket ficará <span style={{color:T.warning,fontWeight:700}}>amarelo</span> após <strong>{s.kds.alertYellow} min</strong> e <span style={{color:T.danger,fontWeight:700}}>vermelho</span> após <strong>{s.kds.alertRed} min</strong>.
           </div>
-          <button className="btn btn-solid"style={{marginTop:14}}onClick={()=>alert("✓ Configurações KDS guardadas")}>Guardar</button>
+          <button className="btn btn-solid"style={{marginTop:14}}disabled={saving}onClick={()=>saveSection(["alertYellow","alertRed","autoRefresh"],"kds")}>{saving?"A guardar...":"Guardar"}</button>
         </div></div>}
         {tab==="caixa"&&<div className="card"><div className="card-body">
           <Inp label="Fundo de Maneio Padrão (€)"type="number"value={s.caixa.defaultFundo}onChange={e=>setC("defaultFundo",parseFloat(e.target.value)||0)}/>
           <Inp label="Duração Máxima de Turno (horas)"type="number"value={s.caixa.maxTurno}onChange={e=>setC("maxTurno",parseInt(e.target.value)||8)}/>
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0"}}><Toggle on={s.caixa.confirmAbertura}onChange={v=>setC("confirmAbertura",v)}/><span style={{fontSize:13,color:T.textSec}}>Exigir confirmação na abertura de turno</span></div>
-          <button className="btn btn-solid"onClick={()=>alert("✓ Configurações de caixa guardadas")}>Guardar</button>
+          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["defaultFundo","maxTurno","confirmAbertura"],"caixa")}>{saving?"A guardar...":"Guardar"}</button>
         </div></div>}
       </div>
     </div>
@@ -944,16 +1687,20 @@ function SettingsSection(){
 const NAV=[
   {id:"dashboard",label:"Dashboard",Icon:Ic.Dashboard},
   {id:"analytics",label:"Analytics",Icon:Ic.Analytics},
-  {id:"menu",label:"Menu & Stock",Icon:Ic.Menu},
+  {id:"menu",label:"Items do Menu",Icon:Ic.Menu},
+  {id:"categories",label:"Categorias",Icon:Ic.Grid},
+  {id:"ingredients",label:"Ingredientes",Icon:Ic.Leaf},
+  {id:"combos",label:"Menus",Icon:Ic.Combo},
   {id:"tables",label:"Mesas",Icon:Ic.Tables},
+  {id:"zones",label:"Zonas",Icon:Ic.MapPin},
   {id:"staff",label:"Equipa",Icon:Ic.Staff},
   {id:"reservations",label:"Reservas",Icon:Ic.Calendar},
-  {id:"campaigns",label:"Campanhas",Icon:Ic.Tag},
+  {id:"campaigns",label:"Descontos",Icon:Ic.Tag},
   {id:"orders",label:"Pedidos",Icon:Ic.Orders},
   {id:"logs",label:"Logs",Icon:Ic.Logs},
-  {id:"settings",label:"Definições",Icon:Ic.Settings},
+  {id:"settings",label:"Definicoes",Icon:Ic.Settings},
 ];
-const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Menu & Stock",tables:"Gestão de Mesas",staff:"Gestão de Equipa",reservations:"Reservas",campaigns:"Campanhas & Descontos",orders:"Histórico de Pedidos",logs:"Logs do Sistema",settings:"Definições"};
+const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",categories:"Categorias de Menu",ingredients:"Ingredientes",combos:"Menus",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",reservations:"Reservas",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
 
 function Sidebar({active,onSelect,collapsed,onCollapse}){
   return(
@@ -992,7 +1739,9 @@ export default function Backoffice(){
 
   const sections={
     dashboard:<Dashboard/>,analytics:<Analytics/>,menu:<MenuStock/>,
-    tables:<TablesMgmt/>,staff:<StaffMgmt/>,reservations:<Reservations/>,
+    categories:<CategoriesMgmt/>,ingredients:<IngredientsMgmt/>,combos:<CombosMgmt/>,
+    tables:<TablesMgmt/>,zones:<ZonesMgmt/>,
+    staff:<StaffMgmt/>,reservations:<Reservations/>,
     campaigns:<Campaigns/>,orders:<OrderHistory/>,logs:<LogsSection/>,settings:<SettingsSection/>,
   };
 

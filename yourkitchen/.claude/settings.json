@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /home/dtexetd/Documents/Git/LPEI-YOURKITCHEN/yourkitchen/app/api/combos/\\\\[id\\\\]/items)",
+      "Bash(curl -s -X POST http://localhost:3000/api/zones -H \"Content-Type: application/json\" -d '{\"name\":\"TestZone999\"}')",
+      "Bash(curl -s http://localhost:3000/api/zones)",
+      "Bash(curl -s http://localhost:3001/api/zones)",
+      "Bash(curl -s -X POST http://localhost:3001/api/zones -H \"Content-Type: application/json\" -d '{\"name\":\"TestZone\"}')"
+    ],
+    "additionalDirectories": [
+      "/home/dtexetd/Documents/Git/LPEI-YOURKITCHEN/yourkitchen/app/api/combos/[id]"
+    ]
+  }
+}

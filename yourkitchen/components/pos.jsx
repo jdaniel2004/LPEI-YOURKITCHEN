@@ -14,124 +14,37 @@ const T = {
   text:"#EDEDF2",textSec:"#8888A0",textMuted:"#4A4A60",
 };
 
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const STAFF = [
-  {id:"s1",name:"Sofia",role:"waiter",initials:"SO"},
-  {id:"s2",name:"João",role:"waiter",initials:"JO"},
-  {id:"s3",name:"Mariana",role:"waiter",initials:"MA"},
-  {id:"s4",name:"Rui",role:"waiter",initials:"RU"},
-];
-const CURRENT_STAFF = STAFF[0];
+// ─── API HELPERS ──────────────────────────────────────────────────────────────
+function mapOrder(o) {
+  return {
+    id: o.id,
+    tableId: o.table?.label || null,
+    tableDbId: o.table_id,
+    waiterId: o.waiter_id,
+    items: (o.lines || []).map(l => ({
+      lineId: l.id,
+      itemId: l.item_id,
+      name: l.name,
+      qty: l.qty,
+      price: l.unit_price,
+      vat: l.vat_rate,
+      mods: Array.isArray(l.modifiers) ? l.modifiers : [],
+      notes: l.notes || "",
+      sent: l.sent,
+      cancelled: l.cancelled,
+      extraPrice: l.extra_price || 0,
+    })),
+    notes: o.notes || "",
+    sentAt: o.created_at ? new Date(o.created_at).getTime() : null,
+    paid: o.status === "paid",
+  };
+}
 
-const ZONES = ["Interior","Esplanada","Bar"];
 
-const INIT_TABLES = [
-  // Interior
-  {id:"M1",zone:"Interior",seats:4,status:"occupied",waiter:"s1",orderId:"ORD001",since:Date.now()-42*60000},
-  {id:"M2",zone:"Interior",seats:2,status:"free",waiter:null,orderId:null,since:null},
-  {id:"M3",zone:"Interior",seats:4,status:"bill",waiter:"s2",orderId:"ORD002",since:Date.now()-78*60000},
-  {id:"M4",zone:"Interior",seats:6,status:"occupied",waiter:"s3",orderId:"ORD003",since:Date.now()-25*60000},
-  {id:"M5",zone:"Interior",seats:2,status:"locked",waiter:"s2",orderId:"ORD004",since:Date.now()-8*60000},
-  {id:"M6",zone:"Interior",seats:4,status:"free",waiter:null,orderId:null,since:null},
-  {id:"M7",zone:"Interior",seats:8,status:"reserved",waiter:null,orderId:null,since:null,reservedFor:"Fam. Santos 20:30"},
-  {id:"M8",zone:"Interior",seats:4,status:"free",waiter:null,orderId:null,since:null},
-  // Esplanada
-  {id:"E1",zone:"Esplanada",seats:4,status:"occupied",waiter:"s1",orderId:"ORD005",since:Date.now()-15*60000},
-  {id:"E2",zone:"Esplanada",seats:4,status:"free",waiter:null,orderId:null,since:null},
-  {id:"E3",zone:"Esplanada",seats:2,status:"free",waiter:null,orderId:null,since:null},
-  {id:"E4",zone:"Esplanada",seats:6,status:"free",waiter:null,orderId:null,since:null},
-  // Bar
-  {id:"B1",zone:"Bar",seats:0,status:"occupied",waiter:"s4",orderId:"ORD006",since:Date.now()-5*60000},
-  {id:"B2",zone:"Bar",seats:0,status:"free",waiter:null,orderId:null,since:null},
-];
-
-const MENU = [
-  {id:"cat0",name:"Entradas",emoji:"🧆",items:[
-    {id:"it01",name:"Pão + Manteiga",price:2.50,vat:6,emoji:"🍞",stock:null,mods:[]},
-    {id:"it02",name:"Chouriço Assado",price:6.50,vat:23,emoji:"🌭",stock:null,mods:[]},
-    {id:"it03",name:"Tabua de Queijos",price:9.50,vat:23,emoji:"🧀",stock:6,mods:[]},
-    {id:"it04",name:"Amêijoas à Bulhão Pato",price:13.50,vat:23,emoji:"🦪",stock:4,mods:[]},
-  ]},
-  {id:"cat1",name:"Sopas",emoji:"🍲",items:[
-    {id:"it10",name:"Sopa do Dia",price:4.00,vat:6,emoji:"🥣",stock:null,mods:[]},
-    {id:"it11",name:"Caldo Verde",price:4.50,vat:6,emoji:"🥬",stock:null,mods:[]},
-  ]},
-  {id:"cat2",name:"Principais",emoji:"🍽️",items:[
-    {id:"it20",name:"Bacalhau à Brás",price:13.50,vat:23,emoji:"🐟",stock:8,mods:[]},
-    {id:"it21",name:"Francesinha",price:12.00,vat:23,emoji:"🥪",stock:null,mods:[
-      {id:"m1",name:"Extras",required:false,options:[
-        {id:"o1",label:"Com Ovo",price:1.50},
-        {id:"o2",label:"Extra Molho",price:0.00},
-      ]},
-    ]},
-    {id:"it22",name:"Risotto de Cogumelos",price:11.50,vat:23,emoji:"🍄",stock:5,mods:[]},
-    {id:"it23",name:"Alheira com Ovos",price:10.50,vat:23,emoji:"🥚",stock:null,mods:[]},
-  ]},
-  {id:"cat3",name:"Grelhados",emoji:"🔥",items:[
-    {id:"it30",name:"Bife do Lombo",price:18.50,vat:23,emoji:"🥩",stock:null,mods:[
-      {id:"m2",name:"Ponto",required:true,options:[
-        {id:"o3",label:"Mal Passado",price:0},
-        {id:"o4",label:"Médio",price:0},
-        {id:"o5",label:"Bem Passado",price:0},
-      ]},
-      {id:"m3",name:"Extras",required:false,options:[
-        {id:"o6",label:"Ovo a Cavalo",price:1.50},
-        {id:"o7",label:"Queijo Fundido",price:1.00},
-        {id:"o8",label:"Pimenta Extra",price:0},
-      ]},
-    ]},
-    {id:"it31",name:"Polvo Grelhado",price:16.00,vat:23,emoji:"🐙",stock:4,mods:[]},
-    {id:"it32",name:"Frango no Churrasco",price:11.00,vat:23,emoji:"🍗",stock:null,mods:[
-      {id:"m4",name:"Tamanho",required:true,options:[
-        {id:"o9",label:"Meia Dose",price:0},
-        {id:"o10",label:"Dose Completa",price:4.00},
-      ]},
-    ]},
-  ]},
-  {id:"cat4",name:"Bebidas",emoji:"🥂",items:[
-    {id:"it40",name:"Água Natural 0.5L",price:1.20,vat:23,emoji:"💧",stock:null,mods:[]},
-    {id:"it41",name:"Água Com Gás 0.5L",price:1.30,vat:23,emoji:"🫧",stock:null,mods:[]},
-    {id:"it42",name:"Cerveja Imperial",price:2.20,vat:23,emoji:"🍺",stock:null,mods:[]},
-    {id:"it43",name:"Vinho Tinto (copo)",price:3.50,vat:23,emoji:"🍷",stock:null,mods:[]},
-    {id:"it44",name:"Galão",price:1.40,vat:6,emoji:"☕",stock:null,mods:[]},
-    {id:"it45",name:"Sumo Natural",price:3.00,vat:23,emoji:"🍊",stock:null,mods:[]},
-  ]},
-  {id:"cat5",name:"Sobremesas",emoji:"🍮",items:[
-    {id:"it50",name:"Pastel de Nata",price:1.50,vat:6,emoji:"🥧",stock:null,mods:[]},
-    {id:"it51",name:"Arroz Doce",price:4.00,vat:6,emoji:"🍚",stock:null,mods:[]},
-    {id:"it52",name:"Tarte de Amêndoa",price:5.50,vat:6,emoji:"🎂",stock:3,mods:[]},
-  ]},
-];
-
-const INIT_ORDERS = {
-  ORD001:{id:"ORD001",tableId:"M1",waiterId:"s1",items:[
-    {lineId:"l1",itemId:"it20",name:"Bacalhau à Brás",qty:2,price:13.50,vat:23,mods:[],notes:"",sent:true,cancelled:false},
-    {lineId:"l2",itemId:"it10",name:"Sopa do Dia",qty:2,price:4.00,vat:6,mods:[],notes:"",sent:true,cancelled:false},
-  ],notes:"",sentAt:Date.now()-20*60000},
-  ORD002:{id:"ORD002",tableId:"M3",waiterId:"s2",items:[
-    {lineId:"l3",itemId:"it30",name:"Bife do Lombo",qty:1,price:18.50,vat:23,mods:["Mal Passado","Ovo a Cavalo (+€1.50)"],notes:"",sent:true,cancelled:false,extraPrice:1.50},
-    {lineId:"l4",itemId:"it42",name:"Cerveja Imperial",qty:2,price:2.20,vat:23,mods:[],notes:"",sent:true,cancelled:false},
-  ],notes:"Mesa de aniversário",sentAt:Date.now()-60*60000},
-  ORD003:{id:"ORD003",tableId:"M4",waiterId:"s3",items:[
-    {lineId:"l5",itemId:"it21",name:"Francesinha",qty:2,price:12.00,vat:23,mods:[],notes:"",sent:true,cancelled:false},
-    {lineId:"l6",itemId:"it43",name:"Vinho Tinto (copo)",qty:2,price:3.50,vat:23,mods:[],notes:"",sent:true,cancelled:false},
-  ],notes:"",sentAt:Date.now()-10*60000},
-  ORD004:{id:"ORD004",tableId:"M5",waiterId:"s2",items:[],notes:"",sentAt:null},
-  ORD005:{id:"ORD005",tableId:"E1",waiterId:"s1",items:[
-    {lineId:"l7",itemId:"it31",name:"Polvo Grelhado",qty:1,price:16.00,vat:23,mods:[],notes:"",sent:true,cancelled:false},
-  ],notes:"",sentAt:Date.now()-8*60000},
-  ORD006:{id:"ORD006",tableId:"B1",waiterId:"s4",items:[
-    {lineId:"l8",itemId:"it44",name:"Galão",qty:1,price:1.40,vat:6,mods:[],notes:"",sent:true,cancelled:false},
-  ],notes:"",sentAt:Date.now()-3*60000},
-};
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 let _lineId = 1000;
 const newLineId = () => `l${++_lineId}`;
-let _orderId = 10;
-const newOrderId = () => `ORD0${++_orderId}`;
-let _logId = 200;
-const newLogId = () => ++_logId;
 
 function fmtEur(v){ return `€${Number(v).toFixed(2)}`; }
 function fmtMins(ms){
@@ -184,7 +97,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
 /* ─ LAYOUT ─ */
-.pos-root{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.pos-root{width:100vw;height:100%;display:flex;flex-direction:column;overflow:hidden;}
 
 /* ─ TOPBAR ─ */
 .topbar{height:52px;background:${T.surface};border-bottom:1px solid ${T.border};display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:20;}
@@ -303,7 +216,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .op-table-badge{background:${T.accentDim};border:1px solid ${T.accent}44;color:${T.accent};border-radius:6px;padding:4px 10px;font-size:13px;font-weight:800;}
 .op-waiter{font-size:12px;color:${T.textSec};}
 .op-actions-top{margin-left:auto;display:flex;gap:6px;}
-.op-items{flex:1;overflow-y:auto;padding:10px 12px;}
+.op-items{flex:1;overflow-y:auto;padding:10px 12px;min-height:0;}
 .op-section-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${T.textMuted};padding:4px 2px 8px;display:flex;align-items:center;gap:6px;}
 .op-section-label::after{content:'';flex:1;height:1px;background:${T.border};}
 .order-line{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:8px;transition:background .12s;}
@@ -538,7 +451,7 @@ function CancelLineModal({line,onConfirm,onClose}){
 }
 
 // ─── TRANSFER MODAL ───────────────────────────────────────────────────────────
-function TransferModal({currentWaiterId,onConfirm,onClose}){
+function TransferModal({currentWaiterId,staffList,onConfirm,onClose}){
   const [sel,setSel]=useState(null);
   return(
     <div className="overlay" onClick={onClose}>
@@ -552,7 +465,7 @@ function TransferModal({currentWaiterId,onConfirm,onClose}){
         </div>
         <div className="modal-body">
           <div className="staff-list">
-            {STAFF.map(s=>(
+            {staffList.map(s=>(
               <div
                 key={s.id}
                 className={`staff-item${s.id===currentWaiterId?" self":""}${sel===s.id?" selected":""}`}
@@ -707,7 +620,7 @@ function PaymentModal({order,tableLabel,onConfirm,onClose}){
 }
 
 // ─── ORDER SCREEN ─────────────────────────────────────────────────────────────
-function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,onRequestBill,onPayment,onCancelLine,onTransfer,addToast,addLog}){
+function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,onSendKitchen,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
   const [cat,setCat]=useState(0);
   const [modItem,setModItem]=useState(null);
   const [cancelTarget,setCancelTarget]=useState(null);
@@ -715,8 +628,8 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
   const [showPayment,setShowPayment]=useState(false);
 
   const tableLabel = table.id;
-  const waiter = STAFF.find(s=>s.id===order.waiterId)||CURRENT_STAFF;
-  const curMenu=MENU[cat];
+  const waiter = staffList.find(s=>s.id===order.waiterId)||{name:"?",initials:"?"};
+  const curMenu=menu[cat]||{items:[]};
 
   const pendingItems=order.items.filter(i=>!i.sent&&!i.cancelled);
   const sentItems=order.items.filter(i=>i.sent&&!i.cancelled);
@@ -725,12 +638,16 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
   const handleAddItem=(item)=>{
     const st=stockForItem(menuStock,item.id);
     if(st!==null&&st<=0){addToast("Item esgotado",T.danger);return;}
-    if(item.mods.length>0){setModItem(item);return;}
-    const existing=pendingItems.find(l=>l.itemId===item.id&&l.mods.length===0);
+    if(!item.isCombo&&item.mods.length>0){setModItem(item);return;}
+    const realItemId=item.isCombo?null:item.id;
+    const matchKey=item.isCombo?`combo_${item.comboId}`:item.id;
+    const existing=pendingItems.find(l=>
+      item.isCombo?(l.comboId===item.comboId):(l.itemId===item.id&&l.mods.length===0)
+    );
     if(existing){
       onUpdateOrder(prev=>({...prev,items:prev.items.map(l=>l.lineId===existing.lineId?{...l,qty:l.qty+1}:l)}));
     } else {
-      const line={lineId:newLineId(),itemId:item.id,name:item.name,qty:1,price:item.price,vat:item.vat,mods:[],notes:"",sent:false,cancelled:false,extraPrice:0};
+      const line={lineId:newLineId(),itemId:realItemId,comboId:item.comboId||null,name:item.name,qty:1,price:item.price,vat:item.vat,mods:[],notes:"",sent:false,cancelled:false,extraPrice:0};
       onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
     }
   };
@@ -778,7 +695,7 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
           </div>
         </div>
         <div className="menu-cats">
-          {MENU.map((c,i)=>(
+          {menu.map((c,i)=>(
             <div key={c.id} className={`cat-tab${cat===i?" active":""}`} onClick={()=>setCat(i)}>
               {c.emoji} {c.name}
             </div>
@@ -807,11 +724,6 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
         <div className="op-header">
           <div className="op-table-badge">{tableLabel}</div>
           <div className="op-waiter">{waiter.name}</div>
-          {table.status==="bill"&&(
-            <span style={{fontSize:11,background:"#F7D44A18",color:"#F7D44A",border:"1px solid #F7D44A33",borderRadius:4,padding:"2px 7px",fontWeight:700,marginLeft:4}}>
-              CONTA PEDIDA
-            </span>
-          )}
         </div>
 
         <div className="op-items">
@@ -905,21 +817,14 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
             Enviar Cozinha
           </button>
           <button
-            className="btn btn-warning"
-            disabled={sentItems.length===0||table.status==="bill"}
-            onClick={onRequestBill}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="12" y2="15"/></svg>
-            Pedir Conta
-          </button>
-          <button
             className="btn btn-solid-success"
-            disabled={total===0}
-            style={{gridColumn:"span 2"}}
+            disabled={sentItems.length===0||!kdsReady}
+            style={{width:"100%"}}
+            title={!kdsReady&&sentItems.length>0?"Aguarda confirmação do KDS":""}
             onClick={()=>setShowPayment(true)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            Pagar — {fmtEur(total)}
+            {kdsReady?`Pagamento — ${fmtEur(total)}`:"Aguarda KDS..."}
           </button>
         </div>
       </div>
@@ -938,6 +843,7 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
       {showTransfer&&(
         <TransferModal
           currentWaiterId={order.waiterId}
+          staffList={staffList}
           onClose={()=>setShowTransfer(false)}
           onConfirm={(staffId)=>{onTransfer(staffId);setShowTransfer(false);}}
         />
@@ -955,7 +861,7 @@ function OrderScreen({table,order,menuStock,onBack,onUpdateOrder,onSendKitchen,o
 }
 
 // ─── FUNDO MANEIO SCREEN ──────────────────────────────────────────────────────
-function FundoManeioScreen({onConfirm}){
+function FundoManeioScreen({staffName,onConfirm}){
   const [val,setVal]=useState("");
   const press=(d)=>{
     if(d==="⌫"){setVal(p=>p.slice(0,-1));return;}
@@ -972,7 +878,7 @@ function FundoManeioScreen({onConfirm}){
       <div style={{animation:"slideUp .3s ease"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <div style={{fontSize:11,fontWeight:700,letterSpacing:"3px",textTransform:"uppercase",color:T.textMuted,marginBottom:8}}>RestaurantOS · POS</div>
-          <div style={{fontSize:13,color:T.textSec}}>Sofia · {new Date().toLocaleDateString("pt-PT",{weekday:"long",day:"numeric",month:"long"})}</div>
+          <div style={{fontSize:13,color:T.textSec}}>{staffName} · {new Date().toLocaleDateString("pt-PT",{weekday:"long",day:"numeric",month:"long"})}</div>
         </div>
         <div className="fundo-card">
           <div className="fundo-card-head">
@@ -1005,14 +911,37 @@ function FundoManeioScreen({onConfirm}){
 }
 
 // ─── FLOOR SCREEN ─────────────────────────────────────────────────────────────
-function FloorScreen({tables,orders,onTablePress,onQuickOrder}){
-  const [zone,setZone]=useState("Interior");
+function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,addToast}){
+  const [zone,setZone]=useState(zones[0]||"Interior");
+  const [showResv,setShowResv]=useState(false);
+  const [resvForm,setResvForm]=useState({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:""});
+  const [resvSaving,setResvSaving]=useState(false);
   const zoneTables=tables.filter(t=>t.zone===zone);
   const occupiedCount=tables.filter(t=>t.status==="occupied"||t.status==="bill").length;
+
+  const inp={width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:7,color:T.text,fontFamily:"'Syne',sans-serif",fontSize:13,padding:"9px 11px",outline:"none"};
+  const lbl={fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:6,display:"block"};
+
+  const saveReservation=async()=>{
+    if(!resvForm.name) return;
+    setResvSaving(true);
+    const tableObj=tables.find(t=>t.id===resvForm.tableId);
+    const body={name:resvForm.name,phone:resvForm.phone,date:resvForm.date,time:resvForm.time,persons:parseInt(resvForm.persons)||2,notes:resvForm.notes,table_id:tableObj?.dbId||null,status:"pending"};
+    const r=await fetch("/api/reservations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).catch(()=>null);
+    setResvSaving(false);
+    if(r?.ok){
+      setShowResv(false);
+      setResvForm({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:""});
+      if(addToast) addToast("Reserva criada",T.success);
+    } else {
+      if(addToast) addToast("Erro ao criar reserva",T.danger);
+    }
+  };
   const activeOrders=Object.values(orders).filter(o=>o.items.length>0&&!o.paid).length;
   const turnoVendas=Object.values(orders).filter(o=>o.paid).reduce((s,o)=>s+orderTotal(o.items),0);
 
   return(
+    <>
     <div className="floor-screen">
       <div className="floor-stats">
         <div className="stat-item">
@@ -1034,7 +963,7 @@ function FloorScreen({tables,orders,onTablePress,onQuickOrder}){
       </div>
 
       <div className="floor-zones">
-        {ZONES.map(z=>(
+        {zones.map(z=>(
           <div key={z} className={`zone-tab${zone===z?" active":""}`} onClick={()=>setZone(z)}>
             {z}
             <span style={{marginLeft:6,fontSize:11,opacity:.6}}>({tables.filter(t=>t.zone===z).length})</span>
@@ -1047,7 +976,7 @@ function FloorScreen({tables,orders,onTablePress,onQuickOrder}){
           {zoneTables.map(table=>{
             const st=STATUS_MAP[table.status];
             const order=table.orderId?orders[table.orderId]:null;
-            const waiter=table.waiter?STAFF.find(s=>s.id===table.waiter):null;
+            const waiter=table.waiter?staffList.find(s=>s.id===table.waiter):null;
             const itemCount=order?order.items.filter(i=>!i.cancelled).length:0;
             return(
               <div
@@ -1067,7 +996,7 @@ function FloorScreen({tables,orders,onTablePress,onQuickOrder}){
                 )}
                 {table.status==="locked"&&(
                   <div style={{fontSize:11,color:T.blue,marginTop:2}}>
-                    🔒 {STAFF.find(s=>s.id===table.waiter)?.name||"outro"}
+                    🔒 {staffList.find(s=>s.id===table.waiter)?.name||"outro"}
                   </div>
                 )}
                 {order&&itemCount>0&&(
@@ -1102,8 +1031,42 @@ function FloorScreen({tables,orders,onTablePress,onQuickOrder}){
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           Balcão
         </button>
+        <button className="btn btn-ghost btn-lg" onClick={()=>setShowResv(true)}>
+          📅 Nova Reserva
+        </button>
       </div>
     </div>
+    {showResv&&(
+      <div className="overlay" onClick={()=>setShowResv(false)}>
+        <div className="modal" style={{width:480}} onClick={e=>e.stopPropagation()}>
+          <div className="modal-header">
+            <div><div className="modal-title">Nova Reserva</div></div>
+            <button className="modal-close" onClick={()=>setShowResv(false)}>✕</button>
+          </div>
+          <div className="modal-body">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div><span style={lbl}>Nome *</span><input style={inp} value={resvForm.name} onChange={e=>setResvForm(p=>({...p,name:e.target.value}))}/></div>
+              <div><span style={lbl}>Telefone</span><input style={inp} value={resvForm.phone} onChange={e=>setResvForm(p=>({...p,phone:e.target.value}))}/></div>
+              <div><span style={lbl}>Data</span><input type="date" style={inp} value={resvForm.date} onChange={e=>setResvForm(p=>({...p,date:e.target.value}))}/></div>
+              <div><span style={lbl}>Hora</span><input type="time" style={inp} value={resvForm.time} onChange={e=>setResvForm(p=>({...p,time:e.target.value}))}/></div>
+              <div><span style={lbl}>Pessoas</span><input type="number" min="1" style={inp} value={resvForm.persons} onChange={e=>setResvForm(p=>({...p,persons:e.target.value}))}/></div>
+              <div><span style={lbl}>Mesa</span>
+                <select style={{...inp,appearance:"none"}} value={resvForm.tableId} onChange={e=>setResvForm(p=>({...p,tableId:e.target.value}))}>
+                  <option value="">— Sem mesa —</option>
+                  {tables.filter(t=>t.dbId).map(t=><option key={t.id} value={t.id}>{t.id} · {t.zone}</option>)}
+                </select>
+              </div>
+            </div>
+            <div><span style={lbl}>Notas</span><input style={inp} value={resvForm.notes} onChange={e=>setResvForm(p=>({...p,notes:e.target.value}))} placeholder="Alergias, preferências..."/></div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={()=>setShowResv(false)}>Cancelar</button>
+            <button className="btn btn-solid-accent" disabled={!resvForm.name||resvSaving} onClick={saveReservation}>{resvSaving?"A guardar...":"Criar Reserva"}</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -1123,19 +1086,26 @@ function KDSNotifBanner({notif,onClose}){
 let _toastId=0;
 
 // ─── MAIN POS ─────────────────────────────────────────────────────────────────
-export default function POS(){
-  const [screen,setScreen]=useState("fundo"); // fundo | floor | order
+export default function POS({session}){
+  const [screen,setScreen]=useState("fundo");
   const [fundoValue,setFundoValue]=useState(0);
-  const [tables,setTables]=useState(INIT_TABLES);
-  const [orders,setOrders]=useState(INIT_ORDERS);
-  const [menuStock,setMenuStock]=useState({
-    "it03":6,"it04":4,"it20":8,"it22":5,"it31":4,"it52":3,
-  });
+  const [shiftId,setShiftId]=useState(null);
+  const [tables,setTables]=useState([]);
+  const [orders,setOrders]=useState({});
+  const [menu,setMenu]=useState([]);
+  const [staffList,setStaffList]=useState([]);
+  const [menuStock,setMenuStock]=useState({});
   const [activeTableId,setActiveTableId]=useState(null);
   const [toasts,setToasts]=useState([]);
-  const [logs,setLogs]=useState([]);
   const [kdsNotif,setKdsNotif]=useState(null);
-  const kdsTimerRef=useRef(null);
+  const [readyTables,setReadyTables]=useState(()=>new Set());
+  const [loading,setLoading]=useState(true);
+  const [showEndShift,setShowEndShift]=useState(false);
+  const [endShiftTarget,setEndShiftTarget]=useState("");
+
+  const currentStaff=session
+    ?{id:session.id,name:session.name,initials:session.name.slice(0,2).toUpperCase()}
+    :{id:"",name:"?",initials:"?"};
 
   const addToast=useCallback((msg,color=T.teal)=>{
     const id=++_toastId;
@@ -1143,141 +1113,319 @@ export default function POS(){
     setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3500);
   },[]);
 
-  const addLog=useCallback((level,msg,comment=null)=>{
-    const time=nowTime();
-    setLogs(p=>[...p.slice(-299),{id:newLogId(),level,time,msg,comment}]);
+  // Load data on mount
+  useEffect(()=>{
+    async function load(){
+      try{
+        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,combosRes]=await Promise.all([
+          fetch("/api/tables").then(r=>r.json()),
+          fetch("/api/menu/items?include=modifiers").then(r=>r.json()),
+          fetch("/api/orders?status=open").then(r=>r.json()),
+          fetch("/api/orders?status=sent").then(r=>r.json()),
+          fetch("/api/orders?status=bill").then(r=>r.json()),
+          fetch("/api/auth/staff").then(r=>r.json()),
+          fetch("/api/combos").then(r=>r.json()),
+        ]);
+
+        // Build grouped menu
+        const catMap={};
+        if(Array.isArray(menuRes)){
+          menuRes.forEach(item=>{
+            const cat=item.category;if(!cat)return;
+            if(!catMap[cat.id]) catMap[cat.id]={id:cat.id,name:cat.name,emoji:cat.emoji||"🍽️",items:[],position:cat.position??0};
+            catMap[cat.id].items.push({
+              id:item.id,name:item.name,emoji:item.emoji||"🍽️",
+              price:item.price,vat:item.vat_rate,stock:item.stock,
+              mods:(item.modifiers||[]).map(m=>({
+                id:m.id,name:m.name,required:m.required,
+                options:(m.options||[]).map(o=>({id:o.id,label:o.label,price:o.price||0})),
+              })),
+            });
+          });
+        }
+        const mappedMenu=Object.values(catMap).sort((a,b)=>a.position-b.position);
+        if(Array.isArray(combosRes)&&combosRes.length>0){
+          mappedMenu.push({
+            id:"__combos__",name:"Menus",emoji:"📋",position:9999,
+            items:combosRes.map(c=>({
+              id:`combo_${c.id}`,comboId:c.id,
+              name:c.name,emoji:"📋",
+              price:c.price||0,vat:23,stock:null,
+              mods:[],isCombo:true,
+            })),
+          });
+        }
+
+        // Build stock map
+        const stock={};
+        if(Array.isArray(menuRes)) menuRes.forEach(item=>{if(item.stock!==null)stock[item.id]=item.stock;});
+
+        // Build orders map
+        const allOrders={};
+        [...(Array.isArray(openRes)?openRes:[]),...(Array.isArray(sentRes)?sentRes:[]),...(Array.isArray(billRes)?billRes:[])].forEach(o=>{
+          allOrders[o.id]=mapOrder(o);
+        });
+        // Tables already confirmed ready by KDS
+        if(Array.isArray(billRes)){
+          const initialReady=new Set(billRes.map(o=>o.table?.label).filter(Boolean));
+          if(initialReady.size>0) setReadyTables(initialReady);
+        }
+
+        // Build table → order map
+        const orderByTableDbId={};
+        Object.values(allOrders).forEach(o=>{if(o.tableDbId)orderByTableDbId[o.tableDbId]=o.id;});
+
+        // Map tables
+        const mappedTables=Array.isArray(tablesRes)?tablesRes.map(t=>({
+          id:t.label,dbId:t.id,
+          zone:t.zone?.name||"Interior",
+          seats:t.seats,status:t.status,
+          waiter:null,
+          orderId:orderByTableDbId[t.id]||null,
+          since:allOrders[orderByTableDbId[t.id]]?.sentAt||null,
+        })):[];
+
+        // Map staff
+        const mappedStaff=Array.isArray(staffRes)?staffRes.map(s=>({
+          id:s.id,name:s.name,role:s.role,
+          initials:s.name.slice(0,2).toUpperCase(),
+        })):[];
+
+        setMenu(mappedMenu);
+        setMenuStock(stock);
+        setOrders(allOrders);
+        setTables(mappedTables);
+        setStaffList(mappedStaff);
+        if(session?.role!=="manager"){
+          fetch("/api/shifts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fundo_value:0})}).then(r=>r.json()).then(d=>{if(!d.error)setShiftId(d.id);}).catch(()=>{});
+          setScreen("floor");
+        } else {
+          // Manager: skip fundo if an open shift already exists
+          try{
+            const openShifts=await fetch("/api/shifts?open=true").then(r=>r.json());
+            if(Array.isArray(openShifts)&&openShifts.length>0){
+              setShiftId(openShifts[0].id);
+              setFundoValue(openShifts[0].fundo_value||0);
+              setScreen("floor");
+            }
+          }catch{}
+        }
+      }catch(e){
+        addToast("Erro ao carregar dados",T.danger);
+      }finally{
+        setLoading(false);
+      }
+    }
+    load();
   },[]);
 
+  // Poll for KDS "Marcar Pronto" → orders that become "bill" unlock payment
+  useEffect(()=>{
+    const tick=async()=>{
+      try{
+        const data=await fetch("/api/orders?status=bill").then(r=>r.json());
+        if(!Array.isArray(data)||data.length===0) return;
+        data.forEach(o=>{
+          const label=o.table?.label;
+          if(label) setReadyTables(p=>{
+            if(p.has(label)) return p;
+            const n=new Set(p);n.add(label);
+            setKdsNotif({label});
+            addToast(`KDS — Mesa ${label} pronta para servir`,T.success);
+            return n;
+          });
+          setOrders(p=>p[o.id]?{...p,[o.id]:{...p[o.id]}}:p);
+        });
+      }catch{}
+    };
+    const id=setInterval(tick,4000);
+    return()=>clearInterval(id);
+  },[addToast]);
+
+  const zones=[...new Set(tables.map(t=>t.zone))];
   const activeTable=activeTableId?tables.find(t=>t.id===activeTableId):null;
   const activeOrderId=activeTable?.orderId;
   const activeOrder=activeOrderId?orders[activeOrderId]:null;
 
-  // Handle table press
   const handleTablePress=(table)=>{
     if(table.status==="locked"){
-      const who=STAFF.find(s=>s.id===table.waiter)?.name||"outro";
-      addToast(`Mesa em uso por ${who}`,T.blue);
+      addToast("Mesa em uso por outro funcionário",T.blue);
       return;
     }
-    if(table.status==="reserved"){
-      // Open new order for reserved table
-      const oid=newOrderId();
-      setOrders(p=>({...p,[oid]:{id:oid,tableId:table.id,waiterId:CURRENT_STAFF.id,items:[],notes:"",sentAt:null,paid:false}}));
-      setTables(p=>p.map(t=>t.id===table.id?{...t,status:"occupied",waiter:CURRENT_STAFF.id,orderId:oid,since:Date.now()}:t));
+    if(table.status==="free"||table.status==="reserved"){
+      const draftId=`draft_${table.id}`;
+      const draftOrder={id:draftId,tableId:table.id,tableDbId:table.dbId,waiterId:currentStaff.id,items:[],notes:"",status:"open",paid:false,draft:true};
+      setOrders(p=>({...p,[draftId]:draftOrder}));
+      setTables(p=>p.map(t=>t.id===table.id?{...t,orderId:draftId,waiter:currentStaff.id,since:Date.now()}:t));
       setActiveTableId(table.id);
       setScreen("order");
-      addLog("INFO",`Mesa <strong>${table.id}</strong> aberta por <strong>${CURRENT_STAFF.name}</strong> (era reserva).`);
       return;
     }
-    if(table.status==="free"){
-      // Create new order
-      const oid=newOrderId();
-      setOrders(p=>({...p,[oid]:{id:oid,tableId:table.id,waiterId:CURRENT_STAFF.id,items:[],notes:"",sentAt:null,paid:false}}));
-      setTables(p=>p.map(t=>t.id===table.id?{...t,status:"occupied",waiter:CURRENT_STAFF.id,orderId:oid,since:Date.now()}:t));
-      setActiveTableId(table.id);
-      setScreen("order");
-      addLog("INFO",`Novo pedido — Mesa <strong>${table.id}</strong> — <strong>${CURRENT_STAFF.name}</strong>.`);
-      return;
-    }
-    // occupied / bill — open existing order
     setActiveTableId(table.id);
     setScreen("order");
   };
 
-  // Quick order (take-away / balcao)
-  const handleQuickOrder=(type)=>{
+  const handleQuickOrder=async(type)=>{
+    const res=await fetch("/api/orders",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({type}),
+    });
+    if(!res.ok){addToast("Erro ao criar pedido",T.danger);return;}
+    const order=await res.json();
     const fakeId=`${type==="take-away"?"TA":"BC"}${Date.now()%10000}`;
-    const oid=newOrderId();
-    const fakeTable={id:fakeId,zone:"—",seats:0,status:"occupied",waiter:CURRENT_STAFF.id,orderId:oid,since:Date.now(),type};
-    setOrders(p=>({...p,[oid]:{id:oid,tableId:fakeId,waiterId:CURRENT_STAFF.id,items:[],notes:"",sentAt:null,paid:false,type}}));
-    setTables(p=>[...p,fakeTable]);
+    const mapped=mapOrder({...order,lines:[],table:{label:fakeId},table_id:null});
+    setOrders(p=>({...p,[order.id]:{...mapped,tableId:fakeId}}));
+    setTables(p=>[...p,{id:fakeId,dbId:null,zone:"—",seats:0,status:"occupied",waiter:currentStaff.id,orderId:order.id,since:Date.now(),type}]);
     setActiveTableId(fakeId);
     setScreen("order");
-    addLog("INFO",`Novo pedido ${type} — <strong>${CURRENT_STAFF.name}</strong>.`);
   };
 
-  // Update order
   const handleUpdateOrder=useCallback((updater)=>{
     if(!activeOrderId) return;
     setOrders(p=>({...p,[activeOrderId]:updater(p[activeOrderId])}));
   },[activeOrderId]);
 
-  // Send to kitchen
-  const handleSendKitchen=()=>{
-    if(!activeOrderId) return;
-    setOrders(p=>{
-      const o=p[activeOrderId];
-      const newItems=o.items.map(i=>i.sent?i:{...i,sent:true});
-      // Decrease stock
-      newItems.filter(i=>!i.cancelled&&!orders[activeOrderId].items.find(oi=>oi.lineId===i.lineId&&oi.sent)).forEach(i=>{
-        setMenuStock(ms=>{
-          if(ms[i.itemId]===undefined) return ms;
-          const ns=Math.max(0,(ms[i.itemId]||0)-i.qty);
-          return {...ms,[i.itemId]:ns};
-        });
+  const handleSendKitchen=async()=>{
+    if(!activeOrderId||!activeOrder) return;
+    const pending=activeOrder.items.filter(i=>!i.sent&&!i.cancelled);
+    if(pending.length===0) return;
+
+    let realOrderId=activeOrderId;
+    const draftSnapshot={...activeOrder};
+
+    if(activeOrder.draft){
+      const res=await fetch("/api/orders",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({table_id:activeTable?.dbId,type:"table"}),
       });
-      return {...p,[activeOrderId]:{...o,items:newItems,sentAt:Date.now()}};
-    });
-    const tl=activeTable?.id||"?";
-    addLog("ACTION",`Pedido enviado para cozinha — Mesa <strong>${tl}</strong>.`);
-    addToast(`Pedido enviado — ${tl}`,T.accent);
-    // Simulate KDS ready after 8s
-    if(kdsTimerRef.current) clearTimeout(kdsTimerRef.current);
-    kdsTimerRef.current=setTimeout(()=>{
-      setKdsNotif({label:tl});
-      addToast(`KDS — ${tl} pronto para servir! 🔔`,T.success);
-    },8000);
+      if(!res.ok){addToast("Erro ao criar pedido",T.danger);return;}
+      const newOrder=await res.json();
+      realOrderId=newOrder.id;
+      setOrders(p=>{const{[activeOrderId]:_,...rest}=p;return{...rest,[realOrderId]:{...draftSnapshot,id:realOrderId,draft:false}};});
+      setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:realOrderId,status:"occupied"}:t));
+    }
+
+    // Optimistic update
+    setOrders(p=>{const o=p[realOrderId];if(!o)return p;return{...p,[realOrderId]:{...o,items:(o.items||[]).map(i=>({...i,sent:true})),sentAt:Date.now()}};});
+    try{
+      await Promise.all(pending.map(item=>
+        fetch(`/api/orders/${realOrderId}/lines`,{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            item_id:item.itemId,name:item.name,qty:item.qty,
+            unit_price:item.price,extra_price:item.extraPrice||0,
+            vat_rate:item.vat,modifiers:item.mods,notes:item.notes||null,
+          }),
+        })
+      ));
+      const res=await fetch(`/api/orders/${realOrderId}/send`,{method:"POST"});
+      if(!res.ok) throw new Error();
+      setMenuStock(ms=>{
+        const u={...ms};
+        pending.forEach(i=>{if(u[i.itemId]!==undefined)u[i.itemId]=Math.max(0,(u[i.itemId]||0)-i.qty);});
+        return u;
+      });
+      const tl=activeTable?.id||"?";
+      addToast(`Pedido enviado — ${tl}`,T.accent);
+    }catch{
+      setOrders(p=>({...p,[realOrderId]:{...p[realOrderId],items:(p[realOrderId]?.items||[]).map(i=>{
+        const wasPending=pending.find(pi=>pi.lineId===i.lineId);
+        return wasPending?{...i,sent:false}:i;
+      })}}));
+      addToast("Erro ao enviar pedido",T.danger);
+    }
   };
 
-  // Request bill
-  const handleRequestBill=()=>{
-    setTables(p=>p.map(t=>t.id===activeTableId?{...t,status:"bill"}:t));
-    addLog("INFO",`Conta pedida — Mesa <strong>${activeTableId}</strong>.`);
-    addToast(`Conta pedida — ${activeTableId}`,"#F7D44A");
-  };
-
-  // Payment confirmed
-  const handlePayment=(payData)=>{
+  const handlePayment=async(payData)=>{
     if(!activeOrderId) return;
-    const total=orderTotal(orders[activeOrderId].items);
-    addLog("ACTION",`Pagamento — Mesa <strong>${activeTableId}</strong> — ${fmtEur(total)} — ${payData.method}${payData.split>1?` (dividido por ${payData.split})`:""}. Turno encerrado.`);
-    addToast(`Pagamento — ${activeTableId} — ${fmtEur(total)}`,T.success);
-    setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],paid:true,paidAt:Date.now(),payMethod:payData.method}}));
-    setTables(p=>p.map(t=>{
-      if(t.id!==activeTableId) return t;
-      // Remove temp tables (take-away/balcao), reset real tables
-      return {id:t.id,zone:t.zone,seats:t.seats,status:"free",waiter:null,orderId:null,since:null};
-    }).filter(t=>!t.id.startsWith("TA")&&!t.id.startsWith("BC")));
-    setActiveTableId(null);
-    setScreen("floor");
+    const total=orderTotal(activeOrder.items);
+    try{
+      await fetch(`/api/orders/${activeOrderId}/pay`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({method:payData.method,amount:total,split_n:payData.split}),
+      });
+      addToast(`Pagamento — ${activeTableId} — ${fmtEur(total)}`,T.success);
+      setReadyTables(p=>{const n=new Set(p);n.delete(activeTableId);return n;});
+      setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],paid:true}}));
+      setTables(p=>p.map(t=>{
+        if(t.id!==activeTableId) return t;
+        if(t.type==="take-away"||t.type==="balcao") return null;
+        return {...t,status:"free",waiter:null,orderId:null,since:null};
+      }).filter(Boolean));
+      setActiveTableId(null);
+      setScreen("floor");
+    }catch{
+      addToast("Erro ao processar pagamento",T.danger);
+    }
   };
 
-  // Cancel line
-  const handleCancelLine=(lineId,motivo)=>{
+  const handleCancelLine=async(lineId,motivo)=>{
     if(!activeOrderId) return;
-    const line=orders[activeOrderId].items.find(l=>l.lineId===lineId);
+    const line=activeOrder.items.find(l=>l.lineId===lineId);
     setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],items:p[activeOrderId].items.map(l=>l.lineId===lineId?{...l,cancelled:true}:l)}}));
-    addLog("CANCEL",`Item <strong>${line?.name}</strong> anulado — Mesa <strong>${activeTableId}</strong>.`,motivo);
-    addToast(`Item anulado — ${line?.name}`,T.danger);
+    try{
+      await fetch(`/api/orders/${activeOrderId}/lines/${lineId}`,{
+        method:"PATCH",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({cancelled:true,cancel_note:motivo}),
+      });
+      addToast(`Item anulado — ${line?.name}`,T.danger);
+    }catch{
+      setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],items:p[activeOrderId].items.map(l=>l.lineId===lineId?{...l,cancelled:false}:l)}}));
+      addToast("Erro ao anular item",T.danger);
+    }
   };
 
-  // Transfer
-  const handleTransfer=(staffId)=>{
-    if(!activeOrderId) return;
-    const newStaff=STAFF.find(s=>s.id===staffId);
-    setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],waiterId:staffId}}));
-    setTables(p=>p.map(t=>t.id===activeTableId?{...t,waiter:staffId}:t));
-    addLog("ACTION",`Mesa <strong>${activeTableId}</strong> transferida para <strong>${newStaff?.name}</strong> por ${CURRENT_STAFF.name}.`);
-    addToast(`Mesa ${activeTableId} → ${newStaff?.name}`,T.teal);
+  const handleEndShift=async()=>{
+    if(endShiftTarget){
+      const openOrders=Object.values(orders).filter(o=>!o.paid&&!o.draft&&o.id);
+      await Promise.all(openOrders.map(o=>
+        fetch(`/api/orders/${o.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({waiter_id:endShiftTarget})}).catch(()=>{})
+      ));
+    }
+    if(shiftId) await fetch(`/api/shifts/${shiftId}/close`,{method:"POST"}).catch(()=>{});
+    setShowEndShift(false);
+    setShiftId(null);
     setActiveTableId(null);
-    setScreen("floor");
+    setEndShiftTarget("");
+    if(session?.role!=="manager"){
+      fetch("/api/shifts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fundo_value:0})}).then(r=>r.json()).then(d=>{if(!d.error)setShiftId(d.id);}).catch(()=>{});
+      setScreen("floor");
+    } else {
+      setScreen("fundo");
+    }
   };
+
+  const handleTransfer=async(staffId)=>{
+    if(!activeOrderId) return;
+    const newStaff=staffList.find(s=>s.id===staffId);
+    try{
+      await fetch(`/api/orders/${activeOrderId}`,{
+        method:"PATCH",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({waiter_id:staffId}),
+      });
+      setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],waiterId:staffId}}));
+      setTables(p=>p.map(t=>t.id===activeTableId?{...t,waiter:staffId}:t));
+      addToast(`Mesa ${activeTableId} → ${newStaff?.name}`,T.teal);
+      setActiveTableId(null);
+      setScreen("floor");
+    }catch{
+      addToast("Erro ao transferir mesa",T.danger);
+    }
+  };
+
+  if(loading) return(
+    <>
+      <style>{CSS}</style>
+      <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
+        <div style={{color:T.textMuted,fontSize:14,fontFamily:"'DM Mono',monospace"}}>A carregar...</div>
+      </div>
+    </>
+  );
 
   return(
     <>
       <style>{CSS}</style>
       <div className="pos-root">
-        {/* TOPBAR (not on fundo screen) */}
         {screen!=="fundo"&&(
           <header className="topbar">
             <div className="topbar-logo">
@@ -1286,47 +1434,96 @@ export default function POS(){
             </div>
             <div className="topbar-sep"/>
             <div className="topbar-staff">
-              <div className="staff-avatar">{CURRENT_STAFF.initials}</div>
-              {CURRENT_STAFF.name}
+              <div className="staff-avatar">{currentStaff.initials}</div>
+              {currentStaff.name}
               <span style={{fontSize:10,color:T.textMuted}}>· Fundo {fmtEur(fundoValue)}</span>
             </div>
             <div className="topbar-right">
-              <button className="btn btn-ghost btn-sm" onClick={()=>{if(screen==="order"){setActiveTableId(null);setScreen("floor");}}} style={{display:screen==="order"?"flex":"none"}}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>{if(screen==="order"){if(activeOrder?.draft&&activeOrderId){setOrders(p=>{const{[activeOrderId]:_,...rest}=p;return rest;});setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:null,waiter:null,since:null}:t));}setActiveTableId(null);setScreen("floor");}}} style={{display:screen==="order"?"flex":"none"}}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                 Mesas
+              </button>
+              <button className="btn btn-ghost btn-sm" style={{color:T.danger,borderColor:`${T.danger}33`,display:screen==="floor"?"flex":"none"}} onClick={()=>setShowEndShift(true)}>
+                Fechar Turno
               </button>
               <Clock/>
             </div>
           </header>
         )}
 
-        {/* KDS NOTIF */}
         <KDSNotifBanner notif={kdsNotif} onClose={()=>setKdsNotif(null)}/>
 
-        {/* SCREEN */}
         {screen==="fundo"&&(
-          <FundoManeioScreen onConfirm={(v)=>{setFundoValue(v);addLog("INFO",`Turno iniciado — Fundo ${fmtEur(v)} — ${CURRENT_STAFF.name}.`);setScreen("floor");}}/>
+          <FundoManeioScreen
+            staffName={currentStaff.name}
+            onConfirm={async(v)=>{
+              setFundoValue(v);
+              const r=await fetch("/api/shifts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fundo_value:v})});
+              const d=await r.json();
+              if(!d.error) setShiftId(d.id);
+              setScreen("floor");
+            }}
+          />
         )}
         {screen==="floor"&&(
-          <FloorScreen tables={tables} orders={orders} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder}/>
+          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}/>
         )}
         {screen==="order"&&activeTable&&activeOrder&&(
           <OrderScreen
             table={activeTable}
             order={activeOrder}
+            menu={menu}
+            staffList={staffList}
             menuStock={menuStock}
             onBack={()=>{setActiveTableId(null);setScreen("floor");}}
             onUpdateOrder={handleUpdateOrder}
             onSendKitchen={handleSendKitchen}
-            onRequestBill={handleRequestBill}
+            kdsReady={readyTables.has(activeTableId)}
             onPayment={handlePayment}
             onCancelLine={handleCancelLine}
             onTransfer={handleTransfer}
             addToast={addToast}
-            addLog={addLog}
           />
         )}
       </div>
+
+      {showEndShift&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:28,width:"100%",maxWidth:400,display:"flex",flexDirection:"column",gap:18}}>
+            <div style={{fontWeight:700,fontSize:18,color:T.text}}>Fechar Turno</div>
+            <div style={{fontSize:14,color:T.textSec}}>
+              {Object.values(orders).filter(o=>!o.paid&&!o.draft&&o.id).length>0
+                ?"Tens mesas abertas. Passa-as para outro funcionário ou deixa-as sem atribuição."
+                :"Tens a certeza que queres fechar o turno?"}
+            </div>
+            {Object.values(orders).filter(o=>!o.paid&&!o.draft&&o.id).length>0&&(
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <label style={{fontSize:12,fontWeight:600,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5}}>Transferir para</label>
+                <select
+                  value={endShiftTarget}
+                  onChange={e=>setEndShiftTarget(e.target.value)}
+                  style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:8,padding:"8px 12px",color:T.text,fontSize:14,width:"100%"}}
+                >
+                  <option value="">— Deixar sem funcionário —</option>
+                  {staffList.filter(s=>s.id!==currentStaff?.id&&s.active&&(s.role==="waiter"||s.role==="manager")).map(s=>(
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowEndShift(false)}>Cancelar</button>
+              <button
+                className="btn btn-sm"
+                style={{background:T.danger,color:"#fff",borderColor:T.danger}}
+                onClick={handleEndShift}
+              >
+                Confirmar Fecho
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Toasts toasts={toasts}/>
     </>

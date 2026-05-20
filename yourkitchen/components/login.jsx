@@ -12,13 +12,9 @@ const T = {
 };
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const MANAGER_CREDS = { email: "admin@restaurantos.pt", password: "admin123" };
-const STAFF = [
-  { id:"s1", name:"Sofia",   role:"Waiter",   pin:"1234", initials:"SO", color:T.accent },
-  { id:"s2", name:"João",    role:"Waiter",   pin:"5678", initials:"JO", color:T.teal   },
-  { id:"s3", name:"Mariana", role:"Waiter",   pin:"9012", initials:"MA", color:"#F7A94A"},
-  { id:"s4", name:"Rui",     role:"Cozinha",  pin:"3456", initials:"RU", color:"#B06AF7"},
-];
+const ROLE_COLORS = ["#7C6AF7","#3ECFAE","#F7A94A","#B06AF7","#4A9EF7","#F75A5A"];
+function staffColor(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))&0xffff; return ROLE_COLORS[h%ROLE_COLORS.length]; }
+function staffInitials(name){ const w=name.trim().split(/\s+/); return (w[0]?.[0]??"")+(w[1]?.[0]??w[0]?.[1]??"").toUpperCase(); }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -247,8 +243,9 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 
 // ─── CLOCK ────────────────────────────────────────────────────────────────────
 function Clock(){
-  const [t,setT]=useState(new Date());
-  useEffect(()=>{const i=setInterval(()=>setT(new Date()),1000);return()=>clearInterval(i);},[]);
+  const [t,setT]=useState(null);
+  useEffect(()=>{setT(new Date());const i=setInterval(()=>setT(new Date()),1000);return()=>clearInterval(i);},[]);
+  if(!t) return null;
   const d=t.toLocaleDateString("pt-PT",{weekday:"long",day:"numeric",month:"long"});
   const h=t.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
   return(
@@ -297,17 +294,15 @@ function ManagerLogin({onBack,onSuccess}){
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
 
-  const submit=()=>{
+  const submit=async()=>{
     if(!email||!password){setError("Preenche email e password.");return;}
     setLoading(true);setError("");
-    setTimeout(()=>{
-      if(email===MANAGER_CREDS.email&&password===MANAGER_CREDS.password){
-        onSuccess({role:"manager",name:"Gestor",email});
-      } else {
-        setError("Email ou password incorrectos.");
-        setLoading(false);
-      }
-    },800);
+    try{
+      const r=await fetch("/api/auth/manager",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+      const d=await r.json();
+      if(!r.ok){setError(d.error||"Email ou password incorrectos.");setLoading(false);return;}
+      onSuccess(d.user);
+    }catch{setError("Erro de ligação. Tenta novamente.");setLoading(false);}
   };
 
   return(
@@ -370,6 +365,18 @@ function ManagerLogin({onBack,onSuccess}){
 
 // ─── STAFF PICK ───────────────────────────────────────────────────────────────
 function StaffPick({onSelect,onBack}){
+  const [staff,setStaff]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    fetch("/api/auth/staff")
+      .then(r=>r.json())
+      .then(d=>{ setStaff(Array.isArray(d)?d:[]); setLoading(false); })
+      .catch(()=>setLoading(false));
+  },[]);
+
+  const ROLE_LABEL={manager:"Gestor",waiter:"Empregado",kitchen:"Cozinha"};
+
   return(
     <div className="staff-wrap">
       <button className="back-btn" onClick={onBack}>
@@ -378,25 +385,26 @@ function StaffPick({onSelect,onBack}){
       </button>
       <div style={{marginTop:8}}>
         <div className="staff-grid-title">Quem és tu?</div>
-        <div className="staff-grid">
-          {STAFF.map(s=>(
-            <div
-              key={s.id} className="staff-tile"
-              style={{"--tile-color":s.color}}
-              onClick={()=>onSelect(s)}
-            >
-              <style>{`.staff-tile:hover{border-color:${s.color}44!important;background:${s.color}08!important;}`}</style>
-              <div className="st-avatar" style={{background:`${s.color}18`,border:`1px solid ${s.color}33`,color:s.color}}>
-                {s.initials}
-              </div>
-              <div>
-                <div className="st-name">{s.name}</div>
-                <div className="st-role">{s.role}</div>
-              </div>
-              <svg style={{marginLeft:"auto",color:s.color,opacity:.4}} width="16"height="16"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        {loading
+          ? <div style={{color:T.textMuted,textAlign:"center",padding:32,fontFamily:"'DM Mono',monospace",fontSize:13}}>A carregar...</div>
+          : <div className="staff-grid">
+              {staff.map(s=>{
+                const color=staffColor(s.name);
+                const initials=staffInitials(s.name);
+                return(
+                  <div key={s.id} className="staff-tile" style={{"--tile-color":color}} onClick={()=>onSelect({...s,color,initials})}>
+                    <style>{`.staff-tile:hover{border-color:${color}44!important;background:${color}08!important;}`}</style>
+                    <div className="st-avatar" style={{background:`${color}18`,border:`1px solid ${color}33`,color}}>{initials}</div>
+                    <div>
+                      <div className="st-name">{s.name}</div>
+                      <div className="st-role">{ROLE_LABEL[s.role]??s.role}</div>
+                    </div>
+                    <svg style={{marginLeft:"auto",color,opacity:.4}} width="16"height="16"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+        }
       </div>
     </div>
   );
@@ -425,17 +433,17 @@ function PinPad({staff,onSuccess,onBack}){
 
   // Auto-submit at 4 digits
   useEffect(()=>{
-    if(pin.length===4){
-      const entered=pin.join("");
-      if(entered===staff.pin){
-        clearInterval(timerRef.current);
-        setTimeout(()=>onSuccess({role:"staff",...staff}),200);
-      } else {
-        setError(true);setShake(true);
-        setTimeout(()=>{setPin([]);setError(false);setShake(false);},600);
-      }
-    }
-  },[pin,staff,onSuccess]);
+    if(pin.length!==4) return;
+    const entered=pin.join("");
+    clearInterval(timerRef.current);
+    fetch("/api/auth/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({staffId:staff.id,pin:entered})})
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.ok){ setTimeout(()=>onSuccess(d.user),200); }
+        else{ setError(true);setShake(true); setTimeout(()=>{setPin([]);setError(false);setShake(false); timerRef.current=setInterval(()=>setTimeLeft(t=>{if(t<=1){clearInterval(timerRef.current);onBack();return 0;}return t-1;}),1000);},600); }
+      })
+      .catch(()=>{ setError(true);setShake(true); setTimeout(()=>{setPin([]);setError(false);setShake(false);},600); });
+  },[pin,staff,onSuccess,onBack]);
 
   const press=(d)=>{
     if(d==="⌫"){setPin(p=>p.slice(0,-1));return;}
@@ -535,7 +543,7 @@ function SuccessScreen({user}){
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
-export default function Login(){
+export default function Login({ onSuccess }){
   // screen: selector | manager | staff-pick | staff-pin | success
   const [screen,setScreen]=useState("selector");
   const [selectedStaff,setSelectedStaff]=useState(null);
@@ -544,6 +552,8 @@ export default function Login(){
   const handleSuccess=(user)=>{
     setLoggedUser(user);
     setScreen("success");
+    // Navegar para o módulo certo após 1.2 s de animação de sucesso
+    setTimeout(()=>{ if(onSuccess) onSuccess(user); },1200);
   };
 
   return(

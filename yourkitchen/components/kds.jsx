@@ -23,76 +23,31 @@ const T = {
   textMuted: "#4A4A60",
 };
 
-// ─── MOCK DATA ─────────────────────────────────────────────────────────────────
-const MOCK_TICKETS = [
-  {
-    id: "T001", type: "mesa", table: "M4", waiter: "Sofia",
-    createdAt: Date.now() - 3.5 * 60 * 1000, status: "pendente",
-    items: [
-      { id: "i1", name: "Bacalhau à Brás", qty: 2, notes: "sem cebola num deles", sent: true, cancelled: false },
-      { id: "i2", name: "Polvo Grelhado", qty: 1, notes: "", sent: true, cancelled: false },
-      { id: "i3", name: "Sopa do Dia", qty: 2, notes: "", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T002", type: "take-away", table: null, waiter: "João",
-    createdAt: Date.now() - 11.2 * 60 * 1000, status: "pendente",
-    items: [
-      { id: "i4", name: "Frango Assado (meia)", qty: 1, notes: "bem passado", sent: true, cancelled: false },
-      { id: "i5", name: "Batatas Fritas", qty: 1, notes: "", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T003", type: "mesa", table: "M7", waiter: "Mariana",
-    createdAt: Date.now() - 13.8 * 60 * 1000, status: "pendente",
-    items: [
-      { id: "i6", name: "Bife do Lombo", qty: 1, notes: "mal passado", sent: true, cancelled: false },
-      { id: "i7", name: "Risotto de Cogumelos", qty: 2, notes: "", sent: true, cancelled: false },
-      { id: "i8", name: "Salada Caesar", qty: 1, notes: "molho à parte", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T004", type: "mesa", table: "M2", waiter: "Sofia",
-    createdAt: Date.now() - 7.1 * 60 * 1000, status: "em_preparacao",
-    items: [
-      { id: "i9", name: "Francesinha", qty: 2, notes: "extra molho num", sent: true, cancelled: false },
-      { id: "i10", name: "Cerveja Imperial", qty: 2, notes: "", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T005", type: "mesa", table: "M9", waiter: "Rui",
-    createdAt: Date.now() - 14.3 * 60 * 1000, status: "em_preparacao",
-    items: [
-      { id: "i11", name: "Dourada no Forno", qty: 1, notes: "", sent: true, cancelled: false },
-      { id: "i12", name: "Arroz de Tomate", qty: 2, notes: "", sent: true, cancelled: false },
-      { id: "i13", name: "Sobremesa do Chef", qty: 1, notes: "sem glúten", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T006", type: "balcao", table: null, waiter: "João",
-    createdAt: Date.now() - 8.4 * 60 * 1000, status: "em_preparacao",
-    items: [
-      { id: "i14", name: "Tosta Mista", qty: 3, notes: "", sent: true, cancelled: false },
-      { id: "i15", name: "Galão", qty: 2, notes: "", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T007", type: "mesa", table: "M1", waiter: "Mariana",
-    createdAt: Date.now() - 18.5 * 60 * 1000, status: "pronto",
-    items: [
-      { id: "i16", name: "Caldo Verde", qty: 2, notes: "", sent: true, cancelled: false },
-      { id: "i17", name: "Perna de Frango", qty: 2, notes: "", sent: true, cancelled: false },
-    ],
-  },
-  {
-    id: "T008", type: "mesa", table: "M6", waiter: "Sofia",
-    createdAt: Date.now() - 21.0 * 60 * 1000, status: "pronto",
-    items: [
-      { id: "i18", name: "Alheira com Ovos", qty: 1, notes: "", sent: true, cancelled: false },
-      { id: "i19", name: "Bitoque", qty: 2, notes: "bem passado os dois", sent: true, cancelled: false },
-    ],
-  },
-];
+// ─── API HELPERS ──────────────────────────────────────────────────────────────
+const DB_TO_KDS = { open: "pendente", sent: "em_preparacao", bill: "pronto" };
+
+function mapTicket(o) {
+  return {
+    id: o.id,
+    type: o.table ? "mesa" : (o.notes?.includes("take") ? "take-away" : "balcao"),
+    table: o.table?.label || null,
+    waiter: o.waiter?.name || "—",
+    createdAt: new Date(o.created_at).getTime(),
+    status: DB_TO_KDS[o.status] || "pendente",
+    items: (o.lines || [])
+      .filter(l => l.sent && !l.cancelled)
+      .map(l => ({
+        id: l.id,
+        name: l.name,
+        qty: l.qty,
+        notes: Array.isArray(l.modifiers) && l.modifiers.length
+          ? l.modifiers.join(", ")
+          : (l.notes || ""),
+        sent: l.sent,
+        cancelled: l.cancelled,
+      })),
+  };
+}
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 function elapsed(createdAt) {
@@ -183,8 +138,8 @@ const css = `
   }
 
   .kds-root {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     background: ${T.bg};
@@ -288,6 +243,7 @@ const css = `
 
   .kds-col-body {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 12px;
     display: flex;
@@ -300,6 +256,7 @@ const css = `
     border: 1px solid ${T.border};
     border-radius: 10px;
     overflow: hidden;
+    flex-shrink: 0;
     animation: slide-in 0.25s ease;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
@@ -364,6 +321,8 @@ const css = `
 
   .ticket-items {
     padding: 8px 0;
+    max-height: 200px;
+    overflow-y: auto;
   }
   .ticket-item {
     display: flex;
@@ -920,17 +879,8 @@ function LogsPanel({ logs, open, onClose }) {
 
 // ─── ROOT ──────────────────────────────────────────────────────────────────────
 export default function KDS() {
-  const [tickets, setTickets] = useState(MOCK_TICKETS);
-  const [logs, setLogs] = useState([
-    {
-      id: 1, level: "INFO", time: "09:00:12",
-      msg: "Sistema KDS iniciado.",
-    },
-    {
-      id: 2, level: "INFO", time: "09:03:44",
-      msg: "Ticket <strong>#T001</strong> recebido — Mesa M4 (Sofia).",
-    },
-  ]);
+  const [tickets, setTickets] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [logsOpen, setLogsOpen] = useState(false);
   const logIdRef = useRef(100);
@@ -947,38 +897,85 @@ export default function KDS() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }, []);
 
-  const handleAdvance = useCallback((ticketId, next) => {
-    setTickets(prev => prev.map(t => {
-      if (t.id !== ticketId) return t;
-      if (next === "servido") {
-        addLog("ACTION", `Ticket <strong>#${ticketId}</strong> arquivado (servido).`);
-        addToast(`Ticket #${ticketId} arquivado`, T.teal);
-        return null;
-      }
-      addLog(
-        "ACTION",
-        `Ticket <strong>#${ticketId}</strong> → <strong>${statusLabel(next)}</strong>.`
-      );
-      if (next === "pronto") {
-        addToast(`Ticket #${ticketId} — Mesa ${t.table || "—"} pronto! 🔔`, T.success);
-      }
-      return { ...t, status: next };
-    }).filter(Boolean));
-  }, [addLog, addToast]);
+  const archivedRef = useRef(new Set());
 
-  const handleCancelItem = useCallback((ticketId, itemId, motivo) => {
-    setTickets(prev => prev.map(t => {
-      if (t.id !== ticketId) return t;
-      const item = t.items.find(i => i.id === itemId);
-      addLog(
-        "CANCEL",
-        `Item <strong>${item?.name}</strong> anulado no ticket <strong>#${ticketId}</strong>.`,
-        motivo
-      );
-      addToast(`Item anulado — #${ticketId}`, T.danger);
-      return { ...t, items: t.items.map(i => i.id === itemId ? { ...i, cancelled: true } : i) };
-    }));
-  }, [addLog, addToast]);
+  // Load archived IDs from localStorage on mount, then start polling
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("kds_archived") || "[]");
+      archivedRef.current = new Set(stored);
+    } catch {}
+
+    const load = () => {
+      fetch("/api/kds/tickets")
+        .then(r => r.json())
+        .then(data => {
+          if (!Array.isArray(data)) return;
+          const incoming = data.map(mapTicket);
+          // Clean up archived IDs that no longer exist in DB (e.g. paid orders)
+          const liveIds = new Set(incoming.map(t => t.id));
+          const staleArchived = [...archivedRef.current].filter(id => !liveIds.has(id));
+          if (staleArchived.length > 0) {
+            staleArchived.forEach(id => archivedRef.current.delete(id));
+            try { localStorage.setItem("kds_archived", JSON.stringify([...archivedRef.current])); } catch {}
+          }
+          setTickets(incoming.filter(t => !archivedRef.current.has(t.id)));
+        })
+        .catch(() => {});
+    };
+
+    load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleAdvance = useCallback(async (ticketId, next) => {
+    if (next === "servido") {
+      setTickets(prev => prev.filter(t => t.id !== ticketId));
+      archivedRef.current.add(ticketId);
+      try { localStorage.setItem("kds_archived", JSON.stringify([...archivedRef.current])); } catch {}
+      addLog("ACTION", `Ticket <strong>#${ticketId.slice(0,8)}</strong> arquivado (servido).`);
+      addToast(`Ticket arquivado`, T.teal);
+      return;
+    }
+    // Optimistic update
+    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: next } : t));
+    try {
+      await fetch(`/api/kds/tickets/${ticketId}`, { method: "PATCH" });
+      addLog("ACTION", `Ticket <strong>#${ticketId.slice(0,8)}</strong> → <strong>${statusLabel(next)}</strong>.`);
+      if (next === "pronto") {
+        const t = tickets.find(t => t.id === ticketId);
+        addToast(`Mesa ${t?.table || "—"} pronto! 🔔`, T.success);
+      }
+    } catch {
+      // Rollback
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: nextStatus(t.status) === next ? t.status : t.status } : t));
+      addToast("Erro ao avançar ticket", T.danger);
+    }
+  }, [addLog, addToast, tickets]);
+
+  const handleCancelItem = useCallback(async (ticketId, itemId, motivo) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    const item = ticket?.items.find(i => i.id === itemId);
+    // Optimistic
+    setTickets(prev => prev.map(t =>
+      t.id !== ticketId ? t : { ...t, items: t.items.map(i => i.id === itemId ? { ...i, cancelled: true } : i) }
+    ));
+    try {
+      await fetch(`/api/orders/${ticketId}/lines/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancelled: true, cancel_note: motivo }),
+      });
+      addLog("CANCEL", `Item <strong>${item?.name}</strong> anulado no ticket <strong>#${ticketId.slice(0,8)}</strong>.`, motivo);
+      addToast(`Item anulado — ${item?.name}`, T.danger);
+    } catch {
+      setTickets(prev => prev.map(t =>
+        t.id !== ticketId ? t : { ...t, items: t.items.map(i => i.id === itemId ? { ...i, cancelled: false } : i) }
+      ));
+      addToast("Erro ao anular item", T.danger);
+    }
+  }, [addLog, addToast, tickets]);
 
   const byStatus = (s) => tickets.filter(t => t.status === s);
   const totalActive = tickets.filter(t => t.status !== "pronto").length;
