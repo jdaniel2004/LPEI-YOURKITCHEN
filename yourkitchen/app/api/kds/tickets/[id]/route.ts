@@ -18,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { data: order, error: fetchErr } = await supabaseAdmin
     .from("orders")
-    .select("id, status, table:tables(label)")
+    .select("id, status, table_id, table:tables(label)")
     .eq("id", id)
     .single();
 
@@ -37,6 +37,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  // When order reaches "pronto" (bill), mark table as servido and persist that
+  // every sent line was delivered (best-effort: ignored if the column is missing).
+  if (nextStatus === "bill") {
+    // Stamp the not-yet-ready lines (current batch) as delivered + ready now.
+    // Earlier batches keep their own ready_at (prep time) untouched.
+    await supabaseAdmin
+      .from("order_lines")
+      .update({ delivered: true, ready_at: new Date().toISOString() })
+      .eq("order_id", id)
+      .eq("sent", true)
+      .eq("cancelled", false)
+      .is("ready_at", null);
+    if ((order as any).table_id) {
+      await supabaseAdmin
+        .from("tables")
+        .update({ status: "bill" })
+        .eq("id", (order as any).table_id);
+    }
+  }
 
   const tableLabel = (order.table as { label?: string } | null)?.label ?? "balcão";
   await writeLog(

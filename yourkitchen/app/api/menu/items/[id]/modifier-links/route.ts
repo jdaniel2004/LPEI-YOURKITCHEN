@@ -1,41 +1,38 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+// List the library modifier templates linked to this item
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { data, error } = await supabaseAdmin
-    .from("combo_items")
-    .select("*, item:menu_items(id,name,price)")
-    .eq("combo_id", id);
+    .from("item_modifier_templates")
+    .select("template_id, template:modifier_templates(*, options:modifier_template_options(*))")
+    .eq("item_id", id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json(data);
 }
 
+// Link a template to this item
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { item_id, qty, is_choice, choice_group } = await req.json();
-  if (!item_id) return Response.json({ error: "item_id obrigatório" }, { status: 400 });
+  const { template_id } = await req.json();
+  if (!template_id) return Response.json({ error: "template_id obrigatório" }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin
-    .from("combo_items")
-    .upsert({
-      combo_id: id, item_id, qty: qty ?? 1,
-      is_choice: is_choice ?? false,
-      choice_group: choice_group ?? "Bebida",
-    })
-    .select("*, item:menu_items(id,name,price)")
-    .single();
+  const { error } = await supabaseAdmin
+    .from("item_modifier_templates")
+    .upsert({ item_id: id, template_id });
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json(data, { status: 201 });
+  return Response.json({ ok: true }, { status: 201 });
 }
 
+// Unlink a template from this item
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { item_id } = await req.json();
+  const { template_id } = await req.json();
   const { error } = await supabaseAdmin
-    .from("combo_items")
+    .from("item_modifier_templates")
     .delete()
-    .eq("combo_id", id)
-    .eq("item_id", item_id);
+    .eq("item_id", id)
+    .eq("template_id", template_id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return new Response(null, { status: 204 });
 }

@@ -18,6 +18,7 @@ export async function GET(req: Request) {
   let revenue = 0;
   let totalOrders = 0;
   let totalItems = 0;
+  let cancelledItems = 0;
   let vatMap: Record<number, number> = {};
 
   for (const order of orders ?? []) {
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
     for (const line of (order.lines as Array<{
       qty: number; unit_price: number; extra_price: number; vat_rate: number; cancelled: boolean;
     }>) ?? []) {
-      if (line.cancelled) continue;
+      if (line.cancelled) { cancelledItems += line.qty; continue; }
       const lineTotal = (line.unit_price + line.extra_price) * line.qty;
       revenue += lineTotal;
       totalItems += line.qty;
@@ -50,6 +51,8 @@ export async function GET(req: Request) {
     revenue:        Number(revenue.toFixed(2)),
     orders:         totalOrders,
     items:          totalItems,
+    cancelledItems,
+    avgItemsPerOrder: totalOrders > 0 ? Number((totalItems / totalOrders).toFixed(1)) : 0,
     avgTicket:      totalOrders > 0 ? Number((revenue / totalOrders).toFixed(2)) : 0,
     vat:            Object.entries(vatMap).map(([rate, amount]) => ({ rate: Number(rate), amount: Number(amount.toFixed(2)) })),
     paymentMethods,

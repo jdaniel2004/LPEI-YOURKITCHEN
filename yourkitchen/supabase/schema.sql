@@ -124,6 +124,7 @@ create table if not exists order_lines (
   modifiers    text[],
   notes        text,
   sent         boolean default false,
+  sent_batch   int not null default 0,
   cancelled    boolean default false,
   cancel_note  text,
   created_at   timestamptz default now()
@@ -234,3 +235,60 @@ insert into staff (name, role, pin_hash, active) values
   ('Mariana', 'waiter',  '$2b$10$bTUBRPK3pxe97mMaGXh68erKDCHOckeE8/vfp3QyOPpwO2PXu8zTa', true),
   ('Rui',     'kitchen', '$2b$10$uR8SDcYOhMcA/LwbhrICP.YxwjCd73JbFEkTEfBWB0Dm.yQ4VcbL6', true)
 on conflict do nothing;
+
+-- ─── MIGRATIONS ───────────────────────────────────────────────────────────────
+-- Run ALL of these in Supabase SQL Editor if upgrading an existing database
+
+-- Combo stock loopback: track which combo a line belongs to
+alter table order_lines add column if not exists combo_id uuid;
+
+-- Per-line delivered flag: set when the KDS marks the order "Pronto" (bill).
+-- Lets a previous batch keep its "entregue" state when a new batch is sent.
+alter table order_lines add column if not exists delivered boolean not null default false;
+
+-- When the KDS marked the line ready. Prep time = ready_at - created_at.
+-- Also lets the KDS freeze the ticket timer once it's "Pronto".
+alter table order_lines add column if not exists ready_at timestamptz;
+
+-- Drink/item choices within combos
+alter table combo_items add column if not exists is_choice boolean not null default false;
+alter table combo_items add column if not exists choice_group text default 'Bebida';
+
+-- Ingredient modifiers: ingredients the customer can add/remove on a per-item basis
+alter table ingredients add column if not exists is_modifier boolean not null default false;
+
+-- Function to decrement ingredient stock when an order is sent
+create or replace function decrement_ingredient_stock(p_ingredient_id uuid, p_qty numeric)
+returns void language plpgsql as $$
+begin
+  update ingredients
+  set    stock_qty = stock_qty - p_qty
+  where  id = p_ingredient_id
+    and  stock_qty is not null
+    and  stock_qty >= p_qty;
+end;
+$$;
+
+-- ─── REUSABLE MODIFIER LIBRARY ────────────────────────────────────────────────
+-- Define a modifier once (e.g. "Com ovo +1€") and link it to many menu items.
+-- Editing the template updates every linked item (synchronised).
+create table if not exists modifier_templates (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  required   boolean default false,
+  created_at timestamptz default now()
+);
+
+create table if not exists modifier_template_options (
+  id          uuid primary key default gen_random_uuid(),
+  template_id uuid references modifier_templates(id) on delete cascade,
+  label       text not null,
+  extra_price numeric(6,2) default 0
+);
+
+-- Junction: which library modifiers are attached to which menu items
+create table if not exists item_modifier_templates (
+  item_id     uuid references menu_items(id) on delete cascade,
+  template_id uuid references modifier_templates(id) on delete cascade,
+  primary key (item_id, template_id)
+);

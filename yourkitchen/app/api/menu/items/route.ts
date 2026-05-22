@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     .from("menu_items")
     .select(
       includeModifiers
-        ? "*, category:menu_categories(id,name,emoji,position), modifiers:item_modifiers(*, options:modifier_options(*))"
+        ? "*, category:menu_categories(id,name,emoji,position), modifiers:item_modifiers(*, options:modifier_options(*)), ingredients:item_ingredients(ingredient_id, ingredient:ingredients(id,name))"
         : "*, category:menu_categories(id,name,emoji,position)"
     )
     .order("name");
@@ -18,6 +18,23 @@ export async function GET(req: Request) {
 
   const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  // Best-effort: attach linked library modifiers. Done as a separate query so a
+  // missing migration (item_modifier_templates) never breaks the whole menu.
+  if (includeModifiers && Array.isArray(data) && data.length > 0) {
+    const ids = data.map((i) => i.id);
+    const { data: links } = await supabaseAdmin
+      .from("item_modifier_templates")
+      .select("item_id, template:modifier_templates(id,name,required,options:modifier_template_options(*))")
+      .in("item_id", ids);
+    if (Array.isArray(links)) {
+      const byItem: Record<string, { template: unknown }[]> = {};
+      for (const l of links) (byItem[l.item_id as string] ||= []).push({ template: l.template });
+      for (const item of data as Array<{ id: string; templateLinks?: unknown }>)
+        item.templateLinks = byItem[item.id] || [];
+    }
+  }
+
   return Response.json(data);
 }
 

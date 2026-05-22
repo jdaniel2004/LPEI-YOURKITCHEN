@@ -31,6 +31,8 @@ function mapOrder(o) {
       mods: Array.isArray(l.modifiers) ? l.modifiers : [],
       notes: l.notes || "",
       sent: l.sent,
+      sentBatch: l.sent_batch ?? 0,
+      delivered: l.delivered ?? false,
       cancelled: l.cancelled,
       extraPrice: l.extra_price || 0,
     })),
@@ -38,6 +40,64 @@ function mapOrder(o) {
     sentAt: o.created_at ? new Date(o.created_at).getTime() : null,
     paid: o.status === "paid",
   };
+}
+
+// Build the grouped POS menu (categories + items + combos) from API responses.
+// Pure function so it can run both on initial load and on the live-sync poll.
+function buildMenu(menuRes, combosRes, modifierIngIds){
+  const catMap={};
+  if(Array.isArray(menuRes)){
+    menuRes.forEach(item=>{
+      const cat=item.category;if(!cat)return;
+      if(!catMap[cat.id]) catMap[cat.id]={id:cat.id,name:cat.name,emoji:cat.emoji||"🍽️",items:[],position:cat.position??0};
+      // Per-item custom modifiers
+      const customMods=(item.modifiers||[]).map(m=>({
+        id:m.id,name:m.name,required:m.required,
+        options:(m.options||[]).map(o=>({id:o.id,label:o.label,price:o.extra_price||0})),
+      }));
+      // Linked library modifiers (synchronised templates)
+      const linkedMods=(item.templateLinks||[])
+        .map(tl=>tl.template).filter(Boolean)
+        .map(t=>({
+          id:t.id,name:t.name,required:t.required,
+          options:(t.options||[]).map(o=>({id:o.id,label:o.label,price:o.extra_price||0})),
+        }));
+      catMap[cat.id].items.push({
+        id:item.id,name:item.name,emoji:item.emoji||"🍽️",
+        price:item.price,vat:item.vat_rate,stock:item.stock,
+        mods:[...customMods,...linkedMods],
+        ingredientMods:(item.ingredients||[])
+          .filter(ii=>ii.ingredient?.id&&modifierIngIds.has(ii.ingredient.id))
+          .map(ii=>({id:ii.ingredient.id,name:ii.ingredient.name})),
+      });
+    });
+  }
+  const mappedMenu=Object.values(catMap).sort((a,b)=>a.position-b.position);
+  if(Array.isArray(combosRes)&&combosRes.length>0){
+    mappedMenu.push({
+      id:"__combos__",name:"Menus",emoji:"📋",position:9999,
+      items:combosRes.filter(c=>c.active!==false).map(c=>{
+        const fixedItems=(c.items||[]).filter(ci=>!ci.is_choice);
+        const choiceRaw=(c.items||[]).filter(ci=>ci.is_choice);
+        const choiceGroupMap={};
+        choiceRaw.forEach(ci=>{
+          // Group choices by the item's category (fallback to legacy choice_group)
+          const g=ci.item?.category?.name||ci.choice_group||"Escolha";
+          if(!choiceGroupMap[g]) choiceGroupMap[g]=[];
+          choiceGroupMap[g].push({id:ci.item?.id,name:ci.item?.name||"?",price:ci.item?.price||0});
+        });
+        return{
+          id:`combo_${c.id}`,comboId:c.id,
+          name:c.name,emoji:"📋",
+          price:c.price||0,vat:23,stock:null,
+          mods:[],isCombo:true,
+          comboItems:fixedItems.map(ci=>({name:ci.item?.name||"?",qty:ci.qty,itemId:ci.item?.id||null,included:true})),
+          choiceGroups:Object.entries(choiceGroupMap).map(([groupName,options])=>({groupName,options})),
+        };
+      }),
+    });
+  }
+  return mappedMenu;
 }
 
 
@@ -75,7 +135,7 @@ function stockForItem(menuStock, itemId){
 const STATUS_MAP = {
   free:   {label:"Livre",   color:T.success, bg:T.successDim, border:`${T.success}44`},
   occupied:{label:"Ocupada",color:T.warning, bg:T.warningDim, border:`${T.warning}44`},
-  bill:   {label:"Conta",   color:"#F7D44A", bg:"#F7D44A18",  border:"#F7D44A44"},
+  bill:   {label:"Servido", color:T.danger,  bg:T.dangerDim,  border:`${T.danger}44`},
   reserved:{label:"Reserva",color:T.purple,  bg:T.purpleDim,  border:`${T.purple}44`},
   locked: {label:"Em uso",  color:T.blue,    bg:T.blueDim,    border:`${T.blue}44`},
 };
@@ -177,7 +237,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .table-card:active{transform:scale(.98);}
 .table-card.status-free{border-color:${T.success}33;}
 .table-card.status-occupied{border-color:${T.warning}33;}
-.table-card.status-bill{border-color:#F7D44A33;animation:pulse 2s infinite;}
+.table-card.status-bill{border-color:${T.danger}33;}
 .table-card.status-reserved{border-color:${T.purple}33;}
 .table-card.status-locked{border-color:${T.blue}33;opacity:.75;cursor:not-allowed;}
 .table-top{display:flex;align-items:center;justify-content:space-between;}
@@ -222,6 +282,9 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .order-line{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:8px;transition:background .12s;}
 .order-line:hover{background:${T.elevated};}
 .order-line.sent{opacity:.65;}
+.order-line.delivered{opacity:1;}
+.order-line.delivered .ol-name{color:${T.success};}
+.ol-delivered-tag{font-size:10px;font-weight:700;letter-spacing:.5px;color:${T.success};background:${T.successDim};border:1px solid ${T.success}44;border-radius:5px;padding:3px 7px;white-space:nowrap;align-self:center;}
 .order-line.cancelled{opacity:.25;text-decoration:line-through;}
 .ol-qty{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:${T.accent};min-width:20px;flex-shrink:0;padding-top:1px;}
 .ol-info{flex:1;min-width:0;}
@@ -229,6 +292,16 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .ol-mods{font-size:11px;color:${T.textMuted};margin-top:2px;}
 .ol-price{font-family:'DM Mono',monospace;font-size:12px;color:${T.textSec};white-space:nowrap;padding-top:2px;}
 .ol-controls{display:flex;gap:3px;align-items:center;}
+.combo-subitems{padding:0 0 4px 28px;display:flex;flex-direction:column;gap:1px;}
+.combo-subitem{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:5px;transition:background .1s;}
+.combo-subitem:hover{background:${T.elevated};}
+.combo-subitem.excluded{opacity:.4;}
+.combo-subitem-indicator{font-size:10px;color:${T.textMuted};flex-shrink:0;}
+.combo-subitem-name{flex:1;font-size:11px;color:${T.textSec};}
+.combo-subitem.excluded .combo-subitem-name{text-decoration:line-through;}
+.combo-subitem-btn{background:none;border:1px solid ${T.border};color:${T.textMuted};cursor:pointer;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;font-family:'Syne',sans-serif;transition:all .12s;}
+.combo-subitem-btn:hover{border-color:${T.danger}55;color:${T.danger};}
+.combo-subitem.excluded .combo-subitem-btn{border-color:${T.success}55;color:${T.success};}
 .qty-btn{width:24px;height:24px;border-radius:5px;border:1px solid ${T.border};background:${T.elevated};color:${T.text};font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0;font-family:'DM Mono',monospace;}
 .qty-btn:hover{border-color:${T.accent}55;color:${T.accent};}
 .qty-btn:active{transform:scale(.9);}
@@ -263,6 +336,14 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .mod-option.selected .mod-radio{border-color:${T.accent};background:${T.accent};}
 .mod-check{width:16px;height:16px;border-radius:4px;border:2px solid ${T.border};transition:all .12s;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .mod-option.selected .mod-check{border-color:${T.accent};background:${T.accent};}
+
+/* ─ INGREDIENT MODIFIER ROWS ─ */
+.ingmod-list{display:flex;flex-direction:column;gap:6px;}
+.ingmod-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid ${T.border};border-radius:8px;background:${T.card};}
+.ingmod-name{font-size:13px;font-weight:600;flex:1;}
+.ingmod-removed{text-decoration:line-through;color:${T.danger};}
+.ingmod-extra{color:${T.success};}
+.ingmod-btns{display:flex;gap:6px;}
 
 /* ─ TRANSFER MODAL ─ */
 .transfer-modal{width:360px;}
@@ -340,11 +421,19 @@ function Toasts({toasts}){
 function ModifierModal({item,onConfirm,onClose}){
   const [sel,setSel]=useState({});
   const [extras,setExtras]=useState({});
+  // ingState: Record<id, 'removed'|'extra'> — absent means neutral
+  const [ingState,setIngState]=useState({});
 
   const toggleRequired=(modId,optId)=>setSel(p=>({...p,[modId]:optId}));
   const toggleOptional=(modId,optId)=>setExtras(p=>{
     const cur=p[modId]||{};
     return {...p,[modId]:{...cur,[optId]:!cur[optId]}};
+  });
+  const toggleIng=(ingId,action)=>setIngState(p=>{
+    const next={...p};
+    if(next[ingId]===action) delete next[ingId]; // click same = back to neutral
+    else next[ingId]=action;
+    return next;
   });
 
   const allRequired=item.mods.filter(m=>m.required).every(m=>sel[m.id]);
@@ -359,6 +448,13 @@ function ModifierModal({item,onConfirm,onClose}){
       chosen.forEach(o=>{modsText.push(`${o.label}${o.price?` (+€${o.price.toFixed(2)})`:""}`);if(o.price)extraPrice+=o.price;});
     }
   });
+  (item.ingredientMods||[]).forEach(ing=>{
+    const st=ingState[ing.id];
+    if(st==="removed") modsText.push(`sem ${ing.name}`);
+    else if(st==="extra") modsText.push(`+${ing.name}`);
+  });
+
+  const ingMods=item.ingredientMods||[];
 
   return(
     <div className="overlay" onClick={onClose}>
@@ -399,6 +495,31 @@ function ModifierModal({item,onConfirm,onClose}){
               </div>
             </div>
           ))}
+          {ingMods.length>0&&(
+            <div className="mod-group">
+              <div className="mod-group-title">Ingredientes</div>
+              <div className="ingmod-list">
+                {ingMods.map(ing=>{
+                  const st=ingState[ing.id];
+                  return(
+                    <div key={ing.id} className="ingmod-row">
+                      <span className={`ingmod-name${st==="removed"?" ingmod-removed":st==="extra"?" ingmod-extra":""}`}>{ing.name}</span>
+                      <div className="ingmod-btns">
+                        <button
+                          className={`btn btn-sm${st==="removed"?" btn-danger":" btn-ghost"}`}
+                          onClick={()=>toggleIng(ing.id,"removed")}
+                        >− Retirar</button>
+                        <button
+                          className={`btn btn-sm${st==="extra"?" btn-success":" btn-ghost"}`}
+                          onClick={()=>toggleIng(ing.id,"extra")}
+                        >+ Extra</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
@@ -443,6 +564,84 @@ function CancelLineModal({line,onConfirm,onClose}){
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
           <button className="btn btn-danger" disabled={!motivo.trim()} onClick={()=>onConfirm(motivo)}>
             Confirmar Anulação
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── COMBO CHOICE MODAL ───────────────────────────────────────────────────────
+function ComboChoiceModal({combo,onConfirm,onClose}){
+  const [sel,setSel]=useState(()=>{
+    const init={};
+    (combo.choiceGroups||[]).forEach(g=>{if(g.options.length>0)init[g.groupName]=g.options[0].id;});
+    return init;
+  });
+
+  const allSelected=(combo.choiceGroups||[]).every(g=>sel[g.groupName]);
+
+  const handleConfirm=()=>{
+    const chosenItems=(combo.choiceGroups||[]).map(g=>{
+      const opt=g.options.find(o=>o.id===sel[g.groupName]);
+      return opt?{name:opt.name,qty:1,itemId:opt.id,included:true}:null;
+    }).filter(Boolean);
+    onConfirm(chosenItems);
+  };
+
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal mod-modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <div className="modal-title">📋 {combo.name}</div>
+            <div className="modal-sub">Personaliza o menu</div>
+          </div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {(combo.choiceGroups||[]).map(g=>(
+            <div key={g.groupName} className="mod-group">
+              <div className="mod-group-title">
+                {g.groupName}
+                <span className="mod-required-tag">OBRIGATÓRIO</span>
+              </div>
+              <div className="mod-options">
+                {g.options.map(opt=>(
+                  <div
+                    key={opt.id}
+                    className={`mod-option${sel[g.groupName]===opt.id?" selected":""}`}
+                    onClick={()=>setSel(p=>({...p,[g.groupName]:opt.id}))}
+                  >
+                    <div className="mod-radio"/>
+                    <div className="mod-option-label">{opt.name}</div>
+                    {opt.price>0&&<div className="mod-option-price">{fmtEur(opt.price)}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {combo.comboItems&&combo.comboItems.length>0&&(
+            <div style={{marginTop:8,padding:"10px 12px",background:T.card,borderRadius:8,border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:6}}>Incluído</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {combo.comboItems.map((ci,i)=>(
+                  <span key={i} style={{fontSize:12,color:T.textSec,background:T.elevated,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 8px"}}>
+                    {ci.qty>1?`${ci.qty}× `:""}{ci.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn btn-solid-accent"
+            disabled={!allSelected}
+            onClick={handleConfirm}
+          >
+            Adicionar — {fmtEur(combo.price)}
           </button>
         </div>
       </div>
@@ -623,6 +822,7 @@ function PaymentModal({order,tableLabel,onConfirm,onClose}){
 function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,onSendKitchen,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
   const [cat,setCat]=useState(0);
   const [modItem,setModItem]=useState(null);
+  const [comboChoiceItem,setComboChoiceItem]=useState(null);
   const [cancelTarget,setCancelTarget]=useState(null);
   const [showTransfer,setShowTransfer]=useState(false);
   const [showPayment,setShowPayment]=useState(false);
@@ -634,20 +834,41 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
   const pendingItems=order.items.filter(i=>!i.sent&&!i.cancelled);
   const sentItems=order.items.filter(i=>i.sent&&!i.cancelled);
   const cancelledItems=order.items.filter(i=>i.cancelled);
+  // An item is "delivered" only once the KDS marked it ready (per-line flag).
+  // Set by the KDS route (DB) and by the bill-poll locally — so a later batch
+  // stays "Enviado" while earlier ready batches remain "Entregue".
+  const deliveredItems=sentItems.filter(i=>i.delivered===true);
+  const awaitingItems=sentItems.filter(i=>i.delivered!==true);
+
+  // Quantity of this item already in the order but not yet sent (pending lines).
+  // Sent items already decremented DB stock, so only pending counts against it.
+  const pendingQtyForItem=(itemId)=>order.items
+    .filter(i=>i.itemId===itemId&&!i.cancelled&&!i.sent)
+    .reduce((s,i)=>s+i.qty,0);
+  const canAddMore=(itemId,addQty=1)=>{
+    const st=stockForItem(menuStock,itemId);
+    if(st===null) return true; // stock not tracked for this item
+    return pendingQtyForItem(itemId)+addQty<=st;
+  };
 
   const handleAddItem=(item)=>{
     const st=stockForItem(menuStock,item.id);
     if(st!==null&&st<=0){addToast("Item esgotado",T.danger);return;}
-    if(!item.isCombo&&item.mods.length>0){setModItem(item);return;}
-    const realItemId=item.isCombo?null:item.id;
-    const matchKey=item.isCombo?`combo_${item.comboId}`:item.id;
-    const existing=pendingItems.find(l=>
-      item.isCombo?(l.comboId===item.comboId):(l.itemId===item.id&&l.mods.length===0)
-    );
+    if(!item.isCombo&&st!==null&&!canAddMore(item.id)){
+      addToast(`Stock insuficiente — só restam ${st}`,T.warning);return;
+    }
+    if(!item.isCombo&&(item.mods.length>0||(item.ingredientMods&&item.ingredientMods.length>0))){setModItem(item);return;}
+    if(item.isCombo){
+      if(item.choiceGroups&&item.choiceGroups.length>0){setComboChoiceItem(item);return;}
+      const line={lineId:newLineId(),itemId:null,comboId:item.comboId||null,name:item.name,qty:1,price:item.price,vat:item.vat,mods:[],comboItems:(item.comboItems||[]).map(ci=>({...ci,included:true})),notes:"",sent:false,cancelled:false,extraPrice:0};
+      onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
+      return;
+    }
+    const existing=pendingItems.find(l=>l.itemId===item.id&&l.mods.length===0);
     if(existing){
       onUpdateOrder(prev=>({...prev,items:prev.items.map(l=>l.lineId===existing.lineId?{...l,qty:l.qty+1}:l)}));
     } else {
-      const line={lineId:newLineId(),itemId:realItemId,comboId:item.comboId||null,name:item.name,qty:1,price:item.price,vat:item.vat,mods:[],notes:"",sent:false,cancelled:false,extraPrice:0};
+      const line={lineId:newLineId(),itemId:item.id,name:item.name,qty:1,price:item.price,vat:item.vat,mods:[],notes:"",sent:false,cancelled:false,extraPrice:0};
       onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
     }
   };
@@ -660,6 +881,13 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
   };
 
   const changeQty=(lineId,delta)=>{
+    if(delta>0){
+      const line=order.items.find(l=>l.lineId===lineId);
+      if(line&&line.itemId&&!canAddMore(line.itemId)){
+        const st=stockForItem(menuStock,line.itemId);
+        addToast(`Stock insuficiente — só restam ${st}`,T.warning);return;
+      }
+    }
     onUpdateOrder(prev=>{
       const items=prev.items.map(l=>{
         if(l.lineId!==lineId) return l;
@@ -668,6 +896,14 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
       }).filter(Boolean);
       return {...prev,items};
     });
+  };
+
+  const toggleComboItem=(lineId,idx)=>{
+    onUpdateOrder(prev=>({...prev,items:prev.items.map(l=>{
+      if(l.lineId!==lineId) return l;
+      const ci=l.comboItems.map((c,i)=>i===idx?{...c,included:!c.included}:c);
+      return {...l,comboItems:ci};
+    })}));
   };
 
   const total=orderTotal(order.items);
@@ -732,27 +968,42 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
             <>
               <div className="op-section-label">A enviar ({pendingItems.length})</div>
               {pendingItems.map(l=>(
-                <div key={l.lineId} className="order-line">
-                  <div className="ol-qty">{l.qty}×</div>
-                  <div className="ol-info">
-                    <div className="ol-name">{l.name}</div>
-                    {l.mods.length>0&&<div className="ol-mods">{l.mods.join(" · ")}</div>}
+                <div key={l.lineId}>
+                  <div className="order-line">
+                    <div className="ol-qty">{l.qty}×</div>
+                    <div className="ol-info">
+                      <div className="ol-name">{l.name}</div>
+                      {l.mods.length>0&&<div className="ol-mods">{l.mods.join(" · ")}</div>}
+                    </div>
+                    <div className="ol-controls">
+                      <button className="qty-btn" onClick={()=>changeQty(l.lineId,-1)}>−</button>
+                      <button className="qty-btn" onClick={()=>changeQty(l.lineId,1)}>+</button>
+                    </div>
+                    <div className="ol-price">{fmtEur((l.price+(l.extraPrice||0))*l.qty)}</div>
                   </div>
-                  <div className="ol-controls">
-                    <button className="qty-btn" onClick={()=>changeQty(l.lineId,-1)}>−</button>
-                    <button className="qty-btn" onClick={()=>changeQty(l.lineId,1)}>+</button>
-                  </div>
-                  <div className="ol-price">{fmtEur((l.price+(l.extraPrice||0))*l.qty)}</div>
+                  {l.comboItems&&l.comboItems.length>0&&(
+                    <div className="combo-subitems">
+                      {l.comboItems.map((ci,idx)=>(
+                        <div key={idx} className={`combo-subitem${!ci.included?" excluded":""}`}>
+                          <span className="combo-subitem-indicator">↳</span>
+                          <span className="combo-subitem-name">{ci.qty>1?`${ci.qty}× `:""}{ci.name}</span>
+                          <button className="combo-subitem-btn" onClick={()=>toggleComboItem(l.lineId,idx)}>
+                            {ci.included?"✕":"✓"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </>
           )}
 
-          {/* Sent */}
-          {sentItems.length>0&&(
+          {/* Sent — current batch awaiting the kitchen */}
+          {awaitingItems.length>0&&(
             <>
-              <div className="op-section-label" style={{marginTop:8}}>Enviado ({sentItems.length})</div>
-              {sentItems.map(l=>(
+              <div className="op-section-label" style={{marginTop:8}}>Enviado ({awaitingItems.length})</div>
+              {awaitingItems.map(l=>(
                 <div key={l.lineId} className="order-line sent">
                   <div className="ol-qty">{l.qty}×</div>
                   <div className="ol-info">
@@ -760,6 +1011,24 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
                     {l.mods.length>0&&<div className="ol-mods">{l.mods.join(" · ")}</div>}
                   </div>
                   <button className="cancel-line-btn" onClick={()=>setCancelTarget(l)}>ANULAR</button>
+                  <div className="ol-price">{fmtEur((l.price+(l.extraPrice||0))*l.qty)}</div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Delivered — batches the kitchen already finished */}
+          {deliveredItems.length>0&&(
+            <>
+              <div className="op-section-label" style={{marginTop:8,color:T.success}}>Entregue ({deliveredItems.length})</div>
+              {deliveredItems.map(l=>(
+                <div key={l.lineId} className="order-line sent delivered">
+                  <div className="ol-qty">{l.qty}×</div>
+                  <div className="ol-info">
+                    <div className="ol-name">{l.name}</div>
+                    {l.mods.length>0&&<div className="ol-mods">{l.mods.join(" · ")}</div>}
+                  </div>
+                  <span className="ol-delivered-tag">✓ Entregue</span>
                   <div className="ol-price">{fmtEur((l.price+(l.extraPrice||0))*l.qty)}</div>
                 </div>
               ))}
@@ -830,6 +1099,18 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
       </div>
 
       {/* MODALS */}
+      {comboChoiceItem&&(
+        <ComboChoiceModal
+          combo={comboChoiceItem}
+          onClose={()=>setComboChoiceItem(null)}
+          onConfirm={(chosenItems)=>{
+            const allComboItems=[...(comboChoiceItem.comboItems||[]),...chosenItems];
+            const line={lineId:newLineId(),itemId:null,comboId:comboChoiceItem.comboId||null,name:comboChoiceItem.name,qty:1,price:comboChoiceItem.price,vat:comboChoiceItem.vat,mods:[],comboItems:allComboItems,notes:"",sent:false,cancelled:false,extraPrice:0};
+            onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
+            setComboChoiceItem(null);
+          }}
+        />
+      )}
       {modItem&&(
         <ModifierModal item={modItem} onConfirm={handleModConfirm} onClose={()=>setModItem(null)}/>
       )}
@@ -861,7 +1142,7 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
 }
 
 // ─── FUNDO MANEIO SCREEN ──────────────────────────────────────────────────────
-function FundoManeioScreen({staffName,onConfirm}){
+function FundoManeioScreen({staffName,onConfirm,appName="RestaurantOS"}){
   const [val,setVal]=useState("");
   const press=(d)=>{
     if(d==="⌫"){setVal(p=>p.slice(0,-1));return;}
@@ -877,7 +1158,7 @@ function FundoManeioScreen({staffName,onConfirm}){
       <style>{CSS}</style>
       <div style={{animation:"slideUp .3s ease"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{fontSize:11,fontWeight:700,letterSpacing:"3px",textTransform:"uppercase",color:T.textMuted,marginBottom:8}}>RestaurantOS · POS</div>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:"3px",textTransform:"uppercase",color:T.textMuted,marginBottom:8}}>{appName} · POS</div>
           <div style={{fontSize:13,color:T.textSec}}>{staffName} · {new Date().toLocaleDateString("pt-PT",{weekday:"long",day:"numeric",month:"long"})}</div>
         </div>
         <div className="fundo-card">
@@ -1086,7 +1367,7 @@ function KDSNotifBanner({notif,onClose}){
 let _toastId=0;
 
 // ─── MAIN POS ─────────────────────────────────────────────────────────────────
-export default function POS({session}){
+export default function POS({session,appName="RestaurantOS"}){
   const [screen,setScreen]=useState("fundo");
   const [fundoValue,setFundoValue]=useState(0);
   const [shiftId,setShiftId]=useState(null);
@@ -1098,7 +1379,7 @@ export default function POS({session}){
   const [activeTableId,setActiveTableId]=useState(null);
   const [toasts,setToasts]=useState([]);
   const [kdsNotif,setKdsNotif]=useState(null);
-  const [readyTables,setReadyTables]=useState(()=>new Set());
+  const [readyOrders,setReadyOrders]=useState(()=>new Set());
   const [loading,setLoading]=useState(true);
   const [showEndShift,setShowEndShift]=useState(false);
   const [endShiftTarget,setEndShiftTarget]=useState("");
@@ -1113,11 +1394,20 @@ export default function POS({session}){
     setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3500);
   },[]);
 
+  const readyOrdersRef = useRef(new Set());
+  // Refs so the live-sync interval always sees the current editing context
+  const activeTableIdRef = useRef(null);
+  const screenRef = useRef("fundo");
+  const tablesRef = useRef([]);
+  useEffect(()=>{activeTableIdRef.current=activeTableId;},[activeTableId]);
+  useEffect(()=>{screenRef.current=screen;},[screen]);
+  useEffect(()=>{tablesRef.current=tables;},[tables]);
+
   // Load data on mount
   useEffect(()=>{
     async function load(){
       try{
-        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,combosRes]=await Promise.all([
+        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,combosRes,ingsRes]=await Promise.all([
           fetch("/api/tables").then(r=>r.json()),
           fetch("/api/menu/items?include=modifiers").then(r=>r.json()),
           fetch("/api/orders?status=open").then(r=>r.json()),
@@ -1125,50 +1415,36 @@ export default function POS({session}){
           fetch("/api/orders?status=bill").then(r=>r.json()),
           fetch("/api/auth/staff").then(r=>r.json()),
           fetch("/api/combos").then(r=>r.json()),
+          fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
         ]);
 
+        // Build set of modifier ingredient IDs (gracefully empty if migration not run yet)
+        const modifierIngIds=new Set(
+          (Array.isArray(ingsRes)?ingsRes:[]).filter(i=>i.is_modifier).map(i=>i.id)
+        );
+
         // Build grouped menu
-        const catMap={};
-        if(Array.isArray(menuRes)){
-          menuRes.forEach(item=>{
-            const cat=item.category;if(!cat)return;
-            if(!catMap[cat.id]) catMap[cat.id]={id:cat.id,name:cat.name,emoji:cat.emoji||"🍽️",items:[],position:cat.position??0};
-            catMap[cat.id].items.push({
-              id:item.id,name:item.name,emoji:item.emoji||"🍽️",
-              price:item.price,vat:item.vat_rate,stock:item.stock,
-              mods:(item.modifiers||[]).map(m=>({
-                id:m.id,name:m.name,required:m.required,
-                options:(m.options||[]).map(o=>({id:o.id,label:o.label,price:o.price||0})),
-              })),
-            });
-          });
-        }
-        const mappedMenu=Object.values(catMap).sort((a,b)=>a.position-b.position);
-        if(Array.isArray(combosRes)&&combosRes.length>0){
-          mappedMenu.push({
-            id:"__combos__",name:"Menus",emoji:"📋",position:9999,
-            items:combosRes.map(c=>({
-              id:`combo_${c.id}`,comboId:c.id,
-              name:c.name,emoji:"📋",
-              price:c.price||0,vat:23,stock:null,
-              mods:[],isCombo:true,
-            })),
-          });
-        }
+        const mappedMenu=buildMenu(menuRes,combosRes,modifierIngIds);
 
         // Build stock map
         const stock={};
         if(Array.isArray(menuRes)) menuRes.forEach(item=>{if(item.stock!==null)stock[item.id]=item.stock;});
 
-        // Build orders map
+        // Build orders map — ignore stale orders (>24h) so abandoned/unpaid
+        // test orders stop occupying tables and blocking new orders.
+        const staleCutoff=Date.now()-24*60*60*1000;
+        const isRecent=o=>!o.created_at||new Date(o.created_at).getTime()>=staleCutoff;
         const allOrders={};
-        [...(Array.isArray(openRes)?openRes:[]),...(Array.isArray(sentRes)?sentRes:[]),...(Array.isArray(billRes)?billRes:[])].forEach(o=>{
-          allOrders[o.id]=mapOrder(o);
-        });
-        // Tables already confirmed ready by KDS
-        if(Array.isArray(billRes)){
-          const initialReady=new Set(billRes.map(o=>o.table?.label).filter(Boolean));
-          if(initialReady.size>0) setReadyTables(initialReady);
+        [...(Array.isArray(openRes)?openRes:[]),...(Array.isArray(sentRes)?sentRes:[]),...(Array.isArray(billRes)?billRes:[])]
+          .filter(isRecent)
+          .forEach(o=>{
+            allOrders[o.id]=mapOrder(o);
+          });
+        // Orders already confirmed ready by KDS
+        if(Array.isArray(billRes)&&billRes.length>0){
+          const initialReady=new Set(billRes.filter(isRecent).map(o=>o.id));
+          setReadyOrders(initialReady);
+          readyOrdersRef.current=initialReady;
         }
 
         // Build table → order map
@@ -1220,27 +1496,113 @@ export default function POS({session}){
   },[]);
 
   // Poll for KDS "Marcar Pronto" → orders that become "bill" unlock payment
+  useEffect(()=>{readyOrdersRef.current=readyOrders;},[readyOrders]);
+
   useEffect(()=>{
     const tick=async()=>{
       try{
         const data=await fetch("/api/orders?status=bill").then(r=>r.json());
-        if(!Array.isArray(data)||data.length===0) return;
-        data.forEach(o=>{
-          const label=o.table?.label;
-          if(label) setReadyTables(p=>{
-            if(p.has(label)) return p;
-            const n=new Set(p);n.add(label);
-            setKdsNotif({label});
-            addToast(`KDS — Mesa ${label} pronta para servir`,T.success);
+        if(!Array.isArray(data)) return;
+
+        const newlyReady=data.filter(o=>!readyOrdersRef.current.has(o.id));
+        if(newlyReady.length>0){
+          const readyIds=new Set(newlyReady.map(o=>o.id));
+          setReadyOrders(prev=>{
+            const n=new Set(prev);
+            newlyReady.forEach(o=>n.add(o.id));
             return n;
           });
-          setOrders(p=>p[o.id]?{...p,[o.id]:{...p[o.id]}}:p);
-        });
+          // Mark the currently-sent lines as delivered (durable per line, so a
+          // later batch keeps these "Entregue" while the new one stays "Enviado").
+          setOrders(prev=>{
+            const next={...prev};let changed=false;
+            for(const id of readyIds){
+              const o=prev[id];if(!o)continue;
+              next[id]={...o,items:o.items.map(i=>(i.sent&&!i.cancelled&&!i.delivered)?{...i,delivered:true}:i)};
+              changed=true;
+            }
+            return changed?next:prev;
+          });
+          newlyReady.forEach(o=>{
+            const label=o.table?.label;
+            if(label){
+              setKdsNotif({label});
+              addToast(`KDS — Mesa ${label} pronta para servir`,T.success);
+            }
+          });
+        }
       }catch{}
     };
     const id=setInterval(tick,4000);
     return()=>clearInterval(id);
   },[addToast]);
+
+  // Live sync: poll tables + orders every 5s so changes made by other
+  // users (other waiters / manager) appear without re-entering a table.
+  useEffect(()=>{
+    if(loading) return;
+    const sync=async()=>{
+      try{
+        const [tablesRes,openRes,sentRes,billRes,menuRes,combosRes,ingsRes]=await Promise.all([
+          fetch("/api/tables").then(r=>r.json()),
+          fetch("/api/orders?status=open").then(r=>r.json()),
+          fetch("/api/orders?status=sent").then(r=>r.json()),
+          fetch("/api/orders?status=bill").then(r=>r.json()),
+          fetch("/api/menu/items?include=modifiers").then(r=>r.json()).catch(()=>null),
+          fetch("/api/combos").then(r=>r.json()).catch(()=>null),
+          fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
+        ]);
+        if(!Array.isArray(tablesRes)) return;
+
+        // Rebuild menu (modifiers, linked library mods, combos) + refresh stock,
+        // so changes made in the Backoffice appear without restarting the POS.
+        if(Array.isArray(menuRes)){
+          const modifierIngIds=new Set((Array.isArray(ingsRes)?ingsRes:[]).filter(i=>i.is_modifier).map(i=>i.id));
+          setMenu(buildMenu(menuRes,combosRes,modifierIngIds));
+          const freshStock={};
+          menuRes.forEach(it=>{if(it.stock!==null)freshStock[it.id]=it.stock;});
+          setMenuStock(freshStock);
+        }
+
+        const staleCutoff=Date.now()-24*60*60*1000;
+        const isRecent=o=>!o.created_at||new Date(o.created_at).getTime()>=staleCutoff;
+        const serverOrders=[...(Array.isArray(openRes)?openRes:[]),...(Array.isArray(sentRes)?sentRes:[]),...(Array.isArray(billRes)?billRes:[])].filter(isRecent);
+
+        const editingId=activeTableIdRef.current&&screenRef.current==="order"
+          ?(()=>{const at=tablesRef.current.find(t=>t.id===activeTableIdRef.current);return at?.orderId||null;})()
+          :null;
+
+        // Merge orders: keep local drafts + the order currently being edited
+        setOrders(prev=>{
+          const next={};
+          Object.values(prev).forEach(o=>{if(o.draft)next[o.id]=o;}); // keep local drafts
+          serverOrders.forEach(o=>{
+            if(o.id===editingId&&prev[o.id]){
+              next[o.id]=prev[o.id]; // don't clobber items the user is editing
+            }else{
+              next[o.id]=mapOrder(o);
+            }
+          });
+          // Preserve the active order if the server no longer lists it (e.g. just created)
+          if(editingId&&prev[editingId]&&!next[editingId]) next[editingId]=prev[editingId];
+          return next;
+        });
+
+        // Map server orders to tables
+        const orderByTableDbId={};
+        serverOrders.forEach(o=>{if(o.table_id)orderByTableDbId[o.table_id]=o.id;});
+        setTables(prev=>prev.map(t=>{
+          const f=tablesRes.find(ft=>ft.label===t.id);
+          if(!f) return t; // dynamic takeaway/counter rows aren't in DB tables
+          const hasLocalDraft=t.orderId&&String(t.orderId).startsWith("draft_");
+          const serverOrderId=orderByTableDbId[t.dbId]||null;
+          return {...t,status:f.status,orderId:hasLocalDraft?t.orderId:serverOrderId};
+        }));
+      }catch{}
+    };
+    const id=setInterval(sync,5000);
+    return()=>clearInterval(id);
+  },[loading]);
 
   const zones=[...new Set(tables.map(t=>t.zone))];
   const activeTable=activeTableId?tables.find(t=>t.id===activeTableId):null;
@@ -1252,15 +1614,17 @@ export default function POS({session}){
       addToast("Mesa em uso por outro funcionário",T.blue);
       return;
     }
-    if(table.status==="free"||table.status==="reserved"){
-      const draftId=`draft_${table.id}`;
-      const draftOrder={id:draftId,tableId:table.id,tableDbId:table.dbId,waiterId:currentStaff.id,items:[],notes:"",status:"open",paid:false,draft:true};
-      setOrders(p=>({...p,[draftId]:draftOrder}));
-      setTables(p=>p.map(t=>t.id===table.id?{...t,orderId:draftId,waiter:currentStaff.id,since:Date.now()}:t));
+    // Open the existing order only if one is actually loaded for this table
+    if(table.orderId&&orders[table.orderId]){
       setActiveTableId(table.id);
       setScreen("order");
       return;
     }
+    // No real order (free, reserved, or stuck "occupied" with no open order) → fresh draft
+    const draftId=`draft_${table.id}`;
+    const draftOrder={id:draftId,tableId:table.id,tableDbId:table.dbId,waiterId:currentStaff.id,items:[],notes:"",status:"open",paid:false,draft:true};
+    setOrders(p=>({...p,[draftId]:draftOrder}));
+    setTables(p=>p.map(t=>t.id===table.id?{...t,orderId:draftId,waiter:currentStaff.id,since:Date.now()}:t));
     setActiveTableId(table.id);
     setScreen("order");
   };
@@ -1305,21 +1669,40 @@ export default function POS({session}){
       setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:realOrderId,status:"occupied"}:t));
     }
 
-    // Optimistic update
-    setOrders(p=>{const o=p[realOrderId];if(!o)return p;return{...p,[realOrderId]:{...o,items:(o.items||[]).map(i=>({...i,sent:true})),sentAt:Date.now()}};});
+    // Optimistic update — mark the pending items as sent and assign them the
+    // next batch number, so previously-delivered batches keep their state.
+    setOrders(p=>{
+      const o=p[realOrderId];if(!o)return p;
+      const nextBatch=(o.items||[]).reduce((m,i)=>Math.max(m,i.sentBatch??0),0)+1;
+      const pendingIds=new Set(pending.map(pi=>pi.lineId));
+      return{...p,[realOrderId]:{...o,items:(o.items||[]).map(i=>pendingIds.has(i.lineId)?{...i,sent:true,sentBatch:nextBatch}:i),sentAt:Date.now()}};
+    });
     try{
-      await Promise.all(pending.map(item=>
+      // Create each line; surface the real error instead of failing silently
+      const lineResults=await Promise.all(pending.map(item=>
         fetch(`/api/orders/${realOrderId}/lines`,{
           method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
-            item_id:item.itemId,name:item.name,qty:item.qty,
+            item_id:item.itemId||null,
+            combo_id:item.comboId||null,
+            name:item.name,qty:item.qty,
             unit_price:item.price,extra_price:item.extraPrice||0,
-            vat_rate:item.vat,modifiers:item.mods,notes:item.notes||null,
+            vat_rate:item.vat,
+            modifiers:item.comboItems?item.comboItems.filter(ci=>ci.included).map(ci=>ci.name):item.mods,
+            notes:item.notes||null,
           }),
         })
       ));
+      const failed=lineResults.find(r=>!r.ok);
+      if(failed){
+        const err=await failed.json().catch(()=>({}));
+        throw new Error(err.error||"Erro ao gravar itens");
+      }
       const res=await fetch(`/api/orders/${realOrderId}/send`,{method:"POST"});
-      if(!res.ok) throw new Error();
+      if(!res.ok){
+        const err=await res.json().catch(()=>({}));
+        throw new Error(err.error||"Erro ao enviar para cozinha");
+      }
       setMenuStock(ms=>{
         const u={...ms};
         pending.forEach(i=>{if(u[i.itemId]!==undefined)u[i.itemId]=Math.max(0,(u[i.itemId]||0)-i.qty);});
@@ -1327,12 +1710,13 @@ export default function POS({session}){
       });
       const tl=activeTable?.id||"?";
       addToast(`Pedido enviado — ${tl}`,T.accent);
-    }catch{
+      setReadyOrders(prev=>{const n=new Set(prev);n.delete(realOrderId);return n;});
+    }catch(e){
       setOrders(p=>({...p,[realOrderId]:{...p[realOrderId],items:(p[realOrderId]?.items||[]).map(i=>{
         const wasPending=pending.find(pi=>pi.lineId===i.lineId);
         return wasPending?{...i,sent:false}:i;
       })}}));
-      addToast("Erro ao enviar pedido",T.danger);
+      addToast(e?.message?`Erro: ${e.message}`:"Erro ao enviar pedido",T.danger);
     }
   };
 
@@ -1345,7 +1729,7 @@ export default function POS({session}){
         body:JSON.stringify({method:payData.method,amount:total,split_n:payData.split}),
       });
       addToast(`Pagamento — ${activeTableId} — ${fmtEur(total)}`,T.success);
-      setReadyTables(p=>{const n=new Set(p);n.delete(activeTableId);return n;});
+      setReadyOrders(prev=>{const n=new Set(prev);n.delete(activeOrderId);return n;});
       setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],paid:true}}));
       setTables(p=>p.map(t=>{
         if(t.id!==activeTableId) return t;
@@ -1455,6 +1839,7 @@ export default function POS({session}){
 
         {screen==="fundo"&&(
           <FundoManeioScreen
+            appName={appName}
             staffName={currentStaff.name}
             onConfirm={async(v)=>{
               setFundoValue(v);
@@ -1478,7 +1863,7 @@ export default function POS({session}){
             onBack={()=>{setActiveTableId(null);setScreen("floor");}}
             onUpdateOrder={handleUpdateOrder}
             onSendKitchen={handleSendKitchen}
-            kdsReady={readyTables.has(activeTableId)}
+            kdsReady={readyOrders.has(activeOrderId)}
             onPayment={handlePayment}
             onCancelLine={handleCancelLine}
             onTransfer={handleTransfer}

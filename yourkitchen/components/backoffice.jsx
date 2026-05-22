@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
@@ -51,11 +51,11 @@ function getConversions(unit,qty){
     .filter(c=>c.val>=0.001&&c.val<1e6);
 }
 const STATUS_C={
-  free:{label:"Livre",c:T.success,bg:T.successDim},
-  occupied:{label:"Ocupada",c:T.warning,bg:T.warningDim},
-  bill:{label:"Conta",c:"#F7D44A",bg:"#F7D44A18"},
-  reserved:{label:"Reserva",c:T.purple,bg:T.purpleDim},
-  locked:{label:"Em Uso",c:T.blue,bg:T.blueDim},
+  free:    {label:"Livre",   c:T.success, bg:T.successDim},
+  occupied:{label:"Ocupada", c:T.warning, bg:T.warningDim},
+  bill:    {label:"Servido", c:T.danger,  bg:T.dangerDim},
+  reserved:{label:"Reserva", c:T.purple,  bg:T.purpleDim},
+  locked:  {label:"Em Uso",  c:T.blue,    bg:T.blueDim},
 };
 const LEVEL_C={INFO:{c:T.accent,bg:T.accentDim},WARN:{c:T.warning,bg:T.warningDim},ERROR:{c:T.danger,bg:T.dangerDim},ACTION:{c:T.teal,bg:T.tealDim},CANCEL:{c:T.danger,bg:T.dangerDim}};
 
@@ -221,6 +221,7 @@ const Ic={
   Grid:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><rect x="3"y="3"width="7"height="7"rx="1"/><rect x="14"y="3"width="7"height="7"rx="1"/><rect x="14"y="14"width="7"height="7"rx="1"/><rect x="3"y="14"width="7"height="7"rx="1"/></svg>,
   MapPin:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12"cy="10"r="3"/></svg>,
   Combo:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12"y1="22.08"x2="12"y2="12"/></svg>,
+  Layers:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
 };
 
 const TOOLTIP_STYLE={background:T.elevated,border:`1px solid ${T.border}`,borderRadius:8,fontFamily:"'DM Mono',monospace",fontSize:12,color:T.text};
@@ -319,44 +320,77 @@ function Analytics(){
   const [hourData,setHourData]=useState([]);
   const [payData,setPayData]=useState([]);
   const [topItems,setTopItems]=useState([]);
-  const periods=["hoje","7d","30d"];
-  const periodLabel={"hoje":"Hoje","7d":"7 Dias","30d":"30 Dias"};
+  const [topCombos,setTopCombos]=useState([]);
+  const [prepItems,setPrepItems]=useState([]);
+  const [avgPrepMin,setAvgPrepMin]=useState(0);
+  const [expandedCombo,setExpandedCombo]=useState(null);
+  const todayStr=(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;})();
+  const [customFrom,setCustomFrom]=useState(todayStr);
+  const [customTo,setCustomTo]=useState(todayStr);
+  const periods=["hoje","7d","30d","custom"];
+  const periodLabel={"hoje":"Hoje","7d":"7 Dias","30d":"30 Dias","custom":"Personalizado"};
   useEffect(()=>{
-    const now=new Date();
-    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    let from;
-    if(period==="hoje")from=today.toISOString();
-    else if(period==="7d")from=new Date(+today-6*86400000).toISOString();
-    else from=new Date(+today-29*86400000).toISOString();
-    const to=new Date(+today+86400000).toISOString();
+    let from,to;
+    if(period==="custom"){
+      if(!customFrom||!customTo)return;
+      from=new Date(customFrom+"T00:00:00").toISOString();
+      to=new Date(customTo+"T23:59:59").toISOString();
+    }else{
+      const now=new Date();
+      const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      if(period==="hoje")from=today.toISOString();
+      else if(period==="7d")from=new Date(+today-6*86400000).toISOString();
+      else from=new Date(+today-29*86400000).toISOString();
+      to=new Date(+today+86400000).toISOString();
+    }
     const q=`from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     Promise.all([
       fetch(`/api/analytics/summary?${q}`).then(r=>r.json()),
-      fetch(`/api/analytics/hourly`).then(r=>r.json()),
+      fetch(`/api/analytics/hourly?${q}`).then(r=>r.json()),
       fetch(`/api/analytics/payments?${q}`).then(r=>r.json()),
-      fetch(`/api/analytics/items?${q}&limit=5`).then(r=>r.json()),
-    ]).then(([sum,hour,pay,items])=>{
+      fetch(`/api/analytics/items?${q}&limit=10`).then(r=>r.json()),
+    ]).then(([sum,hour,pay,itemsData])=>{
       if(sum&&!sum.error)setSummary(sum);
-      setHourData(Array.isArray(hour)?hour.map(h=>({h:h.hour.slice(0,5),v:h.revenue})):[]);
+      setHourData(Array.isArray(hour)?hour.map(h=>({h:h.label,v:h.revenue})):[]);
       const totalRev=Array.isArray(pay)?pay.reduce((s,p)=>s+p.total,0):0;
       setPayData(Array.isArray(pay)?pay.map((p,i)=>({
         method:p.method,pct:totalRev>0?Math.round((p.total/totalRev)*100):0,
         color:[T.accent,T.teal,T.warning,T.success][i%4],
       })):[]);
-      setTopItems(Array.isArray(items)?items:[]);
+      if(itemsData&&!itemsData.error){
+        setTopItems(Array.isArray(itemsData.standalone)?itemsData.standalone:[]);
+        setTopCombos(Array.isArray(itemsData.combos)?itemsData.combos:[]);
+        setPrepItems(Array.isArray(itemsData.prep)?itemsData.prep:[]);
+        setAvgPrepMin(itemsData.avgPrepMin||0);
+      }
     }).catch(()=>{});
-  },[period]);
+  },[period,customFrom,customTo]);
   const exportCSV=()=>{
-    const rows=[["Item","Qtd","Receita"],...topItems.map(i=>[i.name,i.qty,i.revenue])];
+    const rows=[["Tipo","Item","Sub-item","Qtd","Receita"]];
+    topItems.forEach(i=>rows.push(["item",i.name,"",i.qty,i.revenue]));
+    topCombos.forEach(c=>{
+      rows.push(["menu",c.name,"",c.qty,c.revenue]);
+      (c.subItems||[]).forEach(s=>rows.push(["menu_subitem",c.name,s.name,s.qty,""]));
+    });
+    rows.push([]);rows.push(["Tipo","Item","Tempo médio (min)","Amostras",""]);
+    prepItems.forEach(p=>rows.push(["prep",p.name,p.avgMin,p.count,""]));
     const csv=rows.map(r=>r.join(",")).join("\n");
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="analytics.csv";a.click();
   };
   const maxItem=topItems.length>0?Math.max(...topItems.map(i=>i.revenue)):1;
+  const maxCombo=topCombos.length>0?Math.max(...topCombos.map(c=>c.revenue)):1;
   return(
     <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-        <div style={{display:"flex",gap:6}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:12,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
           {periods.map(p=><button key={p}className={`filter-chip${period===p?" active":""}`}onClick={()=>setPeriod(p)}>{periodLabel[p]}</button>)}
+          {period==="custom"&&(
+            <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:4}}>
+              <input type="date"className="form-input"style={{width:150,padding:"6px 8px"}}value={customFrom}max={customTo||todayStr}onChange={e=>setCustomFrom(e.target.value)}/>
+              <span style={{fontSize:12,color:T.textMuted}}>até</span>
+              <input type="date"className="form-input"style={{width:150,padding:"6px 8px"}}value={customTo}min={customFrom}max={todayStr}onChange={e=>setCustomTo(e.target.value)}/>
+            </div>
+          )}
         </div>
         <button className="btn btn-ghost"onClick={exportCSV}><Ic.Export/>Exportar CSV</button>
       </div>
@@ -366,6 +400,9 @@ function Analytics(){
           {label:"Pedidos",value:String(summary?.orders??0),color:T.accent},
           {label:"Ticket Médio",value:summary?fmtEur(summary.avgTicket):"—",color:T.teal},
           {label:"Itens Vendidos",value:String(summary?.items??0),color:T.warning},
+          {label:"Itens / Pedido",value:String(summary?.avgItemsPerOrder??0),color:T.blue},
+          {label:"Prep. Média",value:avgPrepMin?`${avgPrepMin} min`:"—",color:T.purple},
+          {label:"Itens Anulados",value:String(summary?.cancelledItems??0),color:T.danger},
         ].map(k=>(
           <div key={k.label}className="kpi-card">
             <div className="kpi-label">{k.label}</div>
@@ -375,7 +412,7 @@ function Analytics(){
       </div>
       <div className="grid-2">
         <div className="card">
-          <div className="card-head"><div className="card-title">Receita por hora (hoje)</div></div>
+          <div className="card-head"><div className="card-title">Receita {period==="hoje"?"por hora (hoje)":period==="custom"?(customFrom===customTo?"por hora":"por dia"):period==="7d"?"por dia (7 dias)":"por dia (30 dias)"}</div></div>
           <div className="card-body">
             <ResponsiveContainer width="100%"height={180}>
               <LineChart data={hourData}>
@@ -406,21 +443,96 @@ function Analytics(){
           </div>
         </div>
       </div>
-      <div className="card">
-        <div className="card-head"><div className="card-title">Top Itens</div></div>
+      <div className="grid-2">
+        {/* Top standalone items */}
+        <div className="card">
+          <div className="card-head"><div className="card-title">Top Itens <span style={{fontSize:11,color:T.textMuted,fontWeight:400}}>(avulso)</span></div></div>
+          <div className="card-body"style={{display:"flex",flexDirection:"column",gap:12}}>
+            {topItems.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados</div>}
+            {topItems.map((item,i)=>(
+              <div key={item.name}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:5}}>
+                  <span><span style={{color:T.textMuted,marginRight:8,fontFamily:"'DM Mono',monospace"}}>#{i+1}</span><span style={{fontWeight:600}}>{item.name}</span></span>
+                  <span className="mono"style={{color:T.accent}}>{fmtEur(item.revenue)} <span style={{color:T.textMuted}}>({item.qty}×)</span></span>
+                </div>
+                <div style={{background:T.border,borderRadius:4,height:6}}>
+                  <div style={{background:T.accent,width:`${(item.revenue/maxItem)*100}%`,height:"100%",borderRadius:4}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Top combos with choice breakdown */}
+        <div className="card">
+          <div className="card-head"><div className="card-title">Top Menus <span style={{fontSize:11,color:T.textMuted,fontWeight:400}}>(clica para detalhe)</span></div></div>
+          <div className="card-body"style={{display:"flex",flexDirection:"column",gap:10}}>
+            {topCombos.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados</div>}
+            {topCombos.map((combo,i)=>{
+              const isExpanded=expandedCombo===combo.name;
+              return(
+                <div key={combo.name}style={{borderRadius:8,overflow:"hidden",border:`1px solid ${T.border}`}}>
+                  <div
+                    style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",cursor:"pointer",background:isExpanded?T.elevated:T.card,transition:"background .12s"}}
+                    onClick={()=>setExpandedCombo(isExpanded?null:combo.name)}
+                  >
+                    <span style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{color:T.textMuted,fontSize:11,fontFamily:"'DM Mono',monospace"}}>#{i+1}</span>
+                      <span style={{fontWeight:700,fontSize:13}}>📋 {combo.name}</span>
+                    </span>
+                    <span style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span className="mono"style={{color:T.warning,fontSize:12}}>{fmtEur(combo.revenue)} <span style={{color:T.textMuted}}>({combo.qty}×)</span></span>
+                      <svg width="12"height="12"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"style={{transform:isExpanded?"rotate(180deg)":"rotate(0)",transition:"transform .15s",color:T.textMuted}}><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
+                  {/* Bar */}
+                  <div style={{background:T.border,height:4,margin:"0 12px"}}>
+                    <div style={{background:T.warning,width:`${(combo.revenue/maxCombo)*100}%`,height:"100%",borderRadius:2}}/>
+                  </div>
+                  {/* Expanded sub-items breakdown */}
+                  {isExpanded&&combo.subItems&&combo.subItems.length>0&&(
+                    <div style={{padding:"8px 12px 10px",display:"flex",flexDirection:"column",gap:5,borderTop:`1px solid ${T.border}`,marginTop:4,background:T.card}}>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:4}}>Composição ({combo.qty} pedidos)</div>
+                      {combo.subItems.map(sub=>{
+                        const pct=combo.qty>0?Math.round((sub.qty/combo.qty)*100):0;
+                        return(
+                          <div key={sub.name}>
+                            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                              <span style={{color:T.textSec}}>↳ {sub.name}</span>
+                              <span className="mono"style={{color:T.teal,fontSize:11}}>{sub.qty}× <span style={{color:T.textMuted}}>({pct}%)</span></span>
+                            </div>
+                            <div style={{background:T.border,borderRadius:3,height:4}}>
+                              <div style={{background:T.teal,width:`${pct}%`,height:"100%",borderRadius:3,transition:"width .4s"}}/>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {isExpanded&&(!combo.subItems||combo.subItems.length===0)&&(
+                    <div style={{padding:"8px 12px",fontSize:12,color:T.textMuted}}>Sem detalhe de composição (pedidos anteriores à migração)</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {/* Average prep time per item (KDS) */}
+      <div className="card"style={{marginTop:16}}>
+        <div className="card-head"><div className="card-title">Tempo Médio de Preparação <span style={{fontSize:11,color:T.textMuted,fontWeight:400}}>(por item · do envio até "Pronto")</span></div></div>
         <div className="card-body"style={{display:"flex",flexDirection:"column",gap:12}}>
-          {topItems.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados</div>}
-          {topItems.map((item,i)=>(
-            <div key={item.name}>
+          {prepItems.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados de preparação no período. (Os tempos começam a ser registados quando o KDS marca pedidos como "Pronto".)</div>}
+          {(()=>{const maxPrep=prepItems.length>0?Math.max(...prepItems.map(p=>p.avgMin)):1;return prepItems.map(p=>(
+            <div key={p.name}>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:5}}>
-                <span><span style={{color:T.textMuted,marginRight:8,fontFamily:"'DM Mono',monospace"}}>#{i+1}</span><span style={{fontWeight:600}}>{item.name}</span></span>
-                <span className="mono"style={{color:T.accent}}>{fmtEur(item.revenue)} <span style={{color:T.textMuted}}>({item.qty} un)</span></span>
+                <span style={{fontWeight:600}}>{p.name}</span>
+                <span className="mono"style={{color:T.purple}}>{p.avgMin} min <span style={{color:T.textMuted}}>({p.count}×)</span></span>
               </div>
               <div style={{background:T.border,borderRadius:4,height:6}}>
-                <div style={{background:T.accent,width:`${(item.revenue/maxItem)*100}%`,height:"100%",borderRadius:4}}/>
+                <div style={{background:T.purple,width:`${(p.avgMin/maxPrep)*100}%`,height:"100%",borderRadius:4}}/>
               </div>
             </div>
-          ))}
+          ));})()}
         </div>
       </div>
     </div>
@@ -443,16 +555,27 @@ function MenuStock(){
   const [selIngredient,setSelIngredient]=useState("");
   const [selIngQty,setSelIngQty]=useState("1");
   const [selIngUnit,setSelIngUnit]=useState("un");
+  const [allTemplates,setAllTemplates]=useState([]);
+  const [linkedTemplateIds,setLinkedTemplateIds]=useState([]);
+  const [vatRates,setVatRates]=useState([6,13,23]);
 
   useEffect(()=>{
     Promise.all([
       fetch("/api/menu/items?active=false").then(r=>r.json()),
       fetch("/api/menu/categories").then(r=>r.json()),
       fetch("/api/ingredients").then(r=>r.json()),
-    ]).then(([its,cats,ings])=>{
+      fetch("/api/menu/modifiers").then(r=>r.json()),
+      fetch("/api/settings").then(r=>r.json()).catch(()=>null),
+    ]).then(([its,cats,ings,tpls,settings])=>{
       const catList=Array.isArray(cats)?cats:[];
       setCategories(catList);
       setAllIngredients(Array.isArray(ings)?ings:[]);
+      setAllTemplates(Array.isArray(tpls)?tpls:[]);
+      // VAT options come from the configured fiscal rates (active ones)
+      const rates=settings&&!settings.error?settings["fiscal.rates"]:null;
+      if(Array.isArray(rates)&&rates.length>0){
+        setVatRates(rates.filter(r=>r.active!==false).map(r=>Number(r.value)).filter(v=>!isNaN(v)));
+      }
       if(Array.isArray(its)){
         setItems(its.map(i=>({
           id:i.id,catId:i.category_id,cat:i.category?.name||"",
@@ -468,22 +591,34 @@ function MenuStock(){
 
   const openEdit=async(item)=>{
     setForm({...item,stock:item.stock===null||item.stock===undefined?"":item.stock});
-    setMods([]);setLinkedIngredients([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");setEditItem(item.id);
+    setMods([]);setLinkedIngredients([]);setLinkedTemplateIds([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");setEditItem(item.id);
     try{
-      const [detail,ings]=await Promise.all([
+      const [detail,ings,links]=await Promise.all([
         fetch(`/api/menu/items/${item.id}`).then(r=>r.json()),
         fetch(`/api/menu/items/${item.id}/ingredients`).then(r=>r.json()),
+        fetch(`/api/menu/items/${item.id}/modifier-links`).then(r=>r.json()),
       ]);
       setMods(detail.modifiers||[]);
       setLinkedIngredients(Array.isArray(ings)?ings:[]);
+      setLinkedTemplateIds(Array.isArray(links)?links.map(l=>l.template_id):[]);
     }catch{}
   };
 
   const openNew=()=>{
     const first=categories[0];
     setForm({catId:first?.id||"",cat:first?.name||"",name:"",price:"",vat:23,stock:"",active:true});
-    setMods([]);setLinkedIngredients([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");
+    setMods([]);setLinkedIngredients([]);setLinkedTemplateIds([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");
     setEditItem("new");
+  };
+
+  const toggleTemplate=async(tplId)=>{
+    const isLinked=linkedTemplateIds.includes(tplId);
+    setLinkedTemplateIds(p=>isLinked?p.filter(x=>x!==tplId):[...p,tplId]);
+    if(editItem==="new")return; // applied after item creation in saveItem
+    const method=isLinked?"DELETE":"POST";
+    await fetch(`/api/menu/items/${editItem}/modifier-links`,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({template_id:tplId})}).catch(()=>{
+      setLinkedTemplateIds(p=>isLinked?[...p,tplId]:p.filter(x=>x!==tplId)); // rollback
+    });
   };
 
   const saveItem=async()=>{
@@ -500,9 +635,19 @@ function MenuStock(){
       const r=await fetch("/api/menu/items",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
       if(data.error){setErrMsg(data.error);return;}
+      if(mods.length>0){
+        await Promise.all(mods.map(m=>
+          fetch(`/api/menu/items/${data.id}/modifiers`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:m.name,required:m.required,options:m.options})}).catch(()=>{})
+        ));
+      }
       if(linkedIngredients.length>0){
         await Promise.all(linkedIngredients.map(li=>
           fetch(`/api/menu/items/${data.id}/ingredients`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ingredient_id:li.ingredient_id,qty:li.qty})}).catch(()=>{})
+        ));
+      }
+      if(linkedTemplateIds.length>0){
+        await Promise.all(linkedTemplateIds.map(tid=>
+          fetch(`/api/menu/items/${data.id}/modifier-links`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({template_id:tid})}).catch(()=>{})
         ));
       }
       setItems(p=>[...p,{id:data.id,catId:data.category_id,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active}]);
@@ -538,6 +683,15 @@ function MenuStock(){
   const openEditMod=(m)=>{setModForm({name:m.name,required:m.required,options:(m.options||[]).map(o=>({label:o.label,price:o.extra_price||0}))});setEditMod(m.id);};
   const saveMod=async()=>{
     const body={name:modForm.name,required:modForm.required,options:modForm.options.filter(o=>o.label.trim()).map(o=>({label:o.label,extra_price:parseFloat(o.price)||0}))};
+    if(editItem==="new"){
+      // Local-only: will be posted after item creation in saveItem
+      if(editMod==="new"){
+        setMods(p=>[...p,{id:`local_${Date.now()}`,name:body.name,required:body.required,options:body.options}]);
+      } else {
+        setMods(p=>p.map(m=>m.id===editMod?{...m,name:body.name,required:body.required,options:body.options}:m));
+      }
+      setEditMod(null);return;
+    }
     if(editMod==="new"){
       const r=await fetch(`/api/menu/items/${editItem}/modifiers`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
@@ -551,7 +705,7 @@ function MenuStock(){
   };
   const deleteMod=async(modId)=>{
     setMods(p=>p.filter(m=>m.id!==modId));
-    await fetch(`/api/menu/items/${editItem}/modifiers/${modId}`,{method:"DELETE"}).catch(()=>{});
+    if(editItem!=="new") await fetch(`/api/menu/items/${editItem}/modifiers/${modId}`,{method:"DELETE"}).catch(()=>{});
   };
   const addModOption=()=>setModForm(p=>({...p,options:[...p.options,{label:"",price:""}]}));
   const removeModOption=(i)=>setModForm(p=>({...p,options:p.options.filter((_,j)=>j!==i)}));
@@ -633,35 +787,55 @@ function MenuStock(){
               <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
               <div className="form-row">
                 <Sel label="Categoria"value={form.catId||""}onChange={e=>{const c=categories.find(x=>x.id===e.target.value);setForm(p=>({...p,catId:e.target.value,cat:c?.name||""}));}}>{categories.map(c=><option key={c.id}value={c.id}>{c.name}</option>)}</Sel>
-                <Sel label="IVA"value={form.vat||23}onChange={e=>setForm(p=>({...p,vat:e.target.value}))}><option value={6}>6%</option><option value={13}>13%</option><option value={23}>23%</option></Sel>
+                <Sel label="IVA"value={form.vat??23}onChange={e=>setForm(p=>({...p,vat:e.target.value}))}>
+                  {Array.from(new Set([...(vatRates.length?vatRates:[6,13,23]),Number(form.vat)].filter(v=>v!=null&&!isNaN(v)))).sort((a,b)=>a-b).map(v=><option key={v}value={v}>{v}%</option>)}
+                </Sel>
               </div>
               <div className="form-row"><Inp label="Preço (€)"type="number"step="0.01"value={form.price||""}onChange={e=>setForm(p=>({...p,price:e.target.value}))}/><Inp label="Stock (vazio = sem tracking)"type="number"value={form.stock===undefined?"":form.stock}onChange={e=>setForm(p=>({...p,stock:e.target.value}))}/></div>
               <div style={{display:"flex",alignItems:"center",gap:10}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Item activo no POS</span></div>
               {errMsg&&<div style={{marginTop:8,fontSize:12,color:T.danger,background:T.dangerDim,borderRadius:6,padding:"6px 10px"}}>{errMsg}</div>}
-              {editItem!=="new"&&(
-                <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                    <span className="form-label"style={{margin:0}}>Modificadores</span>
-                    <button className="btn btn-ghost btn-sm"onClick={openNewMod}><Ic.Plus/>Adicionar</button>
-                  </div>
-                  {mods.length===0&&<div style={{fontSize:12,color:T.textMuted,padding:"4px 0 8px"}}>Sem modificadores.</div>}
-                  {mods.map(m=>(
-                    <div key={m.id}className="mod-block">
-                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
-                        <div>
-                          <span style={{fontWeight:700,fontSize:13}}>{m.name}</span>
-                          {m.required&&<Badge color={T.danger}bg={T.dangerDim}style={{marginLeft:6}}>Obrigatório</Badge>}
-                          <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>{(m.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}</div>
+              <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
+                <span className="form-label"style={{display:"block",marginBottom:8}}>Modificadores da biblioteca</span>
+                {allTemplates.length===0&&<div style={{fontSize:11,color:T.textMuted}}>Sem modificadores na biblioteca. Cria em <strong>Modificadores</strong>.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {allTemplates.map(t=>{
+                    const linked=linkedTemplateIds.includes(t.id);
+                    return(
+                      <div key={t.id}onClick={()=>toggleTemplate(t.id)}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",border:`1px solid ${linked?T.accent+"55":T.border}`,background:linked?T.accentDim:T.card,borderRadius:8,cursor:"pointer"}}>
+                        <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${linked?T.accent:T.border}`,background:linked?T.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          {linked&&<svg width="10"height="10"viewBox="0 0 12 12"fill="none"><polyline points="2 6 5 9 10 3"stroke="#fff"strokeWidth="2"strokeLinecap="round"/></svg>}
                         </div>
-                        <div style={{display:"flex",gap:4,flexShrink:0,marginLeft:8}}>
-                          <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEditMod(m)}><Ic.Edit/></button>
-                          <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteMod(m.id)}><Ic.Trash/></button>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600}}>{t.name}{t.required&&<span style={{fontSize:10,color:T.danger,marginLeft:6}}>obrigatório</span>}</div>
+                          <div style={{fontSize:11,color:T.textMuted}}>{(t.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}</div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+              <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <span className="form-label"style={{margin:0}}>Personalizados (só este item)</span>
+                  <button className="btn btn-ghost btn-sm"onClick={openNewMod}><Ic.Plus/>Adicionar</button>
+                </div>
+                {mods.length===0&&<div style={{fontSize:12,color:T.textMuted,padding:"4px 0 8px"}}>Sem modificadores específicos deste item.</div>}
+                {mods.map(m=>(
+                  <div key={m.id}className="mod-block">
+                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+                      <div>
+                        <span style={{fontWeight:700,fontSize:13}}>{m.name}</span>
+                        {m.required&&<Badge color={T.danger}bg={T.dangerDim}style={{marginLeft:6}}>Obrigatório</Badge>}
+                        <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>{(m.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}</div>
+                      </div>
+                      <div style={{display:"flex",gap:4,flexShrink:0,marginLeft:8}}>
+                        <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEditMod(m)}><Ic.Edit/></button>
+                        <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteMod(m.id)}><Ic.Trash/></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
                 <span className="form-label"style={{display:"block",marginBottom:8}}>Ingredientes</span>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
@@ -918,6 +1092,110 @@ function CategoriesMgmt(){
   );
 }
 
+// ─── MODIFIERS LIBRARY ────────────────────────────────────────────────────────
+function ModifiersMgmt(){
+  const [templates,setTemplates]=useState([]);
+  const [edit,setEdit]=useState(null); // "new" | id | null
+  const [form,setForm]=useState({name:"",required:false,options:[{label:"",price:""}]});
+  const [saving,setSaving]=useState(false);
+
+  useEffect(()=>{
+    fetch("/api/menu/modifiers").then(r=>r.json()).then(d=>{if(Array.isArray(d))setTemplates(d);}).catch(()=>{});
+  },[]);
+
+  const openNew=()=>{setForm({name:"",required:false,options:[{label:"",price:""}]});setEdit("new");};
+  const openEdit=(t)=>{
+    setForm({name:t.name,required:!!t.required,options:(t.options||[]).map(o=>({label:o.label,price:o.extra_price||0}))});
+    if(form.options&&form.options.length===0)setForm(p=>({...p,options:[{label:"",price:""}]}));
+    setEdit(t.id);
+  };
+  const setOpt=(i,k,v)=>setForm(p=>({...p,options:p.options.map((o,j)=>j===i?{...o,[k]:v}:o)}));
+  const addOpt=()=>setForm(p=>({...p,options:[...p.options,{label:"",price:""}]}));
+  const removeOpt=(i)=>setForm(p=>({...p,options:p.options.filter((_,j)=>j!==i)}));
+
+  const save=async()=>{
+    if(!form.name.trim())return;
+    setSaving(true);
+    const body={
+      name:form.name.trim(),required:form.required,
+      options:form.options.filter(o=>o.label.trim()).map(o=>({label:o.label.trim(),extra_price:parseFloat(o.price)||0})),
+    };
+    try{
+      if(edit==="new"){
+        const r=await fetch("/api/menu/modifiers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        const d=await r.json();
+        if(!d.error)setTemplates(p=>[...p,d]);
+      } else {
+        const r=await fetch(`/api/menu/modifiers/${edit}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        const d=await r.json();
+        if(!d.error)setTemplates(p=>p.map(t=>t.id===edit?d:t));
+      }
+      setEdit(null);
+    }finally{setSaving(false);}
+  };
+  const del=async(id)=>{
+    if(!confirm("Apagar este modificador? Será removido de todos os itens ligados."))return;
+    const r=await fetch(`/api/menu/modifiers/${id}`,{method:"DELETE"});
+    if(r.status===204||r.ok)setTemplates(p=>p.filter(t=>t.id!==id));
+  };
+
+  return(
+    <div>
+      <div className="section-head">
+        <div className="section-h">{templates.length} modificadores na biblioteca</div>
+        <button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Modificador</button>
+      </div>
+      <div style={{fontSize:12,color:T.textMuted,marginBottom:12}}>
+        Define um modificador uma vez e liga-o a vários itens em <strong>Items do Menu</strong>. Editar aqui atualiza todos os itens ligados.
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
+        {templates.map(t=>(
+          <div key={t.id}className="card"style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14}}>{t.name}{t.required&&<Badge color={T.danger}bg={T.dangerDim}>obrigatório</Badge>}</div>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>
+                  {(t.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(t)}><Ic.Edit/></button>
+                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>del(t.id)}><Ic.Trash/></button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {templates.length===0&&<div className="empty-state">Sem modificadores. Cria o primeiro (ex: "Com ovo +€1").</div>}
+      </div>
+      {edit&&(
+        <div className="overlay"onClick={()=>setEdit(null)}>
+          <div className="modal"style={{width:440}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{edit==="new"?"Novo Modificador":"Editar Modificador"}</div><CloseBtn onClick={()=>setEdit(null)}/></div>
+            <div className="modal-body">
+              <div className="form-row">
+                <Inp label="Nome do Grupo"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+                <div className="form-group"style={{display:"flex",alignItems:"center",gap:10,paddingTop:22}}>
+                  <Toggle on={form.required}onChange={v=>setForm(p=>({...p,required:v}))}/><span style={{fontSize:13,color:T.textSec}}>Obrigatório</span>
+                </div>
+              </div>
+              <div className="form-label"style={{marginBottom:8}}>Opções</div>
+              {form.options.map((opt,i)=>(
+                <div key={i}style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-end"}}>
+                  <div style={{flex:2}}><input className="form-input"placeholder="Etiqueta (ex: Com ovo)"value={opt.label}onChange={e=>setOpt(i,"label",e.target.value)}/></div>
+                  <div style={{flex:1}}><input className="form-input"placeholder="+€ extra"type="number"step="0.01"value={opt.price}onChange={e=>setOpt(i,"price",e.target.value)}/></div>
+                  <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>removeOpt(i)}><Ic.Trash/></button>
+                </div>
+              ))}
+              <button className="btn btn-ghost btn-sm"onClick={addOpt}><Ic.Plus/>Adicionar opção</button>
+            </div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEdit(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name.trim()||saving}>Guardar</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── ZONES MGMT ───────────────────────────────────────────────────────────────
 function ZonesMgmt(){
   const [zones,setZones]=useState([]);
@@ -992,7 +1270,7 @@ function IngredientsMgmt(){
     }).catch(()=>{});
   },[]);
   const save=async()=>{
-    const body={name:form.name,unit:form.unit||"un",stock_qty:parseFloat(form.stock_qty)||0};
+    const body={name:form.name,unit:form.unit||"un",stock_qty:parseFloat(form.stock_qty)||0,is_modifier:!!form.is_modifier};
     if(editIng==="new"){
       const r=await fetch("/api/ingredients",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
@@ -1026,14 +1304,14 @@ function IngredientsMgmt(){
     <div>
       <div className="section-head">
         <div className="section-h">{ings.length} ingredientes</div>
-        <button className="btn btn-solid"onClick={()=>{setForm({name:"",unit:"g",stock_qty:0});setEditIng("new");}}><Ic.Plus/>Novo Ingrediente</button>
+        <button className="btn btn-solid"onClick={()=>{setForm({name:"",unit:"g",stock_qty:0,is_modifier:false});setEditIng("new");}}><Ic.Plus/>Novo Ingrediente</button>
       </div>
       <div className="filters-row">
         <input className="filter-input"placeholder="Pesquisar ingrediente..."value={search}onChange={e=>setSearch(e.target.value)}style={{width:260}}/>
       </div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th>Nome</th><th>Unidade</th><th>Stock</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Unidade</th><th>Stock</th><th>Modificador</th><th></th></tr></thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={4}><div className="empty-state">Sem ingredientes</div></td></tr>}
             {filtered.map(i=>(
@@ -1050,8 +1328,11 @@ function IngredientsMgmt(){
                     <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>adjustStock(i.id,1)}>+</button>
                   </div>
                 </td>
+                <td style={{textAlign:"center"}}>
+                  {i.is_modifier&&<Badge color={T.accent}bg={T.accentDim}>POS</Badge>}
+                </td>
                 <td><div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                  <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({name:i.name,unit:i.unit||"un",stock_qty:i.stock_qty||0});setEditIng(i.id);}}><Ic.Edit/></button>
+                  <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({name:i.name,unit:i.unit||"un",stock_qty:i.stock_qty||0,is_modifier:!!i.is_modifier});setEditIng(i.id);}}><Ic.Edit/></button>
                   <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteIng(i.id)}><Ic.Trash/></button>
                 </div></td>
               </tr>
@@ -1074,6 +1355,13 @@ function IngredientsMgmt(){
                 <label className="form-label">Stock atual</label>
                 <input className="form-input"type="number"step="0.001"min="0"value={form.stock_qty===undefined?"":form.stock_qty}onChange={e=>setForm(p=>({...p,stock_qty:e.target.value}))}/>
                 {(()=>{const cv=getConversions(form.unit,parseFloat(form.stock_qty)||0);return cv.length>0?<div style={{fontSize:11,color:T.textMuted,marginTop:5}}>{fmtQty(parseFloat(form.stock_qty)||0)} {form.unit} = {cv.map(c=>`${fmtQty(c.val)} ${c.unit}`).join(" = ")}</div>:null;})()}
+              </div>
+              <div className="form-group">
+                <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                  <input type="checkbox"checked={!!form.is_modifier}onChange={e=>setForm(p=>({...p,is_modifier:e.target.checked}))}/>
+                  <span className="form-label"style={{margin:0}}>Modificador de pedido (visível no POS)</span>
+                </label>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>O POS permite retirar ou adicionar extra deste ingrediente em cada item.</div>
               </div>
             </div>
             <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditIng(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
@@ -1264,6 +1552,7 @@ function CombosMgmt(){
   const [comboItems,setComboItems]=useState([]);
   const [selItem,setSelItem]=useState("");
   const [selQty,setSelQty]=useState("1");
+  const [selIsChoice,setSelIsChoice]=useState(false);
   useEffect(()=>{
     Promise.all([
       fetch("/api/combos").then(r=>r.json()),
@@ -1273,17 +1562,23 @@ function CombosMgmt(){
       if(Array.isArray(its))setAllItems(its.map(i=>({id:i.id,name:i.name,price:i.price,cat:i.category?.name||""})));
     }).catch(()=>{});
   },[]);
-  const openNew=()=>{setForm({name:"",description:"",price:"",active:true});setComboItems([]);setSelItem("");setSelQty("1");setEditCombo("new");};
-  const openEdit=(combo)=>{setForm({name:combo.name,description:combo.description||"",price:combo.price,active:combo.active});setComboItems((combo.items||[]).map(ci=>({item_id:ci.item_id,qty:ci.qty,item:ci.item})));setSelItem("");setSelQty("1");setEditCombo(combo.id);};
+  const openNew=()=>{setForm({name:"",description:"",price:"",active:true});setComboItems([]);setSelItem("");setSelQty("1");setSelIsChoice(false);setEditCombo("new");};
+  const openEdit=(combo)=>{
+    setForm({name:combo.name,description:combo.description||"",price:combo.price,active:combo.active});
+    setComboItems((combo.items||[]).map(ci=>({item_id:ci.item_id,qty:ci.qty,item:ci.item,is_choice:!!ci.is_choice,cat:ci.item?.category?.name||allItems.find(i=>i.id===ci.item_id)?.cat||""})));
+    setSelItem("");setSelQty("1");setSelIsChoice(false);setEditCombo(combo.id);
+  };
   const addItem=async()=>{
     if(!selItem)return;
     const item=allItems.find(i=>i.id===selItem);
     const qty=parseInt(selQty)||1;
-    const ci={item_id:selItem,qty,item:{id:selItem,name:item?.name||"",price:item?.price||0}};
-    if(editCombo==="new"){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");return;}
-    const r=await fetch(`/api/combos/${editCombo}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:selItem,qty})});
+    const cat=item?.cat||"";
+    // The choice "group" is simply the item's category
+    const ci={item_id:selItem,qty,item:{id:selItem,name:item?.name||"",price:item?.price||0},is_choice:selIsChoice,cat};
+    if(editCombo==="new"){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");setSelIsChoice(false);return;}
+    const r=await fetch(`/api/combos/${editCombo}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:selItem,qty,is_choice:selIsChoice,choice_group:cat})});
     const data=await r.json();
-    if(!data.error){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),{...data,item_id:data.item_id||selItem}]);setSelItem("");setSelQty("1");}
+    if(!data.error){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");setSelIsChoice(false);}
   };
   const removeItem=async(itemId)=>{
     setComboItems(p=>p.filter(x=>x.item_id!==itemId));
@@ -1295,7 +1590,7 @@ function CombosMgmt(){
       const r=await fetch("/api/combos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
       if(data.error)return;
-      await Promise.all(comboItems.map(ci=>fetch(`/api/combos/${data.id}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:ci.item_id,qty:ci.qty})}).catch(()=>{})));
+      await Promise.all(comboItems.map(ci=>fetch(`/api/combos/${data.id}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:ci.item_id,qty:ci.qty,is_choice:ci.is_choice,choice_group:ci.cat||""})}).catch(()=>{})));
       setCombos(p=>[...p,{...data,items:comboItems}]);
     } else {
       const r=await fetch(`/api/combos/${editCombo}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
@@ -1314,6 +1609,8 @@ function CombosMgmt(){
     setCombos(p=>p.map(c=>c.id===id?{...c,active:v}:c));
     await fetch(`/api/combos/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:v})}).catch(()=>setCombos(p=>p.map(c=>c.id===id?{...c,active:!v}:c)));
   };
+  const fixedStyle={fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:4,background:T.accentDim,color:T.accent,border:`1px solid ${T.accent}33`};
+  const choiceStyle={fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:4,background:T.tealDim,color:T.teal,border:`1px solid ${T.teal}33`};
   return(
     <div>
       <div className="section-head"><div className="section-h">{combos.length} menus</div><button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Menu</button></div>
@@ -1326,7 +1623,12 @@ function CombosMgmt(){
               <span className="mono"style={{color:T.accent,fontWeight:700,fontSize:14,flexShrink:0,marginLeft:8}}>{fmtEur(c.price)}</span>
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:12}}>
-              {items.map(ci=><span key={ci.item_id||ci.item?.id}className="tag">{ci.qty}x {ci.item?.name||"?"}</span>)}
+              {items.map(ci=>(
+                <span key={ci.item_id||ci.item?.id}className="tag"style={{display:"flex",alignItems:"center",gap:4}}>
+                  {ci.qty}x {ci.item?.name||"?"}
+                  {ci.is_choice&&<span style={choiceStyle}>{ci.cat||ci.item?.category?.name||ci.choice_group||"Escolha"}</span>}
+                </span>
+              ))}
               {items.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens</span>}
             </div>
             <div style={{display:"flex",gap:6,justifyContent:"space-between",alignItems:"center"}}>
@@ -1341,24 +1643,43 @@ function CombosMgmt(){
       </div>
       {editCombo&&(
         <div className="overlay"onClick={()=>setEditCombo(null)}>
-          <div className="modal"style={{width:520}}onClick={e=>e.stopPropagation()}>
+          <div className="modal"style={{width:560}}onClick={e=>e.stopPropagation()}>
             <div className="modal-hd"><div className="modal-title">{editCombo==="new"?"Novo Menu":"Editar Menu"}</div><CloseBtn onClick={()=>setEditCombo(null)}/></div>
             <div className="modal-body">
               <div className="form-row"><Inp label="Nome do Menu"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/><Inp label="Preco (€)"type="number"step="0.01"value={form.price||""}onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
               <Inp label="Descricao (opcional)"value={form.description||""}onChange={e=>setForm(p=>({...p,description:e.target.value}))}/>
               <div style={{marginTop:14,borderTop:`1px solid ${T.border}`,paddingTop:12}}>
-                <span className="form-label"style={{display:"block",marginBottom:8}}>Itens incluidos</span>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-                  {comboItems.map(ci=><span key={ci.item_id}className="tag">{ci.qty}x {ci.item?.name||"?"}<button className="tag-del"onClick={()=>removeItem(ci.item_id)}>x</button></span>)}
+                <span className="form-label"style={{display:"block",marginBottom:8}}>Itens do menu</span>
+                <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:8}}>
+                  {comboItems.map(ci=>(
+                    <div key={ci.item_id}style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:T.card,borderRadius:6,border:`1px solid ${T.border}`}}>
+                      <span style={{flex:1,fontSize:13}}>{ci.qty}x {ci.item?.name||"?"}</span>
+                      {ci.is_choice
+                        ?<span style={choiceStyle}>Escolha · {ci.cat||ci.item?.category?.name||"sem categoria"}</span>
+                        :<span style={fixedStyle}>Incluído</span>
+                      }
+                      <button className="tag-del"onClick={()=>removeItem(ci.item_id)}>x</button>
+                    </div>
+                  ))}
                   {comboItems.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens.</span>}
                 </div>
-                <div style={{display:"flex",gap:6}}>
-                  <select className="form-select"style={{flex:2}}value={selItem}onChange={e=>setSelItem(e.target.value)}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"flex-end"}}>
+                  <select className="form-select"style={{flex:"2 1 140px"}}value={selItem}onChange={e=>setSelItem(e.target.value)}>
                     <option value="">Selecionar item...</option>
                     {allItems.filter(i=>!comboItems.find(ci=>ci.item_id===i.id)).map(i=><option key={i.id}value={i.id}>{i.name} — {fmtEur(i.price)}</option>)}
                   </select>
-                  <input className="form-input"style={{width:60}}type="number"min="1"placeholder="Qtd"value={selQty}onChange={e=>setSelQty(e.target.value)}/>
+                  <input className="form-input"style={{width:55}}type="number"min="1"placeholder="Qtd"value={selQty}onChange={e=>setSelQty(e.target.value)}/>
+                  <select className="form-select"style={{flex:"1 1 100px"}}value={selIsChoice?"choice":"fixed"}onChange={e=>setSelIsChoice(e.target.value==="choice")}>
+                    <option value="fixed">Incluído</option>
+                    <option value="choice">Escolha</option>
+                  </select>
+                  {selIsChoice&&selItem&&(
+                    <span style={{...choiceStyle,alignSelf:"center"}}>Grupo: {allItems.find(i=>i.id===selItem)?.cat||"sem categoria"}</span>
+                  )}
                   <button className="btn btn-ghost"onClick={addItem}disabled={!selItem}>Adicionar</button>
+                </div>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:6}}>
+                  <strong style={{color:T.accent}}>Incluído</strong> — sempre no menu · <strong style={{color:T.teal}}>Escolha</strong> — o cliente escolhe um item por <strong>categoria</strong> no POS (ex: uma bebida da categoria Bebidas)
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Activo no POS</span></div>
@@ -1516,8 +1837,8 @@ function OrderHistory(){
           <thead><tr><th></th><th>ID</th><th>Mesa</th><th>Funcionário</th><th>Itens</th><th>Total</th><th>Método</th><th>Data/Hora</th><th></th></tr></thead>
           <tbody>
             {filtered.map(o=>(
-              <>
-                <tr key={o.id}>
+              <Fragment key={o.id}>
+                <tr>
                   <td style={{width:32}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>setExpanded(expanded===o.id?null:o.id)}>{expanded===o.id?<Ic.Up/>:<Ic.Down/>}</button></td>
                   <td><span className="mono"style={{color:T.textMuted,fontSize:11}}>{o.id.slice(0,8)}</span></td>
                   <td style={{fontWeight:700}}>{o.table}</td>
@@ -1529,7 +1850,7 @@ function OrderHistory(){
                   <td><button className="btn btn-ghost btn-sm"onClick={()=>alert("🖨️ Pré-visualização de recibo — funcionalidade visual")}>Recibo</button></td>
                 </tr>
                 {expanded===o.id&&(
-                  <tr key={o.id+"_exp"}>
+                  <tr>
                     <td colSpan={9}style={{background:T.elevated,padding:"12px 20px"}}>
                       <div style={{fontSize:12,color:T.textSec,display:"flex",flexWrap:"wrap",gap:8}}>
                         {o.lines.map((l,i)=><span key={i}style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 10px"}}>{l}</span>)}
@@ -1537,7 +1858,7 @@ function OrderHistory(){
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -1556,7 +1877,7 @@ function LogsSection(){
   useEffect(()=>{
     fetch("/api/logs?limit=200").then(r=>r.json()).then(data=>{
       if(!Array.isArray(data))return;
-      setLogs(data.map(l=>({id:l.id,level:l.level,module:l.module,time:new Date(l.created_at).toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit",second:"2-digit"}),msg:l.message,comment:l.comment})));
+      setLogs(data.map(l=>{const d=new Date(l.created_at);return{id:l.id,level:l.level,module:l.module,date:d.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit",year:"2-digit"}),time:d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit",second:"2-digit"}),msg:l.message,comment:l.comment,who:l.staff?.name||null};}));
     }).catch(()=>{});
   },[]);
   const levels=["Todos","INFO","ACTION","WARN","ERROR","CANCEL"];
@@ -1568,7 +1889,7 @@ function LogsSection(){
     return true;
   });
   const exportLogs=()=>{
-    const csv=["ID,Level,Module,Time,Message",...filtered.map(l=>`${l.id},${l.level},${l.module},${l.time},"${l.msg}"`)].join("\n");
+    const csv=["ID,Level,Module,Date,Time,Who,Message",...filtered.map(l=>`${l.id},${l.level},${l.module},${l.date},${l.time},${l.who||"—"},"${l.msg}"`)].join("\n");
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="logs.csv";a.click();
   };
   return(
@@ -1584,14 +1905,15 @@ function LogsSection(){
       </div>
       <div className="card">
         <table className="data-table mono">
-          <thead><tr><th>Nível</th><th>Módulo</th><th>Hora</th><th>Mensagem</th></tr></thead>
+          <thead><tr><th>Nível</th><th>Módulo</th><th>Hora</th><th>Quem</th><th>Mensagem</th></tr></thead>
           <tbody>
-            {filtered.length===0&&<tr><td colSpan={4}><div className="empty-state">Sem logs para os filtros seleccionados</div></td></tr>}
+            {filtered.length===0&&<tr><td colSpan={5}><div className="empty-state">Sem logs para os filtros seleccionados</div></td></tr>}
             {filtered.map(l=>{const lc=LEVEL_C[l.level]||LEVEL_C.INFO;return(
               <tr key={l.id}>
                 <td><Badge color={lc.c}bg={lc.bg}>{l.level}</Badge></td>
                 <td><Badge color={T.textSec}bg={T.elevated}>{l.module}</Badge></td>
-                <td style={{color:T.textMuted,fontFamily:"'DM Mono',monospace",fontSize:11}}>{l.time}</td>
+                <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,whiteSpace:"nowrap"}}><span style={{color:T.textMuted}}>{l.date}</span><span style={{color:T.textMuted,margin:"0 4px"}}>·</span><span style={{color:T.textSec}}>{l.time}</span></td>
+                <td style={{fontWeight:600,fontSize:12,whiteSpace:"nowrap"}}>{l.who||<span style={{color:T.textMuted}}>—</span>}</td>
                 <td>
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:T.textSec}}>{l.msg}</div>
                   {l.comment&&<div style={{fontSize:11,color:T.textMuted,fontStyle:"italic",marginTop:2}}>"{l.comment}"</div>}
@@ -1616,7 +1938,7 @@ const SETTINGS_DEFAULTS={
   kds:{alertYellow:5,alertRed:12,autoRefresh:3},
   caixa:{defaultFundo:50,maxTurno:8,confirmAbertura:true},
 };
-function SettingsSection(){
+function SettingsSection({onAppNameChange}={}){
   const [tab,setTab]=useState("geral");
   const [s,setS]=useState(SETTINGS_DEFAULTS);
   const [saving,setSaving]=useState(false);
@@ -1632,9 +1954,22 @@ function SettingsSection(){
     }).catch(()=>{});
   },[]);
   const patchKey=async(key,value)=>fetch(`/api/settings/${encodeURIComponent(key)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({value})});
-  const saveSection=async(keys,section)=>{setSaving(true);await Promise.all(keys.map(k=>patchKey(`${section}.${k}`,s[section][k]))).catch(()=>{});setSaving(false);};
+  const saveSection=async(keys,section)=>{
+    setSaving(true);
+    await Promise.all(keys.map(k=>patchKey(`${section}.${k}`,s[section][k]))).catch(()=>{});
+    setSaving(false);
+    if(section==="geral"){ // propagate the name to the app branding immediately
+      onAppNameChange?.(s.geral.name||"RestaurantOS");
+      try{localStorage.setItem("ros_app_name",s.geral.name||"RestaurantOS");}catch{}
+    }
+  };
   const setG=(k,v)=>setS(p=>({...p,geral:{...p.geral,[k]:v}}));
   const setF=(k,v)=>setS(p=>({...p,fiscal:{...p.fiscal,[k]:v}}));
+  const setRate=(id,k,v)=>setS(p=>({...p,fiscal:{...p.fiscal,rates:p.fiscal.rates.map(x=>x.id===id?{...x,[k]:v}:x)}}));
+  const saveFiscal=()=>{
+    if(window.confirm("Vais alterar a configuração de IVA. As taxas afetam o cálculo fiscal de novos lançamentos e os itens passam a usar os novos valores. Confirmar?"))
+      saveSection(["nif","regime","rates"],"fiscal");
+  };
   const setK=(k,v)=>setS(p=>({...p,kds:{...p.kds,[k]:v}}));
   const setC=(k,v)=>setS(p=>({...p,caixa:{...p.caixa,[k]:v}}));
   return(
@@ -1650,16 +1985,18 @@ function SettingsSection(){
         {tab==="fiscal"&&<div className="card"><div className="card-body">
           <Inp label="NIF do Restaurante"value={s.fiscal.nif}onChange={e=>setF("nif",e.target.value)}/>
           <Sel label="Regime de IVA"value={s.fiscal.regime}onChange={e=>setF("regime",e.target.value)}><option value="normal">Regime Normal</option><option value="simplificado">Regime Simplificado</option><option value="isento">Isento</option></Sel>
-          <div className="form-group"><label className="form-label">Taxas de IVA Activas</label>
+          <div className="form-group"><label className="form-label">Taxas de IVA</label>
             {(s.fiscal.rates||[]).map(r=>(
-              <div key={r.id}style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
-                <Toggle on={r.active}onChange={v=>setS(p=>({...p,fiscal:{...p.fiscal,rates:p.fiscal.rates.map(x=>x.id===r.id?{...x,active:v}:x)}}))}/>
-                <span style={{flex:1,fontSize:13,fontWeight:600}}>{r.label}</span>
-                <span className="mono"style={{color:T.accent,fontWeight:700}}>{r.value}%</span>
+              <div key={r.id}style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
+                <Toggle on={r.active}onChange={v=>setRate(r.id,"active",v)}/>
+                <input className="form-input"style={{flex:1}}value={r.label}onChange={e=>setRate(r.id,"label",e.target.value)}/>
+                <input className="form-input"style={{width:70,textAlign:"right"}}type="number"step="0.5"min="0"max="100"value={r.value}onChange={e=>setRate(r.id,"value",parseFloat(e.target.value)||0)}/>
+                <span className="mono"style={{color:T.textMuted}}>%</span>
               </div>
             ))}
+            <div style={{fontSize:11,color:T.warning,marginTop:4}}>⚠ Alterar uma taxa pede confirmação. Itens existentes mantêm a sua taxa até serem reeditados.</div>
           </div>
-          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["nif","regime","rates"],"fiscal")}>{saving?"A guardar...":"Guardar"}</button>
+          <button className="btn btn-solid"disabled={saving}onClick={saveFiscal}>{saving?"A guardar...":"Guardar"}</button>
         </div></div>}
         {tab==="kds"&&<div className="card"><div className="card-body">
           <div className="form-row">
@@ -1688,6 +2025,7 @@ const NAV=[
   {id:"dashboard",label:"Dashboard",Icon:Ic.Dashboard},
   {id:"analytics",label:"Analytics",Icon:Ic.Analytics},
   {id:"menu",label:"Items do Menu",Icon:Ic.Menu},
+  {id:"modifiers",label:"Modificadores",Icon:Ic.Layers},
   {id:"categories",label:"Categorias",Icon:Ic.Grid},
   {id:"ingredients",label:"Ingredientes",Icon:Ic.Leaf},
   {id:"combos",label:"Menus",Icon:Ic.Combo},
@@ -1700,14 +2038,14 @@ const NAV=[
   {id:"logs",label:"Logs",Icon:Ic.Logs},
   {id:"settings",label:"Definicoes",Icon:Ic.Settings},
 ];
-const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",categories:"Categorias de Menu",ingredients:"Ingredientes",combos:"Menus",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",reservations:"Reservas",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
+const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",modifiers:"Modificadores",categories:"Categorias de Menu",ingredients:"Ingredientes",combos:"Menus",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",reservations:"Reservas",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
 
-function Sidebar({active,onSelect,collapsed,onCollapse}){
+function Sidebar({active,onSelect,collapsed,onCollapse,appName="RestaurantOS"}){
   return(
     <nav className={`sidebar ${collapsed?"collapsed":"expanded"}`}>
       <div className="sb-logo">
         <div className="sb-logo-dot"/>
-        {!collapsed&&<><span className="sb-logo-text">RestaurantOS</span><span className="sb-logo-sub">v1</span></>}
+        {!collapsed&&<><span className="sb-logo-text">{appName}</span><span className="sb-logo-sub">v1</span></>}
       </div>
       <div className="sb-nav">
         {NAV.map(({id,label,Icon})=>(
@@ -1718,14 +2056,9 @@ function Sidebar({active,onSelect,collapsed,onCollapse}){
       </div>
       <div className="sb-bottom">
         <div className="sb-sep"/>
-        <div className="sb-ext"onClick={()=>alert("Abre o POS num novo separador")}>
-          <Ic.POS/>{!collapsed&&<span>POS</span>}
-        </div>
-        <div className="sb-ext"onClick={()=>alert("Abre o KDS num novo separador")}>
-          <Ic.KDS/>{!collapsed&&<span>KDS</span>}
-        </div>
-        <button className="sb-collapse"onClick={onCollapse}>
+        <button className="sb-collapse"onClick={onCollapse}title={collapsed?"Expandir":"Recolher"}>
           {collapsed?<Ic.ChevRight/>:<Ic.ChevLeft/>}
+          {!collapsed&&<span style={{marginLeft:8,fontSize:11,fontWeight:600}}>Recolher</span>}
         </button>
       </div>
     </nav>
@@ -1733,23 +2066,24 @@ function Sidebar({active,onSelect,collapsed,onCollapse}){
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
-export default function Backoffice(){
+export default function Backoffice({appName="RestaurantOS",onAppNameChange}){
   const [section,setSection]=useState("dashboard");
   const [collapsed,setCollapsed]=useState(false);
 
   const sections={
     dashboard:<Dashboard/>,analytics:<Analytics/>,menu:<MenuStock/>,
+    modifiers:<ModifiersMgmt/>,
     categories:<CategoriesMgmt/>,ingredients:<IngredientsMgmt/>,combos:<CombosMgmt/>,
     tables:<TablesMgmt/>,zones:<ZonesMgmt/>,
     staff:<StaffMgmt/>,reservations:<Reservations/>,
-    campaigns:<Campaigns/>,orders:<OrderHistory/>,logs:<LogsSection/>,settings:<SettingsSection/>,
+    campaigns:<Campaigns/>,orders:<OrderHistory/>,logs:<LogsSection/>,settings:<SettingsSection onAppNameChange={onAppNameChange}/>,
   };
 
   return(
     <>
       <style>{CSS}</style>
       <div className="bo-root">
-        <Sidebar active={section}onSelect={setSection}collapsed={collapsed}onCollapse={()=>setCollapsed(v=>!v)}/>
+        <Sidebar active={section}onSelect={setSection}collapsed={collapsed}onCollapse={()=>setCollapsed(v=>!v)}appName={appName}/>
         <div className="bo-main">
           <div className="bo-topbar">
             <div className="bo-section-title">{SECTION_TITLES[section]}</div>

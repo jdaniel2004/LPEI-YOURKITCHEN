@@ -548,6 +548,9 @@ export default function Login({ onSuccess }){
   const [screen,setScreen]=useState("selector");
   const [selectedStaff,setSelectedStaff]=useState(null);
   const [loggedUser,setLoggedUser]=useState(null);
+  // Pre-auth screen can't read settings; use the name cached on last login.
+  const [appName,setAppName]=useState("RestaurantOS");
+  useEffect(()=>{try{const n=localStorage.getItem("ros_app_name");if(n)setAppName(n);}catch{}},[]);
 
   const handleSuccess=(user)=>{
     setLoggedUser(user);
@@ -565,7 +568,7 @@ export default function Login({ onSuccess }){
 
         <div className="wordmark">
           <div className="wm-dot"/>
-          <div className="wm-text">RestaurantOS</div>
+          <div className="wm-text">{appName}</div>
           <div className="wm-ver">v1</div>
         </div>
 

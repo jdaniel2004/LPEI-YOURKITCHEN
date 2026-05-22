@@ -2,6 +2,10 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 // KDS shows orders that are open or sent (pending/in-prep) — not paid/cancelled
 export async function GET() {
+  // Only show recent orders (last 24h). Older abandoned/unpaid orders
+  // would otherwise pile up forever with absurd timers.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
@@ -9,10 +13,11 @@ export async function GET() {
        table:tables(id, label),
        waiter:staff(id, name),
        lines:order_lines(
-         id, name, qty, modifiers, notes, sent, cancelled, created_at
+         id, name, qty, modifiers, notes, sent, cancelled, sent_batch, created_at, ready_at
        )`
     )
     .in("status", ["open", "sent", "bill"])
+    .gte("created_at", since)
     .order("created_at");
 
   if (error) return Response.json({ error: error.message }, { status: 500 });

@@ -141,7 +141,7 @@ function GClock() {
 }
 
 // ─── GLOBAL NAV ───────────────────────────────────────────────────────────────
-function GlobalNav({ session, navigate, logout, canAccess }) {
+function GlobalNav({ session, navigate, logout, canAccess, appName }) {
   const roleColor = session.role === "manager" ? T.accent : session.role === "kitchen" ? T.teal : T.warning;
   const roleLabel = { manager:"GESTOR", waiter:"WAITER", kitchen:"COZINHA" }[session.role];
   const initials  = session.name.slice(0, 2).toUpperCase();
@@ -150,7 +150,7 @@ function GlobalNav({ session, navigate, logout, canAccess }) {
     <nav className="g-nav">
       <div className="g-logo">
         <div className="g-logo-dot" />
-        RestaurantOS
+        {appName}
       </div>
       <div className="g-sep" />
       <div className="g-tabs">
@@ -199,6 +199,17 @@ function GlobalNav({ session, navigate, logout, canAccess }) {
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const { session, login, logout, navigate, canAccess } = useSession();
+  const [appName, setAppName] = useState("RestaurantOS");
+
+  // Load the configured restaurant name once authenticated; cache it for the
+  // login screen (which is pre-auth and cannot read settings).
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/settings").then(r => r.json()).then(flat => {
+      const n = flat && !flat.error ? flat["geral.name"] : null;
+      if (n) { setAppName(n); try { localStorage.setItem("ros_app_name", n); } catch {} }
+    }).catch(() => {});
+  }, [session]);
 
   // Render sem sessão → Login
   if (!session) {
@@ -210,24 +221,27 @@ export default function App() {
     );
   }
 
-  const renderModule = () => {
-    switch (session.module) {
-      case "pos":        return <POS session={session} />;
-      case "kds":        return <KDS />;
-      case "backoffice": return <Backoffice />;
-      default:           return null;
-    }
-  };
-
   return (
     <>
       <style>{CSS}</style>
       <div className="app-shell">
-        <GlobalNav session={session} navigate={navigate} logout={logout} canAccess={canAccess} />
+        <GlobalNav session={session} navigate={navigate} logout={logout} canAccess={canAccess} appName={appName} />
         <div className="module-area">
-          <div className="module-frame" key={session.module}>
-            {renderModule()}
-          </div>
+          {canAccess("pos") && (
+            <div className="module-frame" style={{display:session.module==="pos"?"block":"none"}}>
+              <POS session={session} appName={appName} />
+            </div>
+          )}
+          {canAccess("kds") && (
+            <div className="module-frame" style={{display:session.module==="kds"?"block":"none"}}>
+              <KDS />
+            </div>
+          )}
+          {canAccess("backoffice") && (
+            <div className="module-frame" style={{display:session.module==="backoffice"?"block":"none"}}>
+              <Backoffice appName={appName} onAppNameChange={setAppName} />
+            </div>
+          )}
         </div>
       </div>
     </>

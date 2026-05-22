@@ -27,25 +27,40 @@ const T = {
 const DB_TO_KDS = { open: "pendente", sent: "em_preparacao", bill: "pronto" };
 
 function mapTicket(o) {
+  const sentLines = (o.lines || []).filter(l => l.sent && !l.cancelled);
+  const maxBatch = sentLines.reduce((m, l) => Math.max(m, l.sent_batch ?? 0), 0);
+  const toItem = l => ({
+    id: l.id,
+    name: l.name,
+    qty: l.qty,
+    notes: Array.isArray(l.modifiers) && l.modifiers.length
+      ? l.modifiers.join(", ")
+      : (l.notes || ""),
+    sent: l.sent,
+    cancelled: l.cancelled,
+  });
+  // Current batch = the lines the kitchen is working on now
+  const currentBatch = sentLines.filter(l => (l.sent_batch ?? 0) === maxBatch);
+  // Timer starts when this batch reached the kitchen (line creation), and freezes
+  // at the moment it was marked ready (ready_at), so it stops counting on "Pronto".
+  const startedAt = currentBatch.length
+    ? Math.min(...currentBatch.map(l => new Date(l.created_at).getTime()))
+    : new Date(o.created_at).getTime();
+  const readyTimes = currentBatch.map(l => l.ready_at).filter(Boolean).map(t => new Date(t).getTime());
+  const readyAt = readyTimes.length === currentBatch.length && readyTimes.length > 0
+    ? Math.max(...readyTimes) : null;
   return {
     id: o.id,
     type: o.table ? "mesa" : (o.notes?.includes("take") ? "take-away" : "balcao"),
     table: o.table?.label || null,
     waiter: o.waiter?.name || "—",
+    notes: o.notes || null,
     createdAt: new Date(o.created_at).getTime(),
+    startedAt,
+    readyAt,
     status: DB_TO_KDS[o.status] || "pendente",
-    items: (o.lines || [])
-      .filter(l => l.sent && !l.cancelled)
-      .map(l => ({
-        id: l.id,
-        name: l.name,
-        qty: l.qty,
-        notes: Array.isArray(l.modifiers) && l.modifiers.length
-          ? l.modifiers.join(", ")
-          : (l.notes || ""),
-        sent: l.sent,
-        cancelled: l.cancelled,
-      })),
+    // Only the current batch — previous batches were already prepared/served
+    items: currentBatch.map(toItem),
   };
 }
 
@@ -319,6 +334,18 @@ const css = `
   }
   .ticket-waiter span { color: ${T.textSec}; font-weight: 600; }
 
+  .ticket-notes {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: ${T.warning};
+    background: ${T.warningDim};
+    border-bottom: 1px solid ${T.warning}33;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .ticket-items {
     padding: 8px 0;
     max-height: 200px;
@@ -426,6 +453,15 @@ const css = `
   }
   .btn-servido:hover { background: ${T.success}28; }
   .btn-servido:active { transform: scale(0.97); }
+  .btn-cancel-order {
+    flex: 0 0 auto;
+    background: ${T.dangerDim};
+    color: ${T.danger};
+    border: 1px solid ${T.danger}44;
+    font-size: 12px;
+  }
+  .btn-cancel-order:hover { background: ${T.danger}28; border-color: ${T.danger}88; }
+  .btn-cancel-order:active { transform: scale(0.97); }
 
   .ticket-empty {
     flex: 1;
@@ -646,33 +682,49 @@ function Clock() {
 }
 
 // ─── TIMER BADGE ───────────────────────────────────────────────────────────────
-function TimerBadge({ createdAt }) {
-  const [secs, setSecs] = useState(elapsed(createdAt));
+// Counts up from startedAt; freezes once the order is ready ("Pronto").
+// Uses ready_at (endedAt) when available for an exact, reload-safe value; if not
+// (e.g. migration not run), it still stops counting by capturing the moment the
+// ticket was first seen as done.
+function TimerBadge({ startedAt, endedAt, done }) {
+  const capturedRef = useRef(null);
+  const frozen = endedAt != null || !!done;
+  const calc = () => {
+    let end;
+    if (endedAt != null) end = endedAt;
+    else if (done) { if (capturedRef.current == null) capturedRef.current = Date.now(); end = capturedRef.current; }
+    else { capturedRef.current = null; end = Date.now(); }
+    return Math.max(0, Math.floor((end - startedAt) / 1000));
+  };
+  const [secs, setSecs] = useState(calc);
   useEffect(() => {
-    const t = setInterval(() => setSecs(elapsed(createdAt)), 1000);
+    setSecs(calc());
+    if (frozen) return;
+    const t = setInterval(() => setSecs(calc()), 1000);
     return () => clearInterval(t);
-  }, [createdAt]);
-  const { color, bg, pulse } = timerColor(secs);
+  }, [startedAt, endedAt, done, frozen]);
+  const { color, bg, pulse } = frozen
+    ? { color: T.success, bg: T.successDim, pulse: false }
+    : timerColor(secs);
   return (
     <div
       className={`timer-badge${pulse ? " pulsing" : ""}`}
       style={{ color, background: bg, border: `1px solid ${color}44` }}
+      title={frozen ? "Tempo de preparação" : "A preparar"}
     >
-      {fmtTime(secs)}
+      {frozen ? `✓ ${fmtTime(secs)}` : fmtTime(secs)}
     </div>
   );
 }
 
 // ─── CANCEL MODAL ──────────────────────────────────────────────────────────────
-function CancelModal({ item, ticketId, onConfirm, onClose }) {
+function CancelModal({ title, subtitle, confirmLabel, onConfirm, onClose }) {
   const [motivo, setMotivo] = useState("");
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">Anular Item</div>
-        <div className="modal-sub">
-          <strong>{item.qty}× {item.name}</strong> — Ticket #{ticketId}
-        </div>
+        <div className="modal-title">{title}</div>
+        <div className="modal-sub">{subtitle}</div>
         <div className="modal-label">Motivo (obrigatório para log)</div>
         <textarea
           className="modal-textarea"
@@ -682,13 +734,13 @@ function CancelModal({ item, ticketId, onConfirm, onClose }) {
           autoFocus
         />
         <div className="modal-btns">
-          <button className="modal-btn-cancel" onClick={onClose}>Cancelar</button>
+          <button className="modal-btn-cancel" onClick={onClose}>Voltar</button>
           <button
             className="modal-btn-confirm"
             onClick={() => motivo.trim() && onConfirm(motivo)}
             style={{ opacity: motivo.trim() ? 1 : 0.4 }}
           >
-            Anular Item
+            {confirmLabel}
           </button>
         </div>
       </div>
@@ -697,14 +749,16 @@ function CancelModal({ item, ticketId, onConfirm, onClose }) {
 }
 
 // ─── TICKET ────────────────────────────────────────────────────────────────────
-function KDSTicket({ ticket, onAdvance, onCancelItem }) {
-  const secs = elapsed(ticket.createdAt);
-  const { pulse } = timerColor(secs);
+function KDSTicket({ ticket, onAdvance, onCancelItem, onCancelOrder }) {
+  const isDone = ticket.status === "pronto";
+  // Don't show "urgent" pulsing once the order is ready
+  const secs = elapsed(ticket.startedAt ?? ticket.createdAt);
+  const { pulse } = isDone ? { pulse: false } : timerColor(secs);
   const { label, color, bg } = typeLabel(ticket.type, ticket.table);
   const next = nextStatus(ticket.status);
   const nextLbl = nextLabel(ticket.status);
-  const isDone = ticket.status === "pronto";
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
 
   const activeItems = ticket.items.filter(i => !i.cancelled);
 
@@ -718,13 +772,20 @@ function KDSTicket({ ticket, onAdvance, onCancelItem }) {
             </div>
             <div className="ticket-id">#{ticket.id}</div>
           </div>
-          <TimerBadge createdAt={ticket.createdAt} />
+          <TimerBadge startedAt={ticket.startedAt ?? ticket.createdAt} endedAt={ticket.readyAt} done={isDone} />
         </div>
 
         <div className="ticket-waiter">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
           <span>{ticket.waiter}</span>
         </div>
+
+        {ticket.notes && (
+          <div className="ticket-notes">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            {ticket.notes}
+          </div>
+        )}
 
         <div className="ticket-items">
           {ticket.items.map(item => (
@@ -777,17 +838,38 @@ function KDSTicket({ ticket, onAdvance, onCancelItem }) {
               Servido — Arquivar
             </button>
           )}
+          <button
+            className="ticket-action-btn btn-cancel-order"
+            onClick={() => setCancelOrderOpen(true)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            Cancelar Pedido
+          </button>
         </div>
       </div>
 
       {cancelTarget && (
         <CancelModal
-          item={cancelTarget}
-          ticketId={ticket.id}
+          title="Anular Item"
+          subtitle={<><strong>{cancelTarget.qty}× {cancelTarget.name}</strong> — Ticket #{ticket.id}</>}
+          confirmLabel="Anular Item"
           onClose={() => setCancelTarget(null)}
           onConfirm={(motivo) => {
             onCancelItem(ticket.id, cancelTarget.id, motivo);
             setCancelTarget(null);
+          }}
+        />
+      )}
+
+      {cancelOrderOpen && (
+        <CancelModal
+          title="Cancelar Pedido Completo"
+          subtitle={<>Todos os itens de <strong>{label}</strong> serão anulados — Ticket #{ticket.id}</>}
+          confirmLabel="Cancelar Pedido"
+          onClose={() => setCancelOrderOpen(false)}
+          onConfirm={(motivo) => {
+            onCancelOrder(ticket.id, motivo);
+            setCancelOrderOpen(false);
           }}
         />
       )}
@@ -796,7 +878,7 @@ function KDSTicket({ ticket, onAdvance, onCancelItem }) {
 }
 
 // ─── COLUMN ────────────────────────────────────────────────────────────────────
-function KDSColumn({ status, tickets, onAdvance, onCancelItem }) {
+function KDSColumn({ status, tickets, onAdvance, onCancelItem, onCancelOrder }) {
   const col = {
     pendente: { title: "Pendente", cls: "col-pendente" },
     em_preparacao: { title: "Em Preparação", cls: "col-em_preparacao" },
@@ -822,6 +904,7 @@ function KDSColumn({ status, tickets, onAdvance, onCancelItem }) {
               ticket={t}
               onAdvance={onAdvance}
               onCancelItem={onCancelItem}
+              onCancelOrder={onCancelOrder}
             />
           ))
         )}
@@ -977,6 +1060,28 @@ export default function KDS() {
     }
   }, [addLog, addToast, tickets]);
 
+  const handleCancelOrder = useCallback(async (ticketId, motivo) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    // Optimistic — remove the whole ticket from the board
+    setTickets(prev => prev.filter(t => t.id !== ticketId));
+    try {
+      const res = await fetch(`/api/orders/${ticketId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: motivo }),
+      });
+      if (!res.ok) throw new Error();
+      // Don't let the poll re-add it before the DB reflects "cancelled"
+      archivedRef.current.add(ticketId);
+      try { localStorage.setItem("kds_archived", JSON.stringify([...archivedRef.current])); } catch {}
+      addLog("CANCEL", `Pedido <strong>#${ticketId.slice(0,8)}</strong> (${ticket?.table ? `Mesa ${ticket.table}` : "balcão"}) anulado por completo.`, motivo);
+      addToast(`Pedido anulado — ${ticket?.table ? `Mesa ${ticket.table}` : "balcão"}`, T.danger);
+    } catch {
+      if (ticket) setTickets(prev => prev.some(t => t.id === ticketId) ? prev : [...prev, ticket]);
+      addToast("Erro ao cancelar pedido", T.danger);
+    }
+  }, [addLog, addToast, tickets]);
+
   const byStatus = (s) => tickets.filter(t => t.status === s);
   const totalActive = tickets.filter(t => t.status !== "pronto").length;
 
@@ -1033,6 +1138,7 @@ export default function KDS() {
               tickets={byStatus(s)}
               onAdvance={handleAdvance}
               onCancelItem={handleCancelItem}
+              onCancelOrder={handleCancelOrder}
             />
           ))}
         </div>
