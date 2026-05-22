@@ -17,6 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const lines = order.lines as Array<{
     id: string; item_id: string | null; combo_id: string | null; qty: number;
     sent: boolean; cancelled: boolean; sent_batch: number; modifiers: string[] | null;
+    modifier_ingredients: Array<{ ingredient_id: string; qty: number }> | null;
   }>;
 
   const unsentLines = lines.filter((l) => !l.sent && !l.cancelled);
@@ -59,6 +60,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           p_qty: ing.qty * line.qty,
         });
       }
+    }
+  }
+
+  // Dynamic ingredients: deduct what the selected modifier options consume
+  // (e.g. "Espiral 200g" / "+200g") on top of the base recipe.
+  for (const line of unsentLines) {
+    const mi = Array.isArray(line.modifier_ingredients) ? line.modifier_ingredients : [];
+    for (const m of mi) {
+      if (!m?.ingredient_id || !m?.qty) continue;
+      await supabaseAdmin.rpc("decrement_ingredient_stock", {
+        p_ingredient_id: m.ingredient_id,
+        p_qty: Number(m.qty) * line.qty,
+      });
     }
   }
 

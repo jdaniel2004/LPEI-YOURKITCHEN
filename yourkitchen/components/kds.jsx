@@ -39,9 +39,17 @@ function mapTicket(o) {
     sent: l.sent,
     cancelled: l.cancelled,
   });
-  // Current batch = the lines the kitchen is working on now
-  const currentBatch = sentLines.filter(l => (l.sent_batch ?? 0) === maxBatch);
-  // Timer starts when this batch reached the kitchen (line creation), and freezes
+  // What the kitchen is working on now: every sent batch not yet delivered.
+  // `delivered` is only set when a batch is marked "Pronto", so two consecutive
+  // sends to the same table (e.g. Francesinha then Cola) stay visible together
+  // instead of replacing each other. Once a batch is "Pronto" but still awaiting
+  // serving (and no newer batch exists), fall back to the latest batch so the
+  // "Pronto" column isn't left empty.
+  const pending = sentLines.filter(l => !l.delivered);
+  const currentBatch = pending.length > 0
+    ? pending
+    : sentLines.filter(l => (l.sent_batch ?? 0) === maxBatch);
+  // Timer starts when the oldest visible item reached the kitchen, and freezes
   // at the moment it was marked ready (ready_at), so it stops counting on "Pronto".
   const startedAt = currentBatch.length
     ? Math.min(...currentBatch.map(l => new Date(l.created_at).getTime()))
@@ -59,7 +67,7 @@ function mapTicket(o) {
     startedAt,
     readyAt,
     status: DB_TO_KDS[o.status] || "pendente",
-    // Only the current batch — previous batches were already prepared/served
+    // Items in play now (undelivered batches); delivered ones don't reappear
     items: currentBatch.map(toItem),
   };
 }

@@ -17,7 +17,8 @@ const ROLE_ALLOWED: Record<string, string[]> = {
              "/api/reservations", "/api/campaigns", "/api/shifts", "/api/logs",
              "/api/analytics", "/api/settings", "/api/zones", "/api/ingredients",
              "/api/combos"],
-  waiter:  ["/api/tables", "/api/menu", "/api/orders", "/api/reservations"],
+  waiter:  ["/api/tables", "/api/menu", "/api/orders", "/api/reservations",
+             "/api/combos", "/api/ingredients", "/api/shifts"],
   kitchen: ["/api/kds", "/api/orders"],
 };
 

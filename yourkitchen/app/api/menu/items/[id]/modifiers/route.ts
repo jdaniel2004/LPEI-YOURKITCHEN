@@ -17,10 +17,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { error: optErr } = await supabaseAdmin
       .from("modifier_options")
       .insert(
-        options.map((o: { label: string; extra_price?: number }) => ({
+        options.map((o: { label: string; extra_price?: number; ingredient_id?: string; ingredient_qty?: number; ingredient_unit?: string }) => ({
           modifier_id: mod.id,
           label: o.label,
           extra_price: o.extra_price ?? 0,
+          ingredient_id: o.ingredient_id ?? null,
+          ingredient_qty: o.ingredient_qty ?? null,
+          ingredient_unit: o.ingredient_unit ?? null,
         }))
       );
     if (optErr) return Response.json({ error: optErr.message }, { status: 500 });

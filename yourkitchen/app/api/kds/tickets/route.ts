@@ -13,7 +13,7 @@ export async function GET() {
        table:tables(id, label),
        waiter:staff(id, name),
        lines:order_lines(
-         id, name, qty, modifiers, notes, sent, cancelled, sent_batch, created_at, ready_at
+         id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, ready_at
        )`
     )
     .in("status", ["open", "sent", "bill"])

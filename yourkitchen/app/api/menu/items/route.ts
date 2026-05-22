@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     .from("menu_items")
     .select(
       includeModifiers
-        ? "*, category:menu_categories(id,name,emoji,position), modifiers:item_modifiers(*, options:modifier_options(*)), ingredients:item_ingredients(ingredient_id, ingredient:ingredients(id,name))"
+        ? "*, category:menu_categories(id,name,emoji,position), modifiers:item_modifiers(*, options:modifier_options(*, ingredient:ingredients(id,name,unit))), ingredients:item_ingredients(ingredient_id, ingredient:ingredients(id,name))"
         : "*, category:menu_categories(id,name,emoji,position)"
     )
     .order("name");
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     const ids = data.map((i) => i.id);
     const { data: links } = await supabaseAdmin
       .from("item_modifier_templates")
-      .select("item_id, template:modifier_templates(id,name,required,options:modifier_template_options(*))")
+      .select("item_id, template:modifier_templates(id,name,required,options:modifier_template_options(*, ingredient:ingredients(id,name,unit)))")
       .in("item_id", ids);
     if (Array.isArray(links)) {
       const byItem: Record<string, { template: unknown }[]> = {};

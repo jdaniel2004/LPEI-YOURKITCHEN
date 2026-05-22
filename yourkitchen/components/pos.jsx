@@ -34,7 +34,9 @@ function mapOrder(o) {
       sentBatch: l.sent_batch ?? 0,
       delivered: l.delivered ?? false,
       cancelled: l.cancelled,
+      paidQty: l.paid_qty ?? 0,
       extraPrice: l.extra_price || 0,
+      modifierIngredients: Array.isArray(l.modifier_ingredients) ? l.modifier_ingredients : [],
     })),
     notes: o.notes || "",
     sentAt: o.created_at ? new Date(o.created_at).getTime() : null,
@@ -50,17 +52,18 @@ function buildMenu(menuRes, combosRes, modifierIngIds){
     menuRes.forEach(item=>{
       const cat=item.category;if(!cat)return;
       if(!catMap[cat.id]) catMap[cat.id]={id:cat.id,name:cat.name,emoji:cat.emoji||"🍽️",items:[],position:cat.position??0};
+      const mapOpt=o=>({id:o.id,label:o.label,price:o.extra_price||0,ingredientId:o.ingredient_id||null,ingredientQty:o.ingredient_qty!=null?Number(o.ingredient_qty):null,ingredientUnit:o.ingredient_unit||null,ingredientStoredUnit:o.ingredient?.unit||null,ingredientName:o.ingredient?.name||null});
       // Per-item custom modifiers
       const customMods=(item.modifiers||[]).map(m=>({
-        id:m.id,name:m.name,required:m.required,
-        options:(m.options||[]).map(o=>({id:o.id,label:o.label,price:o.extra_price||0})),
+        id:m.id,name:m.name,
+        options:(m.options||[]).map(mapOpt),
       }));
       // Linked library modifiers (synchronised templates)
       const linkedMods=(item.templateLinks||[])
         .map(tl=>tl.template).filter(Boolean)
         .map(t=>({
-          id:t.id,name:t.name,required:t.required,
-          options:(t.options||[]).map(o=>({id:o.id,label:o.label,price:o.extra_price||0})),
+          id:t.id,name:t.name,
+          options:(t.options||[]).map(mapOpt),
         }));
       catMap[cat.id].items.push({
         id:item.id,name:item.name,emoji:item.emoji||"🍽️",
@@ -81,10 +84,17 @@ function buildMenu(menuRes, combosRes, modifierIngIds){
         const choiceRaw=(c.items||[]).filter(ci=>ci.is_choice);
         const choiceGroupMap={};
         choiceRaw.forEach(ci=>{
-          // Group choices by the item's category (fallback to legacy choice_group)
+          // Group per-combo choices by the item's category (fallback to legacy choice_group)
           const g=ci.item?.category?.name||ci.choice_group||"Escolha";
           if(!choiceGroupMap[g]) choiceGroupMap[g]=[];
           choiceGroupMap[g].push({id:ci.item?.id,name:ci.item?.name||"?",price:ci.item?.price||0});
+        });
+        const choiceGroups=Object.entries(choiceGroupMap).map(([groupName,options])=>({groupName,options}));
+        // Linked reusable choice groups (combo modifiers) — synchronised
+        (c.comboModifiers||[]).forEach(m=>{
+          if(!m) return;
+          const options=(m.options||[]).map(o=>({id:o.item?.id,name:o.item?.name||"?",price:o.item?.price||0})).filter(o=>o.id);
+          if(options.length>0) choiceGroups.push({groupName:m.name,options});
         });
         return{
           id:`combo_${c.id}`,comboId:c.id,
@@ -92,7 +102,7 @@ function buildMenu(menuRes, combosRes, modifierIngIds){
           price:c.price||0,vat:23,stock:null,
           mods:[],isCombo:true,
           comboItems:fixedItems.map(ci=>({name:ci.item?.name||"?",qty:ci.qty,itemId:ci.item?.id||null,included:true})),
-          choiceGroups:Object.entries(choiceGroupMap).map(([groupName,options])=>({groupName,options})),
+          choiceGroups,
         };
       }),
     });
@@ -105,6 +115,16 @@ function buildMenu(menuRes, combosRes, modifierIngIds){
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 let _lineId = 1000;
 const newLineId = () => `l${++_lineId}`;
+
+// Convert a quantity between units of the same measure group (weight/volume/count).
+// Mirrors the backoffice UNIT_DEFS factors. Cross-group or unknown → returned as-is.
+const _UNIT_FACTOR = { mg:["w",0.001], g:["w",1], kg:["w",1000], ml:["v",1], cl:["v",10], dl:["v",100], L:["v",1000], un:["c",1], pcs:["c",1], cx:["c",1], dz:["c",12] };
+function convUnit(qty, from, to){
+  if(!from || !to || from===to) return qty;
+  const f=_UNIT_FACTOR[from], t=_UNIT_FACTOR[to];
+  if(!f || !t || f[0]!==t[0] || !t[1]) return qty;
+  return (qty * f[1]) / t[1];
+}
 
 function fmtEur(v){ return `€${Number(v).toFixed(2)}`; }
 function fmtMins(ms){
@@ -385,6 +405,26 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .split-btn{width:36px;height:36px;border-radius:6px;border:1px solid ${T.border};background:${T.card};color:${T.textSec};font-size:13px;font-weight:700;cursor:pointer;transition:all .12s;font-family:'DM Mono',monospace;}
 .split-btn.active{border-color:${T.accent}55;background:${T.accentDim};color:${T.accent};}
 .split-per-person{font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:${T.text};padding:10px 14px;background:${T.elevated};border-radius:8px;text-align:center;margin-bottom:14px;}
+.pay-mode-toggle{display:flex;gap:4px;background:${T.card};border:1px solid ${T.border};border-radius:8px;padding:3px;margin-bottom:16px;}
+.pay-mode-btn{flex:1;border:none;background:transparent;color:${T.textSec};font-size:12px;font-weight:700;padding:9px 8px;border-radius:6px;cursor:pointer;transition:all .12s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;}
+.pay-mode-btn.active{background:${T.accentDim};color:${T.accent};box-shadow:inset 0 0 0 1px ${T.accent}44;}
+.pay-stepper{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.pay-step-btn{width:40px;height:40px;border-radius:8px;border:1px solid ${T.border};background:${T.card};color:${T.text};font-size:20px;font-weight:700;cursor:pointer;transition:all .12s;font-family:'DM Mono',monospace;display:flex;align-items:center;justify-content:center;}
+.pay-step-btn:hover:not(:disabled){border-color:${T.accent}55;background:${T.accentDim};color:${T.accent};}
+.pay-step-btn:disabled{opacity:.3;cursor:not-allowed;}
+.pay-step-val{flex:1;text-align:center;font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:${T.text};}
+.pay-items-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:240px;overflow-y:auto;}
+.pay-item-row{display:flex;align-items:center;gap:10px;background:${T.card};border:1px solid ${T.border};border-radius:8px;padding:8px 10px;}
+.pay-item-row.full{opacity:.45;}
+.pay-item-info{flex:1;min-width:0;}
+.pay-item-name{font-size:13px;font-weight:700;color:${T.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pay-item-sub{font-size:11px;color:${T.textMuted};font-family:'DM Mono',monospace;margin-top:2px;}
+.pay-item-stepper{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.pay-item-step-btn{width:26px;height:26px;border-radius:6px;border:1px solid ${T.border};background:${T.elevated};color:${T.text};font-size:15px;font-weight:700;cursor:pointer;transition:all .12s;line-height:1;display:flex;align-items:center;justify-content:center;}
+.pay-item-step-btn:hover:not(:disabled){border-color:${T.accent}55;color:${T.accent};}
+.pay-item-step-btn:disabled{opacity:.25;cursor:not-allowed;}
+.pay-item-qty{min-width:34px;text-align:center;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:${T.accent};}
+.pay-empty{padding:24px 12px;text-align:center;color:${T.textMuted};font-size:13px;}
 
 /* ─ TOASTS ─ */
 .toast-stack{position:fixed;bottom:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:6px;pointer-events:none;}
@@ -419,12 +459,11 @@ function Toasts({toasts}){
 
 // ─── MODIFIER MODAL ───────────────────────────────────────────────────────────
 function ModifierModal({item,onConfirm,onClose}){
-  const [sel,setSel]=useState({});
+  // extras: Record<modId, Record<optId, bool>> — all options are optional (multi-select)
   const [extras,setExtras]=useState({});
   // ingState: Record<id, 'removed'|'extra'> — absent means neutral
   const [ingState,setIngState]=useState({});
 
-  const toggleRequired=(modId,optId)=>setSel(p=>({...p,[modId]:optId}));
   const toggleOptional=(modId,optId)=>setExtras(p=>{
     const cur=p[modId]||{};
     return {...p,[modId]:{...cur,[optId]:!cur[optId]}};
@@ -436,18 +475,29 @@ function ModifierModal({item,onConfirm,onClose}){
     return next;
   });
 
-  const allRequired=item.mods.filter(m=>m.required).every(m=>sel[m.id]);
   const modsText=[];
+  const modifierIngredients=[]; // [{ingredient_id, qty}] in the ingredient's stored unit
+  const baseSel=[];  // ingredient-bearing selections: {ingredient_id, storedUnit}
+  const extraSel=[]; // qty-only selections (extras): {qty, unit}
   let extraPrice=0;
   item.mods.forEach(m=>{
-    if(m.required){
-      const o=m.options.find(o=>o.id===sel[m.id]);
-      if(o){modsText.push(o.label);if(o.price)extraPrice+=o.price;}
-    } else {
-      const chosen=m.options.filter(o=>(extras[m.id]||{})[o.id]);
-      chosen.forEach(o=>{modsText.push(`${o.label}${o.price?` (+€${o.price.toFixed(2)})`:""}`);if(o.price)extraPrice+=o.price;});
-    }
+    const chosen=m.options.filter(o=>(extras[m.id]||{})[o.id]);
+    chosen.forEach(o=>{
+      modsText.push(`${o.label}${o.price?` (+€${o.price.toFixed(2)})`:""}`);
+      if(o.price)extraPrice+=o.price;
+      if(o.ingredientId&&o.ingredientQty){
+        const stored=o.ingredientStoredUnit||o.ingredientUnit;
+        modifierIngredients.push({ingredient_id:o.ingredientId,qty:convUnit(o.ingredientQty,o.ingredientUnit||stored,stored)});
+        baseSel.push({ingredient_id:o.ingredientId,storedUnit:stored});
+      }else if(o.ingredientQty>0){
+        extraSel.push({qty:o.ingredientQty,unit:o.ingredientUnit||"g"});
+      }
+    });
   });
+  // "Extra" options (qty without ingredient) apply to the single chosen base ingredient
+  if(baseSel.length===1&&extraSel.length>0){
+    extraSel.forEach(e=>modifierIngredients.push({ingredient_id:baseSel[0].ingredient_id,qty:convUnit(e.qty,e.unit,baseSel[0].storedUnit)}));
+  }
   (item.ingredientMods||[]).forEach(ing=>{
     const st=ingState[ing.id];
     if(st==="removed") modsText.push(`sem ${ing.name}`);
@@ -469,25 +519,21 @@ function ModifierModal({item,onConfirm,onClose}){
         <div className="modal-body">
           {item.mods.map(mod=>(
             <div key={mod.id} className="mod-group">
-              <div className="mod-group-title">
-                {mod.name}
-                {mod.required && <span className="mod-required-tag">OBRIGATÓRIO</span>}
-              </div>
+              <div className="mod-group-title">{mod.name}</div>
               <div className="mod-options">
                 {mod.options.map(opt=>{
-                  const isSelected=mod.required ? sel[mod.id]===opt.id : !!(extras[mod.id]||{})[opt.id];
+                  const isSelected=!!(extras[mod.id]||{})[opt.id];
                   return(
                     <div
                       key={opt.id}
                       className={`mod-option${isSelected?" selected":""}`}
-                      onClick={()=>mod.required?toggleRequired(mod.id,opt.id):toggleOptional(mod.id,opt.id)}
+                      onClick={()=>toggleOptional(mod.id,opt.id)}
                     >
-                      {mod.required
-                        ? <div className="mod-radio"/>
-                        : <div className="mod-check">{isSelected&&<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2 6 5 9 10 3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}
-                          </div>
-                      }
-                      <div className="mod-option-label">{opt.label}</div>
+                      <div className="mod-check">{isSelected&&<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2 6 5 9 10 3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}</div>
+                      <div className="mod-option-label">
+                        {opt.label}
+                        {opt.ingredientId&&opt.ingredientQty?<span style={{fontSize:10,color:T.textMuted,marginLeft:6}}>· {opt.ingredientQty}{opt.ingredientUnit||""} {opt.ingredientName||""}</span>:opt.ingredientQty>0?<span style={{fontSize:10,color:T.textMuted,marginLeft:6}}>· +{opt.ingredientQty}{opt.ingredientUnit||""}</span>:null}
+                      </div>
                       {opt.price>0 && <div className="mod-option-price">+{fmtEur(opt.price)}</div>}
                     </div>
                   );
@@ -525,8 +571,7 @@ function ModifierModal({item,onConfirm,onClose}){
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
           <button
             className="btn btn-solid-accent"
-            disabled={!allRequired}
-            onClick={()=>onConfirm({modsText,extraPrice})}
+            onClick={()=>onConfirm({modsText,extraPrice,modifierIngredients})}
           >
             Adicionar — {fmtEur(item.price+extraPrice)}
           </button>
@@ -692,27 +737,44 @@ function TransferModal({currentWaiterId,staffList,onConfirm,onClose}){
 }
 
 // ─── PAYMENT MODAL ────────────────────────────────────────────────────────────
-function PaymentModal({order,tableLabel,onConfirm,onClose}){
+function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
   const METHODS=[
     {id:"numerario",label:"Numerário",icon:"💶"},
     {id:"cartao",label:"Cartão",icon:"💳"},
     {id:"mbway",label:"MB Way",icon:"📱"},
     {id:"multibanco",label:"Multibanco",icon:"🏧"},
   ];
+  const [payMode,setPayMode]=useState("pessoas"); // "pessoas" | "itens"
   const [method,setMethod]=useState("numerario");
   const [received,setReceived]=useState("");
-  const [split,setSplit]=useState(1);
+  const [split,setSplit]=useState(seats&&seats>1?seats:1);
+  const [sel,setSel]=useState({}); // lineId -> units selected to pay now
 
-  const total=orderTotal(order.items);
-  const vatMap=orderVAT(order.items);
-  const subtotal=order.items.filter(i=>!i.cancelled).reduce((s,i)=>{
-    const gross=(i.price+(i.extraPrice||0))*i.qty;
-    return s+gross/(1+i.vat/100);
-  },0);
+  // Lines still owing money: not cancelled and with units left to pay.
+  const payableLines=order.items.filter(i=>!i.cancelled&&(i.qty-(i.paidQty||0))>0);
+  const unitOf=i=>i.price+(i.extraPrice||0);
+
+  // Summary reflects what's LEFT to pay (a previous partial payment lowers it).
+  let remaining=0,subtotal=0;
+  const vatMap={};
+  payableLines.forEach(i=>{
+    const remQty=i.qty-(i.paidQty||0);
+    const gross=unitOf(i)*remQty;
+    remaining+=gross;
+    const net=gross/(1+i.vat/100);
+    subtotal+=net;
+    vatMap[i.vat]=(vatMap[i.vat]||0)+(gross-net);
+  });
+
+  const selectedUnits=Object.values(sel).reduce((s,n)=>s+(n||0),0);
+  const selectedTotal=payableLines.reduce((s,i)=>s+(sel[i.lineId]||0)*unitOf(i),0);
+  const perPerson=split>0?remaining/split:remaining;
+  const amountDue=payMode==="itens"?selectedTotal:perPerson;
+
+  const setQty=(lineId,n,max)=>setSel(p=>({...p,[lineId]:Math.max(0,Math.min(max,n))}));
 
   const rec=parseFloat(received.replace(",","."));
-  const troco=isNaN(rec)?null:rec-total/split;
-  const perPerson=total/split;
+  const troco=isNaN(rec)?null:rec-amountDue;
 
   const handleNum=(d)=>{
     if(d==="⌫") setReceived(p=>p.slice(0,-1));
@@ -720,7 +782,23 @@ function PaymentModal({order,tableLabel,onConfirm,onClose}){
     else setReceived(p=>(p+d).slice(0,8));
   };
 
-  const canConfirm = method!=="numerario" || (rec>=perPerson && !isNaN(rec));
+  const cashOK = method!=="numerario" || (!isNaN(rec)&&rec>=amountDue);
+  const canConfirm = payMode==="itens"
+    ? (selectedUnits>0 && cashOK)
+    : (remaining>0 && cashOK);
+
+  const submit=()=>{
+    if(payMode==="itens"){
+      const items=payableLines
+        .filter(i=>(sel[i.lineId]||0)>0)
+        .map(i=>({line_id:i.lineId,qty:sel[i.lineId]}));
+      onConfirm({mode:"itens",method,amount:selectedTotal,items});
+    }else{
+      onConfirm({mode:"pessoas",method,amount:remaining,split});
+    }
+  };
+
+  const switchMode=(m)=>{setPayMode(m);setReceived("");setSel({});};
 
   return(
     <div className="overlay" onClick={onClose}>
@@ -728,30 +806,63 @@ function PaymentModal({order,tableLabel,onConfirm,onClose}){
         <div className="modal-header">
           <div>
             <div className="modal-title">Pagamento — {tableLabel}</div>
-            <div className="modal-sub">{order.items.filter(i=>!i.cancelled).length} itens</div>
+            <div className="modal-sub">{payableLines.reduce((s,i)=>s+(i.qty-(i.paidQty||0)),0)} itens por pagar · {fmtEur(remaining)}</div>
           </div>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body" style={{display:"flex",gap:20}}>
-          {/* Left: summary + split */}
-          <div style={{flex:"0 0 220px"}}>
-            <div className="pay-label">Resumo</div>
+          {/* Left: mode toggle + summary + split/items */}
+          <div style={{flex:"0 0 260px"}}>
+            <div className="pay-mode-toggle">
+              <button className={`pay-mode-btn${payMode==="pessoas"?" active":""}`} onClick={()=>switchMode("pessoas")}>👥 Por Pessoas</button>
+              <button className={`pay-mode-btn${payMode==="itens"?" active":""}`} onClick={()=>switchMode("itens")}>🍽️ Por Itens</button>
+            </div>
+
+            <div className="pay-label">{remaining<orderTotal(order.items)?"Em falta":"Resumo"}</div>
             <div className="pay-summary">
               <div className="pay-sum-row"><div className="pay-sum-label">Subtotal (s/IVA)</div><div className="pay-sum-val">{fmtEur(subtotal)}</div></div>
               {Object.entries(vatMap).map(([rate,val])=>(
                 <div key={rate} className="pay-sum-row"><div className="pay-sum-label" style={{fontSize:11}}>IVA {rate}%</div><div className="pay-sum-val" style={{fontSize:11}}>{fmtEur(val)}</div></div>
               ))}
-              <div className="pay-sum-row total"><div className="pay-sum-label">Total</div><div className="pay-sum-val">{fmtEur(total)}</div></div>
+              <div className="pay-sum-row total"><div className="pay-sum-label">Total</div><div className="pay-sum-val">{fmtEur(remaining)}</div></div>
             </div>
-            <div className="pay-label" style={{marginBottom:8}}>Dividir por pessoas</div>
-            <div className="split-row" style={{marginBottom:10}}>
-              <div className="split-btns">
-                {[1,2,3,4].map(n=>(
-                  <button key={n} className={`split-btn${split===n?" active":""}`} onClick={()=>setSplit(n)}>{n}</button>
-                ))}
-              </div>
-            </div>
-            {split>1&&<div className="split-per-person">{fmtEur(perPerson)} <span style={{fontSize:14,color:T.textMuted}}>/ pessoa</span></div>}
+
+            {payMode==="pessoas"?(
+              <>
+                <div className="pay-label" style={{marginBottom:8}}>Dividir por pessoas</div>
+                <div className="pay-stepper">
+                  <button className="pay-step-btn" disabled={split<=1} onClick={()=>setSplit(s=>Math.max(1,s-1))}>−</button>
+                  <div className="pay-step-val">{split}</div>
+                  <button className="pay-step-btn" disabled={split>=50} onClick={()=>setSplit(s=>Math.min(50,s+1))}>+</button>
+                </div>
+                {split>1&&<div className="split-per-person">{fmtEur(perPerson)} <span style={{fontSize:14,color:T.textMuted}}>/ pessoa</span></div>}
+              </>
+            ):(
+              <>
+                <div className="pay-label" style={{marginBottom:8}}>Itens a pagar</div>
+                <div className="pay-items-list">
+                  {payableLines.length===0&&<div className="pay-empty">Tudo pago ✓</div>}
+                  {payableLines.map(i=>{
+                    const remQty=i.qty-(i.paidQty||0);
+                    const q=sel[i.lineId]||0;
+                    return(
+                      <div key={i.lineId} className="pay-item-row">
+                        <div className="pay-item-info">
+                          <div className="pay-item-name">{i.name}</div>
+                          <div className="pay-item-sub">{fmtEur(unitOf(i))} · {remQty} por pagar{i.paidQty?` (${i.paidQty} pago${i.paidQty>1?"s":""})`:""}</div>
+                        </div>
+                        <div className="pay-item-stepper">
+                          <button className="pay-item-step-btn" disabled={q<=0} onClick={()=>setQty(i.lineId,q-1,remQty)}>−</button>
+                          <div className="pay-item-qty">{q}/{remQty}</div>
+                          <button className="pay-item-step-btn" disabled={q>=remQty} onClick={()=>setQty(i.lineId,q+1,remQty)}>+</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="split-per-person">A pagar: {fmtEur(selectedTotal)}</div>
+              </>
+            )}
           </div>
 
           {/* Right: method + numpad */}
@@ -772,7 +883,7 @@ function PaymentModal({order,tableLabel,onConfirm,onClose}){
                 <input
                   className="pay-amount-input"
                   value={received}
-                  placeholder={fmtEur(perPerson)}
+                  placeholder={fmtEur(amountDue)}
                   readOnly
                   style={{marginBottom:10}}
                 />
@@ -802,15 +913,15 @@ function PaymentModal({order,tableLabel,onConfirm,onClose}){
               <div style={{background:T.successDim,border:`1px solid ${T.success}33`,borderRadius:10,padding:"24px 20px",textAlign:"center",marginTop:8}}>
                 <div style={{fontSize:28,marginBottom:8}}>{METHODS.find(m2=>m2.id===method)?.icon}</div>
                 <div style={{fontSize:13,color:T.success,fontWeight:600}}>Confirma o pagamento no terminal</div>
-                <div style={{fontFamily:"'DM Mono',monospace",fontSize:22,fontWeight:700,color:T.text,marginTop:8}}>{fmtEur(perPerson)}</div>
+                <div style={{fontFamily:"'DM Mono',monospace",fontSize:22,fontWeight:700,color:T.text,marginTop:8}}>{fmtEur(amountDue)}</div>
               </div>
             )}
           </div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-solid-success btn-lg" disabled={!canConfirm} onClick={()=>onConfirm({method,received:method==="numerario"?rec:perPerson,split})}>
-            ✓ Confirmar Pagamento
+          <button className="btn btn-solid-success btn-lg" disabled={!canConfirm} onClick={submit}>
+            {payMode==="itens"?`✓ Pagar Selecionados — ${fmtEur(selectedTotal)}`:"✓ Confirmar Pagamento"}
           </button>
         </div>
       </div>
@@ -826,6 +937,7 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
   const [cancelTarget,setCancelTarget]=useState(null);
   const [showTransfer,setShowTransfer]=useState(false);
   const [showPayment,setShowPayment]=useState(false);
+  const [payTick,setPayTick]=useState(0); // bumps to remount PaymentModal after a partial payment
 
   const tableLabel = table.id;
   const waiter = staffList.find(s=>s.id===order.waiterId)||{name:"?",initials:"?"};
@@ -873,9 +985,9 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
     }
   };
 
-  const handleModConfirm=({modsText,extraPrice})=>{
+  const handleModConfirm=({modsText,extraPrice,modifierIngredients})=>{
     const item=modItem;
-    const line={lineId:newLineId(),itemId:item.id,name:item.name,qty:1,price:item.price,vat:item.vat,mods:modsText,notes:"",sent:false,cancelled:false,extraPrice};
+    const line={lineId:newLineId(),itemId:item.id,name:item.name,qty:1,price:item.price,vat:item.vat,mods:modsText,modifierIngredients:modifierIngredients||[],notes:"",sent:false,cancelled:false,extraPrice};
     onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
     setModItem(null);
   };
@@ -1131,10 +1243,19 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
       )}
       {showPayment&&(
         <PaymentModal
+          key={payTick}
           order={order}
           tableLabel={tableLabel}
+          seats={table?.seats}
           onClose={()=>setShowPayment(false)}
-          onConfirm={(payData)=>{onPayment(payData);setShowPayment(false);}}
+          onConfirm={async(payData)=>{
+            const res=await onPayment(payData);
+            if(res?.error) return;
+            // Full payment closes the modal; a partial one remounts it (key bump)
+            // with a fresh selection so the rest of the bill can be settled.
+            if(res?.fullyPaid) setShowPayment(false);
+            else setPayTick(t=>t+1);
+          }}
         />
       )}
     </div>
@@ -1689,6 +1810,7 @@ export default function POS({session,appName="RestaurantOS"}){
             unit_price:item.price,extra_price:item.extraPrice||0,
             vat_rate:item.vat,
             modifiers:item.comboItems?item.comboItems.filter(ci=>ci.included).map(ci=>ci.name):item.mods,
+            modifier_ingredients:item.modifierIngredients||[],
             notes:item.notes||null,
           }),
         })
@@ -1721,25 +1843,44 @@ export default function POS({session,appName="RestaurantOS"}){
   };
 
   const handlePayment=async(payData)=>{
-    if(!activeOrderId) return;
-    const total=orderTotal(activeOrder.items);
+    if(!activeOrderId) return {fullyPaid:false};
+    const isItems=Array.isArray(payData.items)&&payData.items.length>0;
+    const body=isItems
+      ? {method:payData.method,items:payData.items}
+      : {method:payData.method,amount:payData.amount??orderTotal(activeOrder.items),split_n:payData.split};
     try{
-      await fetch(`/api/orders/${activeOrderId}/pay`,{
+      const res=await fetch(`/api/orders/${activeOrderId}/pay`,{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({method:payData.method,amount:total,split_n:payData.split}),
+        body:JSON.stringify(body),
       });
-      addToast(`Pagamento — ${activeTableId} — ${fmtEur(total)}`,T.success);
-      setReadyOrders(prev=>{const n=new Set(prev);n.delete(activeOrderId);return n;});
-      setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],paid:true}}));
-      setTables(p=>p.map(t=>{
-        if(t.id!==activeTableId) return t;
-        if(t.type==="take-away"||t.type==="balcao") return null;
-        return {...t,status:"free",waiter:null,orderId:null,since:null};
-      }).filter(Boolean));
-      setActiveTableId(null);
-      setScreen("floor");
-    }catch{
-      addToast("Erro ao processar pagamento",T.danger);
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||"");}
+      const data=await res.json().catch(()=>({}));
+      const fullyPaid=data?.fullyPaid!==false;
+      const paidAmount=isItems?(payData.amount||0):(payData.amount??orderTotal(activeOrder.items));
+
+      if(fullyPaid){
+        addToast(`Pagamento — ${activeTableId} — ${fmtEur(paidAmount)}`,T.success);
+        setReadyOrders(prev=>{const n=new Set(prev);n.delete(activeOrderId);return n;});
+        setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],paid:true}}));
+        setTables(p=>p.map(t=>{
+          if(t.id!==activeTableId) return t;
+          if(t.type==="take-away"||t.type==="balcao") return null;
+          return {...t,status:"free",waiter:null,orderId:null,since:null};
+        }).filter(Boolean));
+        setActiveTableId(null);
+        setScreen("floor");
+      }else{
+        // Partial payment: bump paidQty on the settled lines, keep the table open.
+        const add={};
+        payData.items.forEach(it=>{add[it.line_id]=(add[it.line_id]||0)+it.qty;});
+        setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],
+          items:p[activeOrderId].items.map(l=>add[l.lineId]?{...l,paidQty:(l.paidQty||0)+add[l.lineId]}:l)}}));
+        addToast(`Pagamento parcial — ${fmtEur(paidAmount)}`,T.success);
+      }
+      return {fullyPaid};
+    }catch(e){
+      addToast(e?.message?`Erro: ${e.message}`:"Erro ao processar pagamento",T.danger);
+      return {fullyPaid:false,error:true};
     }
   };
 

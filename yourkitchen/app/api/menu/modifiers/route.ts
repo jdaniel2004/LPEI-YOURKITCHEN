@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("modifier_templates")
-    .select("*, options:modifier_template_options(*)")
+    .select("*, options:modifier_template_options(*, ingredient:ingredients(id,name,unit))")
     .order("name");
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json(data);
@@ -27,10 +27,13 @@ export async function POST(req: Request) {
     const { error: optErr } = await supabaseAdmin
       .from("modifier_template_options")
       .insert(
-        options.map((o: { label: string; extra_price?: number }) => ({
+        options.map((o: { label: string; extra_price?: number; ingredient_id?: string; ingredient_qty?: number; ingredient_unit?: string }) => ({
           template_id: tpl.id,
           label: o.label,
           extra_price: o.extra_price ?? 0,
+          ingredient_id: o.ingredient_id ?? null,
+          ingredient_qty: o.ingredient_qty ?? null,
+          ingredient_unit: o.ingredient_unit ?? null,
         }))
       );
     if (optErr) return Response.json({ error: optErr.message }, { status: 500 });
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("modifier_templates")
-    .select("*, options:modifier_template_options(*)")
+    .select("*, options:modifier_template_options(*, ingredient:ingredients(id,name,unit))")
     .eq("id", tpl.id)
     .single();
   if (error) return Response.json({ error: error.message }, { status: 500 });

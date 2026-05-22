@@ -25,10 +25,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const { error: optErr } = await supabaseAdmin
         .from("modifier_template_options")
         .insert(
-          body.options.map((o: { label: string; extra_price?: number }) => ({
+          body.options.map((o: { label: string; extra_price?: number; ingredient_id?: string; ingredient_qty?: number; ingredient_unit?: string }) => ({
             template_id: id,
             label: o.label,
             extra_price: o.extra_price ?? 0,
+            ingredient_id: o.ingredient_id ?? null,
+            ingredient_qty: o.ingredient_qty ?? null,
+            ingredient_unit: o.ingredient_unit ?? null,
           }))
         );
       if (optErr) return Response.json({ error: optErr.message }, { status: 500 });
@@ -37,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { data, error } = await supabaseAdmin
     .from("modifier_templates")
-    .select("*, options:modifier_template_options(*)")
+    .select("*, options:modifier_template_options(*, ingredient:ingredients(id,name,unit))")
     .eq("id", id)
     .single();
   if (error) return Response.json({ error: error.message }, { status: 500 });

@@ -1094,31 +1094,73 @@ function CategoriesMgmt(){
 
 // ─── MODIFIERS LIBRARY ────────────────────────────────────────────────────────
 function ModifiersMgmt(){
+  const [cat,setCat]=useState("itens"); // itens | menus
+  return(
+    <div>
+      <div className="stab-row"style={{marginBottom:14}}>
+        <div className={`stab${cat==="itens"?" active":""}`}onClick={()=>setCat("itens")}>Itens do Menu</div>
+        <div className={`stab${cat==="menus"?" active":""}`}onClick={()=>setCat("menus")}>Menus</div>
+      </div>
+      {cat==="itens"?<ItemModifiersLib/>:<ComboModifiersLib/>}
+    </div>
+  );
+}
+
+function ItemModifiersLib(){
   const [templates,setTemplates]=useState([]);
+  const [allIngredients,setAllIngredients]=useState([]);
   const [edit,setEdit]=useState(null); // "new" | id | null
-  const [form,setForm]=useState({name:"",required:false,options:[{label:"",price:""}]});
+  const [form,setForm]=useState({name:"",options:[{label:"",price:"",ingredientId:"",ingredientQty:""}]});
   const [saving,setSaving]=useState(false);
 
   useEffect(()=>{
-    fetch("/api/menu/modifiers").then(r=>r.json()).then(d=>{if(Array.isArray(d))setTemplates(d);}).catch(()=>{});
+    Promise.all([
+      fetch("/api/menu/modifiers").then(r=>r.json()),
+      fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
+    ]).then(([ts,ings])=>{
+      if(Array.isArray(ts))setTemplates(ts);
+      if(Array.isArray(ings))setAllIngredients(ings);
+    }).catch(()=>{});
   },[]);
 
-  const openNew=()=>{setForm({name:"",required:false,options:[{label:"",price:""}]});setEdit("new");};
+  const blankOpt={label:"",price:"",ingredientId:"",ingredientQty:"",ingredientUnit:""};
+  const openNew=()=>{setForm({name:"",options:[{...blankOpt}]});setEdit("new");};
   const openEdit=(t)=>{
-    setForm({name:t.name,required:!!t.required,options:(t.options||[]).map(o=>({label:o.label,price:o.extra_price||0}))});
-    if(form.options&&form.options.length===0)setForm(p=>({...p,options:[{label:"",price:""}]}));
+    const opts=(t.options||[]).map(o=>({label:o.label,price:o.extra_price||0,ingredientId:o.ingredient_id||"",ingredientQty:o.ingredient_qty!=null?o.ingredient_qty:"",ingredientUnit:o.ingredient_unit||(o.ingredient_id?ingUnit(o.ingredient_id):"g")}));
+    setForm({name:t.name,options:opts.length?opts:[{...blankOpt}]});
     setEdit(t.id);
   };
-  const setOpt=(i,k,v)=>setForm(p=>({...p,options:p.options.map((o,j)=>j===i?{...o,[k]:v}:o)}));
-  const addOpt=()=>setForm(p=>({...p,options:[...p.options,{label:"",price:""}]}));
+  const setOpt=(i,k,v)=>setForm(p=>({...p,options:p.options.map((o,j)=>{
+    if(j!==i) return o;
+    const next={...o,[k]:v};
+    // default the unit to the ingredient's unit when an ingredient is picked
+    if(k==="ingredientId"){const u=allIngredients.find(x=>x.id===v)?.unit;if(u&&!o.ingredientUnit)next.ingredientUnit=u;}
+    return next;
+  })}));
+  const addOpt=()=>setForm(p=>({...p,options:[...p.options,{...blankOpt}]}));
   const removeOpt=(i)=>setForm(p=>({...p,options:p.options.filter((_,j)=>j!==i)}));
+  const ingUnit=(id)=>allIngredients.find(x=>x.id===id)?.unit||"";
+  const unitOptsFor=(o)=>{
+    const ing=allIngredients.find(x=>x.id===o.ingredientId);
+    const grp=ing?UNIT_DEFS.find(u=>u.id===ing.unit)?.group:null;
+    return grp?UNIT_DEFS.filter(u=>u.group===grp):UNIT_DEFS;
+  };
 
   const save=async()=>{
     if(!form.name.trim())return;
     setSaving(true);
     const body={
-      name:form.name.trim(),required:form.required,
-      options:form.options.filter(o=>o.label.trim()).map(o=>({label:o.label.trim(),extra_price:parseFloat(o.price)||0})),
+      name:form.name.trim(),
+      options:form.options.filter(o=>o.label.trim()).map(o=>{
+        const hasQty=o.ingredientQty!==""&&o.ingredientQty!=null;
+        return {
+          label:o.label.trim(),
+          extra_price:parseFloat(o.price)||0,
+          ingredient_id:o.ingredientId||null,
+          ingredient_qty:hasQty?parseFloat(o.ingredientQty)||0:null,
+          ingredient_unit:hasQty?(o.ingredientUnit||ingUnit(o.ingredientId)||"g"):null,
+        };
+      }),
     };
     try{
       if(edit==="new"){
@@ -1138,6 +1180,15 @@ function ModifiersMgmt(){
     const r=await fetch(`/api/menu/modifiers/${id}`,{method:"DELETE"});
     if(r.status===204||r.ok)setTemplates(p=>p.filter(t=>t.id!==id));
   };
+  const optLabel=(o)=>{
+    let s=o.label;
+    if(o.extra_price>0)s+=` +€${Number(o.extra_price).toFixed(2)}`;
+    if(o.ingredient_qty){
+      const u=o.ingredient_unit||o.ingredient?.unit||"";
+      s+=o.ingredient_id?` · ${o.ingredient_qty}${u} ${o.ingredient?.name||""}`:` · +${o.ingredient_qty}${u} (extra à base)`;
+    }
+    return s;
+  };
 
   return(
     <div>
@@ -1146,16 +1197,16 @@ function ModifiersMgmt(){
         <button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Modificador</button>
       </div>
       <div style={{fontSize:12,color:T.textMuted,marginBottom:12}}>
-        Define um modificador uma vez e liga-o a vários itens em <strong>Items do Menu</strong>. Editar aqui atualiza todos os itens ligados.
+        Define um modificador uma vez e liga-o a vários itens em <strong>Items do Menu</strong>. Uma opção pode descontar um ingrediente do stock (ex: "Espiral 200g" → 200g de Massa Espiral).
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
         {templates.map(t=>(
           <div key={t.id}className="card"style={{padding:"14px 16px"}}>
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
               <div style={{minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:14}}>{t.name}{t.required&&<Badge color={T.danger}bg={T.dangerDim}>obrigatório</Badge>}</div>
+                <div style={{fontWeight:700,fontSize:14}}>{t.name}</div>
                 <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>
-                  {(t.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}
+                  {(t.options||[]).map(optLabel).join(" · ")||"Sem opções"}
                 </div>
               </div>
               <div style={{display:"flex",gap:4,flexShrink:0}}>
@@ -1165,30 +1216,151 @@ function ModifiersMgmt(){
             </div>
           </div>
         ))}
-        {templates.length===0&&<div className="empty-state">Sem modificadores. Cria o primeiro (ex: "Com ovo +€1").</div>}
+        {templates.length===0&&<div className="empty-state">Sem modificadores. Cria o primeiro (ex: "Com ovo +€1" ou "Espiral 200g").</div>}
       </div>
       {edit&&(
         <div className="overlay"onClick={()=>setEdit(null)}>
-          <div className="modal"style={{width:440}}onClick={e=>e.stopPropagation()}>
+          <div className="modal"style={{width:540}}onClick={e=>e.stopPropagation()}>
             <div className="modal-hd"><div className="modal-title">{edit==="new"?"Novo Modificador":"Editar Modificador"}</div><CloseBtn onClick={()=>setEdit(null)}/></div>
             <div className="modal-body">
-              <div className="form-row">
-                <Inp label="Nome do Grupo"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
-                <div className="form-group"style={{display:"flex",alignItems:"center",gap:10,paddingTop:22}}>
-                  <Toggle on={form.required}onChange={v=>setForm(p=>({...p,required:v}))}/><span style={{fontSize:13,color:T.textSec}}>Obrigatório</span>
-                </div>
+              <Inp label="Nome do Grupo (ex: Tipo de massa)"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <div className="form-label"style={{marginBottom:8,marginTop:6}}>Opções</div>
+              <div style={{display:"flex",fontSize:10,color:T.textMuted,gap:6,padding:"0 4px 4px"}}>
+                <span style={{flex:2}}>Etiqueta</span><span style={{width:56}}>+€</span><span style={{flex:2}}>Ingrediente</span><span style={{width:52}}>Qtd</span><span style={{width:60}}>Un.</span><span style={{width:28}}/>
               </div>
-              <div className="form-label"style={{marginBottom:8}}>Opções</div>
               {form.options.map((opt,i)=>(
-                <div key={i}style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-end"}}>
-                  <div style={{flex:2}}><input className="form-input"placeholder="Etiqueta (ex: Com ovo)"value={opt.label}onChange={e=>setOpt(i,"label",e.target.value)}/></div>
-                  <div style={{flex:1}}><input className="form-input"placeholder="+€ extra"type="number"step="0.01"value={opt.price}onChange={e=>setOpt(i,"price",e.target.value)}/></div>
+                <div key={i}style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                  <input className="form-input"style={{flex:2}}placeholder="ex: Espiral 200g"value={opt.label}onChange={e=>setOpt(i,"label",e.target.value)}/>
+                  <input className="form-input"style={{width:56}}type="number"step="0.01"placeholder="0"value={opt.price}onChange={e=>setOpt(i,"price",e.target.value)}/>
+                  <select className="form-select"style={{flex:2}}value={opt.ingredientId}onChange={e=>setOpt(i,"ingredientId",e.target.value)}>
+                    <option value="">— extra/nenhum —</option>
+                    {allIngredients.map(ing=><option key={ing.id}value={ing.id}>{ing.name}</option>)}
+                  </select>
+                  <input className="form-input"style={{width:52}}type="number"step="any"placeholder="0"value={opt.ingredientQty}onChange={e=>setOpt(i,"ingredientQty",e.target.value)}/>
+                  <select className="form-select"style={{width:60}}value={opt.ingredientUnit||""}onChange={e=>setOpt(i,"ingredientUnit",e.target.value)}>
+                    {unitOptsFor(opt).map(u=><option key={u.id}value={u.id}>{u.id}</option>)}
+                  </select>
                   <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>removeOpt(i)}><Ic.Trash/></button>
                 </div>
               ))}
               <button className="btn btn-ghost btn-sm"onClick={addOpt}><Ic.Plus/>Adicionar opção</button>
+              <div style={{fontSize:11,color:T.textMuted,marginTop:8,lineHeight:1.5}}>
+                • <strong>Com ingrediente + qtd</strong>: ao escolher no POS desconta essa quantidade do stock (ex: "Espiral" → 200g de Massa Espiral).<br/>
+                • <strong>Sem ingrediente mas com qtd</strong> (extra, ex: "+200g"): desconta essa quantidade do <strong>ingrediente escolhido na base</strong>. A unidade é convertida automaticamente.
+              </div>
             </div>
             <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEdit(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name.trim()||saving}>Guardar</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MENU CHOICE GROUPS (combo modifiers) ─────────────────────────────────────
+function ComboModifiersLib(){
+  const [groups,setGroups]=useState([]);
+  const [allItems,setAllItems]=useState([]);
+  const [edit,setEdit]=useState(null); // "new" | id | null
+  const [form,setForm]=useState({name:"",itemIds:[]});
+  const [saving,setSaving]=useState(false);
+  const [pickSearch,setPickSearch]=useState("");
+  const [pickCat,setPickCat]=useState("Todas");
+
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/menu/combo-modifiers").then(r=>r.json()),
+      fetch("/api/menu/items?active=false").then(r=>r.json()),
+    ]).then(([gs,its])=>{
+      if(Array.isArray(gs))setGroups(gs);
+      if(Array.isArray(its))setAllItems(its.map(i=>({id:i.id,name:i.name,price:i.price,cat:i.category?.name||""})));
+    }).catch(()=>{});
+  },[]);
+
+  const openNew=()=>{setForm({name:"",itemIds:[]});setPickSearch("");setPickCat("Todas");setEdit("new");};
+  const openEdit=(g)=>{setForm({name:g.name,itemIds:(g.options||[]).map(o=>o.item_id||o.item?.id).filter(Boolean)});setPickSearch("");setPickCat("Todas");setEdit(g.id);};
+  const toggleItem=(id)=>setForm(p=>({...p,itemIds:p.itemIds.includes(id)?p.itemIds.filter(x=>x!==id):[...p.itemIds,id]}));
+  const save=async()=>{
+    if(!form.name.trim()||form.itemIds.length===0)return;
+    setSaving(true);
+    const body={name:form.name.trim(),item_ids:form.itemIds};
+    try{
+      if(edit==="new"){
+        const r=await fetch("/api/menu/combo-modifiers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        const d=await r.json();if(!d.error)setGroups(p=>[...p,d]);
+      }else{
+        const r=await fetch(`/api/menu/combo-modifiers/${edit}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        const d=await r.json();if(!d.error)setGroups(p=>p.map(g=>g.id===edit?d:g));
+      }
+      setEdit(null);
+    }finally{setSaving(false);}
+  };
+  const del=async(id)=>{
+    if(!confirm("Apagar este grupo de escolha? Será removido de todos os menus ligados."))return;
+    const r=await fetch(`/api/menu/combo-modifiers/${id}`,{method:"DELETE"});
+    if(r.status===204||r.ok)setGroups(p=>p.filter(g=>g.id!==id));
+  };
+  const itemName=(id)=>allItems.find(i=>i.id===id)?.name||"?";
+
+  return(
+    <div>
+      <div className="section-head">
+        <div className="section-h">{groups.length} grupos de escolha</div>
+        <button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Grupo</button>
+      </div>
+      <div style={{fontSize:12,color:T.textMuted,marginBottom:12}}>
+        Define um grupo de escolha (ex: <strong>Bebida</strong> → Cola, Água) e liga-o a vários menus em <strong>Menus</strong>. Editar aqui atualiza todos os menus ligados.
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
+        {groups.map(g=>(
+          <div key={g.id}className="card"style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14}}>{g.name}</div>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>
+                  {(g.options||[]).map(o=>o.item?.name||itemName(o.item_id)).join(" · ")||"Sem opções"}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(g)}><Ic.Edit/></button>
+                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>del(g.id)}><Ic.Trash/></button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {groups.length===0&&<div className="empty-state">Sem grupos. Cria o primeiro (ex: "Bebida" com Cola e Água).</div>}
+      </div>
+      {edit&&(
+        <div className="overlay"onClick={()=>setEdit(null)}>
+          <div className="modal"style={{width:440}}onClick={e=>e.stopPropagation()}>
+            <div className="modal-hd"><div className="modal-title">{edit==="new"?"Novo Grupo de Escolha":"Editar Grupo de Escolha"}</div><CloseBtn onClick={()=>setEdit(null)}/></div>
+            <div className="modal-body">
+              <Inp label="Nome do Grupo (ex: Bebida)"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <div className="form-label"style={{marginBottom:8}}>Opções (itens à escolha)</div>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <input className="form-input"style={{flex:2}}placeholder="Procurar item..."value={pickSearch}onChange={e=>setPickSearch(e.target.value)}/>
+                <select className="form-select"style={{flex:1}}value={pickCat}onChange={e=>setPickCat(e.target.value)}>
+                  {["Todas",...Array.from(new Set(allItems.map(i=>i.cat).filter(Boolean)))].map(c=><option key={c}value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:280,overflowY:"auto"}}>
+                {allItems.filter(it=>(pickCat==="Todas"||it.cat===pickCat)&&(!pickSearch||it.name.toLowerCase().includes(pickSearch.toLowerCase()))).map(it=>{
+                  const on=form.itemIds.includes(it.id);
+                  return(
+                    <div key={it.id}onClick={()=>toggleItem(it.id)}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",border:`1px solid ${on?T.accent+"55":T.border}`,background:on?T.accentDim:T.card,borderRadius:8,cursor:"pointer"}}>
+                      <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${on?T.accent:T.border}`,background:on?T.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        {on&&<svg width="10"height="10"viewBox="0 0 12 12"fill="none"><polyline points="2 6 5 9 10 3"stroke="#fff"strokeWidth="2"strokeLinecap="round"/></svg>}
+                      </div>
+                      <span style={{flex:1,fontSize:13,fontWeight:600}}>{it.name}</span>
+                      <span style={{fontSize:11,color:T.textMuted}}>{it.cat}</span>
+                      <span className="mono"style={{fontSize:11,color:T.textMuted}}>{fmtEur(it.price)}</span>
+                    </div>
+                  );
+                })}
+                {allItems.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens. Cria itens em <strong>Items do Menu</strong>.</span>}
+              </div>
+            </div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEdit(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name.trim()||form.itemIds.length===0||saving}>Guardar</button></div>
           </div>
         </div>
       )}
@@ -1552,33 +1724,45 @@ function CombosMgmt(){
   const [comboItems,setComboItems]=useState([]);
   const [selItem,setSelItem]=useState("");
   const [selQty,setSelQty]=useState("1");
-  const [selIsChoice,setSelIsChoice]=useState(false);
+  const [allGroups,setAllGroups]=useState([]); // reusable choice groups (combo modifiers)
+  const [linkedGroupIds,setLinkedGroupIds]=useState([]);
   useEffect(()=>{
     Promise.all([
       fetch("/api/combos").then(r=>r.json()),
       fetch("/api/menu/items?active=false").then(r=>r.json()),
-    ]).then(([cs,its])=>{
+      fetch("/api/menu/combo-modifiers").then(r=>r.json()).catch(()=>[]),
+    ]).then(([cs,its,gs])=>{
       if(Array.isArray(cs))setCombos(cs);
       if(Array.isArray(its))setAllItems(its.map(i=>({id:i.id,name:i.name,price:i.price,cat:i.category?.name||""})));
+      if(Array.isArray(gs))setAllGroups(gs);
     }).catch(()=>{});
   },[]);
-  const openNew=()=>{setForm({name:"",description:"",price:"",active:true});setComboItems([]);setSelItem("");setSelQty("1");setSelIsChoice(false);setEditCombo("new");};
+  const openNew=()=>{setForm({name:"",description:"",price:"",active:true});setComboItems([]);setLinkedGroupIds([]);setSelItem("");setSelQty("1");setEditCombo("new");};
   const openEdit=(combo)=>{
     setForm({name:combo.name,description:combo.description||"",price:combo.price,active:combo.active});
     setComboItems((combo.items||[]).map(ci=>({item_id:ci.item_id,qty:ci.qty,item:ci.item,is_choice:!!ci.is_choice,cat:ci.item?.category?.name||allItems.find(i=>i.id===ci.item_id)?.cat||""})));
-    setSelItem("");setSelQty("1");setSelIsChoice(false);setEditCombo(combo.id);
+    setLinkedGroupIds((combo.comboModifiers||[]).map(m=>m?.id).filter(Boolean));
+    setSelItem("");setSelQty("1");setEditCombo(combo.id);
+  };
+  const toggleGroup=async(gid)=>{
+    const isLinked=linkedGroupIds.includes(gid);
+    setLinkedGroupIds(p=>isLinked?p.filter(x=>x!==gid):[...p,gid]);
+    if(editCombo==="new")return; // applied after combo creation in save
+    const method=isLinked?"DELETE":"POST";
+    await fetch(`/api/combos/${editCombo}/modifier-links`,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({combo_modifier_id:gid})}).catch(()=>{
+      setLinkedGroupIds(p=>isLinked?[...p,gid]:p.filter(x=>x!==gid)); // rollback
+    });
   };
   const addItem=async()=>{
     if(!selItem)return;
     const item=allItems.find(i=>i.id===selItem);
     const qty=parseInt(selQty)||1;
-    const cat=item?.cat||"";
-    // The choice "group" is simply the item's category
-    const ci={item_id:selItem,qty,item:{id:selItem,name:item?.name||"",price:item?.price||0},is_choice:selIsChoice,cat};
-    if(editCombo==="new"){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");setSelIsChoice(false);return;}
-    const r=await fetch(`/api/combos/${editCombo}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:selItem,qty,is_choice:selIsChoice,choice_group:cat})});
+    // Combo items are always included; choices come from linked reusable groups
+    const ci={item_id:selItem,qty,item:{id:selItem,name:item?.name||"",price:item?.price||0},is_choice:false};
+    if(editCombo==="new"){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");return;}
+    const r=await fetch(`/api/combos/${editCombo}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:selItem,qty,is_choice:false})});
     const data=await r.json();
-    if(!data.error){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");setSelIsChoice(false);}
+    if(!data.error){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");}
   };
   const removeItem=async(itemId)=>{
     setComboItems(p=>p.filter(x=>x.item_id!==itemId));
@@ -1591,12 +1775,15 @@ function CombosMgmt(){
       const data=await r.json();
       if(data.error)return;
       await Promise.all(comboItems.map(ci=>fetch(`/api/combos/${data.id}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:ci.item_id,qty:ci.qty,is_choice:ci.is_choice,choice_group:ci.cat||""})}).catch(()=>{})));
-      setCombos(p=>[...p,{...data,items:comboItems}]);
+      await Promise.all(linkedGroupIds.map(gid=>fetch(`/api/combos/${data.id}/modifier-links`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({combo_modifier_id:gid})}).catch(()=>{})));
+      const linkedMods=allGroups.filter(g=>linkedGroupIds.includes(g.id));
+      setCombos(p=>[...p,{...data,items:comboItems,comboModifiers:linkedMods}]);
     } else {
       const r=await fetch(`/api/combos/${editCombo}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
       if(data.error)return;
-      setCombos(p=>p.map(c=>c.id===editCombo?{...c,...data,items:comboItems}:c));
+      const linkedMods=allGroups.filter(g=>linkedGroupIds.includes(g.id));
+      setCombos(p=>p.map(c=>c.id===editCombo?{...c,...data,items:comboItems,comboModifiers:linkedMods}:c));
     }
     setEditCombo(null);
   };
@@ -1669,17 +1856,30 @@ function CombosMgmt(){
                     {allItems.filter(i=>!comboItems.find(ci=>ci.item_id===i.id)).map(i=><option key={i.id}value={i.id}>{i.name} — {fmtEur(i.price)}</option>)}
                   </select>
                   <input className="form-input"style={{width:55}}type="number"min="1"placeholder="Qtd"value={selQty}onChange={e=>setSelQty(e.target.value)}/>
-                  <select className="form-select"style={{flex:"1 1 100px"}}value={selIsChoice?"choice":"fixed"}onChange={e=>setSelIsChoice(e.target.value==="choice")}>
-                    <option value="fixed">Incluído</option>
-                    <option value="choice">Escolha</option>
-                  </select>
-                  {selIsChoice&&selItem&&(
-                    <span style={{...choiceStyle,alignSelf:"center"}}>Grupo: {allItems.find(i=>i.id===selItem)?.cat||"sem categoria"}</span>
-                  )}
                   <button className="btn btn-ghost"onClick={addItem}disabled={!selItem}>Adicionar</button>
                 </div>
                 <div style={{fontSize:11,color:T.textMuted,marginTop:6}}>
-                  <strong style={{color:T.accent}}>Incluído</strong> — sempre no menu · <strong style={{color:T.teal}}>Escolha</strong> — o cliente escolhe um item por <strong>categoria</strong> no POS (ex: uma bebida da categoria Bebidas)
+                  Estes itens estão <strong style={{color:T.accent}}>sempre incluídos</strong> no menu. Para escolhas (ex: bebida à escolha) usa os <strong style={{color:T.teal}}>grupos de escolha reutilizáveis</strong> abaixo.
+                </div>
+              </div>
+              <div style={{marginTop:14,borderTop:`1px solid ${T.border}`,paddingTop:12}}>
+                <span className="form-label"style={{display:"block",marginBottom:8}}>Grupos de escolha reutilizáveis</span>
+                {allGroups.length===0&&<div style={{fontSize:11,color:T.textMuted}}>Sem grupos. Cria em <strong>Modificadores → Menus</strong> (ex: "Bebida" com Cola e Água).</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {allGroups.map(g=>{
+                    const on=linkedGroupIds.includes(g.id);
+                    return(
+                      <div key={g.id}onClick={()=>toggleGroup(g.id)}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",border:`1px solid ${on?T.teal+"66":T.border}`,background:on?T.tealDim:T.card,borderRadius:8,cursor:"pointer"}}>
+                        <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${on?T.teal:T.border}`,background:on?T.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          {on&&<svg width="10"height="10"viewBox="0 0 12 12"fill="none"><polyline points="2 6 5 9 10 3"stroke="#08080B"strokeWidth="2"strokeLinecap="round"/></svg>}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600}}>{g.name}</div>
+                          <div style={{fontSize:11,color:T.textMuted}}>{(g.options||[]).map(o=>o.item?.name||"?").join(" · ")||"Sem opções"}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Activo no POS</span></div>

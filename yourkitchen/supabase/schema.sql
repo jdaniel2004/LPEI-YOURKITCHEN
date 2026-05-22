@@ -292,3 +292,44 @@ create table if not exists item_modifier_templates (
   template_id uuid references modifier_templates(id) on delete cascade,
   primary key (item_id, template_id)
 );
+
+-- ─── REUSABLE MENU (COMBO) CHOICE GROUPS ──────────────────────────────────────
+-- A reusable "choose one" group of menu items (e.g. "Bebida": Cola / Água) that
+-- can be linked to many menus. Editing the group updates every linked menu.
+create table if not exists combo_modifiers (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists combo_modifier_options (
+  id                uuid primary key default gen_random_uuid(),
+  combo_modifier_id uuid references combo_modifiers(id) on delete cascade,
+  item_id           uuid references menu_items(id) on delete cascade
+);
+
+-- Junction: which choice groups are attached to which menus
+create table if not exists combo_modifier_links (
+  combo_id          uuid references combos(id) on delete cascade,
+  combo_modifier_id uuid references combo_modifiers(id) on delete cascade,
+  primary key (combo_id, combo_modifier_id)
+);
+
+-- ─── INGREDIENT-AWARE MODIFIER OPTIONS ────────────────────────────────────────
+-- A modifier option can optionally consume a set quantity of an ingredient
+-- (e.g. "Espiral 200g" → 200g of Massa Espiral). Selecting it deducts that
+-- amount from stock on top of the item's base recipe (dynamic ingredients).
+alter table modifier_options          add column if not exists ingredient_id   uuid references ingredients(id) on delete set null;
+alter table modifier_options          add column if not exists ingredient_qty  numeric(10,3);
+alter table modifier_options          add column if not exists ingredient_unit text;
+alter table modifier_template_options add column if not exists ingredient_id   uuid references ingredients(id) on delete set null;
+alter table modifier_template_options add column if not exists ingredient_qty  numeric(10,3);
+alter table modifier_template_options add column if not exists ingredient_unit text;
+
+-- Per-line ingredient deltas from selected modifier options: [{ingredient_id, qty}]
+alter table order_lines add column if not exists modifier_ingredients jsonb;
+
+-- Per-line paid quantity: how many units of the line are already settled. Lets a
+-- bill be paid item-by-item (per unit) across several partial payments. A line is
+-- fully paid when paid_qty >= qty; the order closes once every line is fully paid.
+alter table order_lines add column if not exists paid_qty int not null default 0;
