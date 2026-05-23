@@ -160,6 +160,14 @@ const STATUS_MAP = {
   locked: {label:"Em uso",  color:T.blue,    bg:T.blueDim,    border:`${T.blue}44`},
 };
 
+const RESV_STATUS = {
+  pending:   {label:"Pendente",  color:T.warning, bg:T.warningDim},
+  confirmed: {label:"Confirmada",color:T.success, bg:T.successDim},
+  seated:    {label:"Sentada",   color:T.blue,    bg:T.blueDim},
+  cancelled: {label:"Cancelada", color:T.danger,  bg:T.dangerDim},
+  completed: {label:"Concluída", color:T.textMuted,bg:"#ffffff10"},
+};
+
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
@@ -1318,6 +1326,9 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
   const [showResv,setShowResv]=useState(false);
   const [resvForm,setResvForm]=useState({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:""});
   const [resvSaving,setResvSaving]=useState(false);
+  const [showResvList,setShowResvList]=useState(false);
+  const [resvList,setResvList]=useState([]);
+  const [resvListLoading,setResvListLoading]=useState(false);
   const zoneTables=tables.filter(t=>t.zone===zone);
   const occupiedCount=tables.filter(t=>t.status==="occupied"||t.status==="bill").length;
 
@@ -1338,6 +1349,21 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
     } else {
       if(addToast) addToast("Erro ao criar reserva",T.danger);
     }
+  };
+
+  const openResvList=async()=>{
+    setShowResvList(true);
+    setResvListLoading(true);
+    const data=await fetch("/api/reservations").then(r=>r.json()).catch(()=>[]);
+    setResvList(Array.isArray(data)?data:[]);
+    setResvListLoading(false);
+  };
+  const cancelReservation=async(id)=>{
+    const r=await fetch(`/api/reservations/${id}`,{method:"DELETE"}).catch(()=>null);
+    if(r&&(r.ok||r.status===204)){
+      setResvList(prev=>prev.map(x=>x.id===id?{...x,status:"cancelled"}:x));
+      if(addToast) addToast("Reserva cancelada",T.warning);
+    } else if(addToast) addToast("Erro ao cancelar reserva",T.danger);
   };
   const activeOrders=Object.values(orders).filter(o=>o.items.length>0&&!o.paid).length;
   const turnoVendas=Object.values(orders).filter(o=>o.paid).reduce((s,o)=>s+orderTotal(o.items),0);
@@ -1429,9 +1455,8 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           Take-Away
         </button>
-        <button className="btn btn-accent btn-lg" onClick={()=>onQuickOrder("balcao")}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          Balcão
+        <button className="btn btn-ghost btn-lg" onClick={openResvList}>
+          📋 Ver Reservas
         </button>
         <button className="btn btn-ghost btn-lg" onClick={()=>setShowResv(true)}>
           📅 Nova Reserva
@@ -1464,6 +1489,53 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
           <div className="modal-footer">
             <button className="btn btn-ghost" onClick={()=>setShowResv(false)}>Cancelar</button>
             <button className="btn btn-solid-accent" disabled={!resvForm.name||resvSaving} onClick={saveReservation}>{resvSaving?"A guardar...":"Criar Reserva"}</button>
+          </div>
+        </div>
+      </div>
+    )}
+    {showResvList&&(
+      <div className="overlay" onClick={()=>setShowResvList(false)}>
+        <div className="modal" style={{width:560,maxHeight:"86vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+          <div className="modal-header">
+            <div><div className="modal-title">Reservas</div><div className="modal-sub">{resvList.filter(r=>r.status!=="cancelled").length} ativa(s)</div></div>
+            <button className="modal-close" onClick={()=>setShowResvList(false)}>✕</button>
+          </div>
+          <div className="modal-body" style={{overflowY:"auto"}}>
+            {resvListLoading?(
+              <div style={{textAlign:"center",color:T.textMuted,padding:"32px 0"}}>A carregar…</div>
+            ):resvList.length===0?(
+              <div style={{textAlign:"center",color:T.textMuted,padding:"32px 0"}}>Sem reservas</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {resvList.map(r=>{
+                  const sc=RESV_STATUS[r.status]||RESV_STATUS.pending;
+                  const closed=r.status==="cancelled"||r.status==="completed";
+                  return(
+                    <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:"10px 12px",opacity:closed?.5:1}}>
+                      <div style={{textAlign:"center",minWidth:56}}>
+                        <div style={{fontFamily:"'DM Mono',monospace",fontSize:15,fontWeight:700,color:T.text}}>{(r.time||"").slice(0,5)}</div>
+                        <div style={{fontSize:10,color:T.textMuted,fontFamily:"'DM Mono',monospace"}}>{r.date}</div>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:700,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
+                        <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>
+                          👥 {r.persons}{r.table?.label?` · ${r.table.label}`:" · sem mesa"}{r.phone?` · ${r.phone}`:""}
+                        </div>
+                        {r.notes&&<div style={{fontSize:11,color:T.textSec,marginTop:2,fontStyle:"italic"}}>{r.notes}</div>}
+                      </div>
+                      <div style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:6,color:sc.color,background:sc.bg,whiteSpace:"nowrap"}}>{sc.label}</div>
+                      {!closed&&(
+                        <button className="btn btn-ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>cancelReservation(r.id)}>Cancelar</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={()=>setShowResvList(false)}>Fechar</button>
+            <button className="btn btn-solid-accent" onClick={()=>{setShowResvList(false);setShowResv(true);}}>📅 Nova Reserva</button>
           </div>
         </div>
       </div>
@@ -1751,9 +1823,11 @@ export default function POS({session,appName="RestaurantOS"}){
   };
 
   const handleQuickOrder=async(type)=>{
+    // The orders table only allows type in ('table','takeaway','counter').
+    const dbType=type==="take-away"?"takeaway":type==="balcao"?"counter":type;
     const res=await fetch("/api/orders",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({type}),
+      body:JSON.stringify({type:dbType}),
     });
     if(!res.ok){addToast("Erro ao criar pedido",T.danger);return;}
     const order=await res.json();
@@ -1824,6 +1898,19 @@ export default function POS({session,appName="RestaurantOS"}){
       if(!res.ok){
         const err=await res.json().catch(()=>({}));
         throw new Error(err.error||"Erro ao enviar para cozinha");
+      }
+      // Replace the optimistic client line IDs with the real DB IDs returned by
+      // the create calls. Done only after a successful send so the catch-block
+      // rollback (which matches on the original IDs) still works on failure.
+      // Without this, pay-by-item/cancel reference rows that don't exist in the DB.
+      const createdRows=await Promise.all(lineResults.map(r=>r.json().catch(()=>null)));
+      const idMap={};
+      pending.forEach((it,k)=>{const row=createdRows[k];if(row&&row.id)idMap[it.lineId]=row.id;});
+      if(Object.keys(idMap).length){
+        setOrders(p=>{
+          const o=p[realOrderId];if(!o)return p;
+          return{...p,[realOrderId]:{...o,items:o.items.map(i=>idMap[i.lineId]?{...i,lineId:idMap[i.lineId]}:i)}};
+        });
       }
       setMenuStock(ms=>{
         const u={...ms};
