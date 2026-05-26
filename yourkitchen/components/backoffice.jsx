@@ -2137,6 +2137,10 @@ const SETTINGS_DEFAULTS={
   ]},
   kds:{alertYellow:5,alertRed:12,autoRefresh:3},
   caixa:{defaultFundo:50,maxTurno:8,confirmAbertura:true},
+  horario:{turnos:[
+    {id:"t1",name:"Almoço",start:"11:30",end:"15:00"},
+    {id:"t2",name:"Jantar",start:"18:30",end:"22:00"},
+  ]},
 };
 function SettingsSection({onAppNameChange}={}){
   const [tab,setTab]=useState("geral");
@@ -2150,6 +2154,7 @@ function SettingsSection({onAppNameChange}={}){
         fiscal:{nif:flat["fiscal.nif"]??prev.fiscal.nif,regime:flat["fiscal.regime"]??prev.fiscal.regime,rates:flat["fiscal.rates"]??prev.fiscal.rates},
         kds:{alertYellow:flat["kds.alertYellow"]??prev.kds.alertYellow,alertRed:flat["kds.alertRed"]??prev.kds.alertRed,autoRefresh:flat["kds.autoRefresh"]??prev.kds.autoRefresh},
         caixa:{defaultFundo:flat["caixa.defaultFundo"]??prev.caixa.defaultFundo,maxTurno:flat["caixa.maxTurno"]??prev.caixa.maxTurno,confirmAbertura:flat["caixa.confirmAbertura"]??prev.caixa.confirmAbertura},
+        horario:{turnos:Array.isArray(flat["horario.turnos"])?flat["horario.turnos"]:prev.horario.turnos},
       }));
     }).catch(()=>{});
   },[]);
@@ -2172,9 +2177,12 @@ function SettingsSection({onAppNameChange}={}){
   };
   const setK=(k,v)=>setS(p=>({...p,kds:{...p.kds,[k]:v}}));
   const setC=(k,v)=>setS(p=>({...p,caixa:{...p.caixa,[k]:v}}));
+  const addTurno=()=>setS(p=>({...p,horario:{turnos:[...p.horario.turnos,{id:`t${Date.now()}`,name:"Novo turno",start:"12:00",end:"15:00"}]}}));
+  const setTurno=(id,k,v)=>setS(p=>({...p,horario:{turnos:p.horario.turnos.map(t=>t.id===id?{...t,[k]:v}:t)}}));
+  const removeTurno=(id)=>setS(p=>({...p,horario:{turnos:p.horario.turnos.filter(t=>t.id!==id)}}));
   return(
     <div>
-      <div className="stab-row">{["geral","fiscal","kds","caixa"].map(t=><div key={t}className={`stab${tab===t?" active":""}`}onClick={()=>setTab(t)}style={{textTransform:"capitalize"}}>{t==="fiscal"?"Fiscal & IVA":t==="kds"?"KDS":t==="caixa"?"Caixa":t.charAt(0).toUpperCase()+t.slice(1)}</div>)}</div>
+      <div className="stab-row">{["geral","fiscal","kds","caixa","horario"].map(t=><div key={t}className={`stab${tab===t?" active":""}`}onClick={()=>setTab(t)}style={{textTransform:"capitalize"}}>{t==="fiscal"?"Fiscal & IVA":t==="kds"?"KDS":t==="caixa"?"Caixa":t==="horario"?"Horário":t.charAt(0).toUpperCase()+t.slice(1)}</div>)}</div>
       <div style={{maxWidth:520}}>
         {tab==="geral"&&<div className="card"><div className="card-body">
           <Inp label="Nome do Restaurante"value={s.geral.name}onChange={e=>setG("name",e.target.value)}/>
@@ -2214,6 +2222,22 @@ function SettingsSection({onAppNameChange}={}){
           <Inp label="Duração Máxima de Turno (horas)"type="number"value={s.caixa.maxTurno}onChange={e=>setC("maxTurno",parseInt(e.target.value)||8)}/>
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0"}}><Toggle on={s.caixa.confirmAbertura}onChange={v=>setC("confirmAbertura",v)}/><span style={{fontSize:13,color:T.textSec}}>Exigir confirmação na abertura de turno</span></div>
           <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["defaultFundo","maxTurno","confirmAbertura"],"caixa")}>{saving?"A guardar...":"Guardar"}</button>
+        </div></div>}
+        {tab==="horario"&&<div className="card"><div className="card-body">
+          <label className="form-label">Turnos de Operação</label>
+          <div style={{fontSize:12,color:T.textSec,marginBottom:12}}>Os horários em que o restaurante opera. As reservas só ficam ativas no POS durante o turno correspondente, no dia da reserva.</div>
+          {(s.horario.turnos||[]).length===0&&<div style={{fontSize:13,color:T.textMuted,padding:"8px 0"}}>Sem turnos. Adiciona pelo menos um.</div>}
+          {(s.horario.turnos||[]).map(t=>(
+            <div key={t.id}style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
+              <input className="form-input"style={{flex:1}}placeholder="Nome do turno"value={t.name}onChange={e=>setTurno(t.id,"name",e.target.value)}/>
+              <input className="form-input"style={{width:110}}type="time"value={t.start}onChange={e=>setTurno(t.id,"start",e.target.value)}/>
+              <span style={{color:T.textMuted}}>–</span>
+              <input className="form-input"style={{width:110}}type="time"value={t.end}onChange={e=>setTurno(t.id,"end",e.target.value)}/>
+              <button className="btn btn-ghost"style={{padding:"6px 10px"}}onClick={()=>removeTurno(t.id)}>✕</button>
+            </div>
+          ))}
+          <button className="btn btn-ghost"style={{marginTop:4}}onClick={addTurno}>+ Adicionar turno</button>
+          <div style={{marginTop:14}}><button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["turnos"],"horario")}>{saving?"A guardar...":"Guardar"}</button></div>
         </div></div>}
       </div>
     </div>

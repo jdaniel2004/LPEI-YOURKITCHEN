@@ -168,6 +168,40 @@ const RESV_STATUS = {
   completed: {label:"Concluída", color:T.textMuted,bg:"#ffffff10"},
 };
 
+// ─── TURNOS (operating shifts) ──────────────────────────────────────────────────
+function hhmmToMin(t){
+  if(!t) return null;
+  const [h,m]=String(t).slice(0,5).split(":").map(Number);
+  if(Number.isNaN(h)) return null;
+  return h*60+(m||0);
+}
+// True if `mins` falls within [start,end]; handles windows that cross midnight.
+function inTurnoWindow(mins,start,end){
+  const s=hhmmToMin(start),e=hhmmToMin(end);
+  if(s==null||e==null||mins==null) return false;
+  return e>=s ? (mins>=s&&mins<=e) : (mins>=s||mins<=e);
+}
+function currentTurno(turnos,now=new Date()){
+  const mins=now.getHours()*60+now.getMinutes();
+  return (turnos||[]).find(t=>inTurnoWindow(mins,t.start,t.end))||null;
+}
+function turnoForTime(turnos,time){
+  return (turnos||[]).find(t=>inTurnoWindow(hhmmToMin(time),t.start,t.end))||null;
+}
+function localDateStr(now=new Date()){
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+}
+// A reservation is active only on its day and during the turno that covers its time.
+// With no turnos configured we don't block anything.
+function reservationActive(resv,turnos,now=new Date()){
+  if(!Array.isArray(turnos)||turnos.length===0) return true;
+  if(resv.date!==localDateStr(now)) return false;
+  const cur=currentTurno(turnos,now);
+  if(!cur) return false;
+  const rt=turnoForTime(turnos,resv.time);
+  return !!rt && rt.start===cur.start && rt.end===cur.end;
+}
+
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
@@ -758,8 +792,10 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
   const [split,setSplit]=useState(seats&&seats>1?seats:1);
   const [sel,setSel]=useState({}); // lineId -> units selected to pay now
 
-  // Lines still owing money: not cancelled and with units left to pay.
-  const payableLines=order.items.filter(i=>!i.cancelled&&(i.qty-(i.paidQty||0))>0);
+  // Lines still owing money: sent (so they exist in the DB and were actually
+  // ordered), not cancelled, and with units left to pay. Unsent draft items have
+  // client-side IDs with no DB row, so paying them would fail server-side.
+  const payableLines=order.items.filter(i=>i.sent&&!i.cancelled&&(i.qty-(i.paidQty||0))>0);
   const unitOf=i=>i.price+(i.extraPrice||0);
 
   // Summary reflects what's LEFT to pay (a previous partial payment lowers it).
@@ -790,19 +826,26 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
     else setReceived(p=>(p+d).slice(0,8));
   };
 
+  const [busy,setBusy]=useState(false);
   const cashOK = method!=="numerario" || (!isNaN(rec)&&rec>=amountDue);
-  const canConfirm = payMode==="itens"
+  const canConfirm = !busy && (payMode==="itens"
     ? (selectedUnits>0 && cashOK)
-    : (remaining>0 && cashOK);
+    : (remaining>0 && cashOK));
 
-  const submit=()=>{
-    if(payMode==="itens"){
-      const items=payableLines
-        .filter(i=>(sel[i.lineId]||0)>0)
-        .map(i=>({line_id:i.lineId,qty:sel[i.lineId]}));
-      onConfirm({mode:"itens",method,amount:selectedTotal,items});
-    }else{
-      onConfirm({mode:"pessoas",method,amount:remaining,split});
+  const submit=async()=>{
+    if(busy) return;
+    setBusy(true);
+    try{
+      if(payMode==="itens"){
+        const items=payableLines
+          .filter(i=>(sel[i.lineId]||0)>0)
+          .map(i=>({line_id:i.lineId,qty:sel[i.lineId]}));
+        await onConfirm({mode:"itens",method,amount:selectedTotal,items});
+      }else{
+        await onConfirm({mode:"pessoas",method,amount:remaining,split});
+      }
+    }finally{
+      setBusy(false);
     }
   };
 
@@ -1321,7 +1364,7 @@ function FundoManeioScreen({staffName,onConfirm,appName="RestaurantOS"}){
 }
 
 // ─── FLOOR SCREEN ─────────────────────────────────────────────────────────────
-function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,addToast}){
+function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast}){
   const [zone,setZone]=useState(zones[0]||"Interior");
   const [showResv,setShowResv]=useState(false);
   const [resvForm,setResvForm]=useState({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:""});
@@ -1329,8 +1372,11 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
   const [showResvList,setShowResvList]=useState(false);
   const [resvList,setResvList]=useState([]);
   const [resvListLoading,setResvListLoading]=useState(false);
+  const [resvArchiveOpen,setResvArchiveOpen]=useState(false);
+  const [resvBlockedOpen,setResvBlockedOpen]=useState(false);
   const zoneTables=tables.filter(t=>t.zone===zone);
   const occupiedCount=tables.filter(t=>t.status==="occupied"||t.status==="bill").length;
+  const turnoNow=currentTurno(turnos||[]);
 
   const inp={width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:7,color:T.text,fontFamily:"'Syne',sans-serif",fontSize:13,padding:"9px 11px",outline:"none"};
   const lbl={fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:6,display:"block"};
@@ -1365,6 +1411,29 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
       if(addToast) addToast("Reserva cancelada",T.warning);
     } else if(addToast) addToast("Erro ao cancelar reserva",T.danger);
   };
+  const resvRow=(r,dim=false)=>{
+    const sc=RESV_STATUS[r.status]||RESV_STATUS.pending;
+    const closed=r.status==="cancelled"||r.status==="completed";
+    return(
+      <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:"10px 12px",opacity:(closed||dim)?.5:1}}>
+        <div style={{textAlign:"center",minWidth:56}}>
+          <div style={{fontFamily:"'DM Mono',monospace",fontSize:15,fontWeight:700,color:T.text}}>{(r.time||"").slice(0,5)}</div>
+          <div style={{fontSize:10,color:T.textMuted,fontFamily:"'DM Mono',monospace"}}>{r.date}</div>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:700,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
+          <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>
+            👥 {r.persons}{r.table?.label?` · ${r.table.label}`:" · sem mesa"}{r.phone?` · ${r.phone}`:""}
+          </div>
+          {r.notes&&<div style={{fontSize:11,color:T.textSec,marginTop:2,fontStyle:"italic"}}>{r.notes}</div>}
+        </div>
+        <div style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:6,color:sc.color,background:sc.bg,whiteSpace:"nowrap"}}>{sc.label}</div>
+        {!closed&&(
+          <button className="btn btn-ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>cancelReservation(r.id)}>Cancelar</button>
+        )}
+      </div>
+    );
+  };
   const activeOrders=Object.values(orders).filter(o=>o.items.length>0&&!o.paid).length;
   const turnoVendas=Object.values(orders).filter(o=>o.paid).reduce((s,o)=>s+orderTotal(o.items),0);
 
@@ -1389,6 +1458,22 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
           <div className="stat-value" style={{fontSize:14,color:T.textSec}}>{new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}</div>
         </div>
       </div>
+
+      {turnos&&turnos.length>0&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 16px",borderBottom:`1px solid ${T.border}`,background:T.surface,flexShrink:0,overflowX:"auto"}}>
+          <span style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,flexShrink:0}}>Turnos</span>
+          {turnos.map(t=>{
+            const active=turnoNow&&turnoNow.start===t.start&&turnoNow.end===t.end;
+            return(
+              <div key={t.id||`${t.start}-${t.end}`} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,fontSize:12,whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${active?T.success+"55":T.border}`,background:active?T.successDim:T.card,color:active?T.success:T.textSec,fontWeight:active?700:500}}>
+                {active&&<span style={{width:6,height:6,borderRadius:"50%",background:T.success,boxShadow:`0 0 6px ${T.success}`}}/>}
+                {t.name} · {(t.start||"").slice(0,5)}–{(t.end||"").slice(0,5)}
+              </div>
+            );
+          })}
+          <span style={{fontSize:11,color:turnoNow?T.success:T.textMuted,marginLeft:"auto",flexShrink:0,fontWeight:600}}>{turnoNow?`Em serviço — ${turnoNow.name}`:"Fora de serviço"}</span>
+        </div>
+      )}
 
       <div className="floor-zones">
         {zones.map(z=>(
@@ -1480,7 +1565,7 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
               <div><span style={lbl}>Mesa</span>
                 <select style={{...inp,appearance:"none"}} value={resvForm.tableId} onChange={e=>setResvForm(p=>({...p,tableId:e.target.value}))}>
                   <option value="">— Sem mesa —</option>
-                  {tables.filter(t=>t.dbId).map(t=><option key={t.id} value={t.id}>{t.id} · {t.zone}</option>)}
+                  {tables.filter(t=>t.dbId&&t.status==="free").map(t=><option key={t.id} value={t.id}>{t.id} · {t.zone}</option>)}
                 </select>
               </div>
             </div>
@@ -1497,7 +1582,7 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
       <div className="overlay" onClick={()=>setShowResvList(false)}>
         <div className="modal" style={{width:560,maxHeight:"86vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
           <div className="modal-header">
-            <div><div className="modal-title">Reservas</div><div className="modal-sub">{resvList.filter(r=>r.status!=="cancelled").length} ativa(s)</div></div>
+            <div><div className="modal-title">Reservas</div><div className="modal-sub">{resvList.filter(r=>r.status!=="cancelled"&&r.status!=="completed"&&reservationActive(r,turnos)).length} ativa(s) · {resvList.length} total</div></div>
             <button className="modal-close" onClick={()=>setShowResvList(false)}>✕</button>
           </div>
           <div className="modal-body" style={{overflowY:"auto"}}>
@@ -1505,33 +1590,41 @@ function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,ad
               <div style={{textAlign:"center",color:T.textMuted,padding:"32px 0"}}>A carregar…</div>
             ):resvList.length===0?(
               <div style={{textAlign:"center",color:T.textMuted,padding:"32px 0"}}>Sem reservas</div>
-            ):(
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {resvList.map(r=>{
-                  const sc=RESV_STATUS[r.status]||RESV_STATUS.pending;
-                  const closed=r.status==="cancelled"||r.status==="completed";
-                  return(
-                    <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:"10px 12px",opacity:closed?.5:1}}>
-                      <div style={{textAlign:"center",minWidth:56}}>
-                        <div style={{fontFamily:"'DM Mono',monospace",fontSize:15,fontWeight:700,color:T.text}}>{(r.time||"").slice(0,5)}</div>
-                        <div style={{fontSize:10,color:T.textMuted,fontFamily:"'DM Mono',monospace"}}>{r.date}</div>
-                      </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:14,fontWeight:700,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
-                        <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>
-                          👥 {r.persons}{r.table?.label?` · ${r.table.label}`:" · sem mesa"}{r.phone?` · ${r.phone}`:""}
-                        </div>
-                        {r.notes&&<div style={{fontSize:11,color:T.textSec,marginTop:2,fontStyle:"italic"}}>{r.notes}</div>}
-                      </div>
-                      <div style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:6,color:sc.color,background:sc.bg,whiteSpace:"nowrap"}}>{sc.label}</div>
-                      {!closed&&(
-                        <button className="btn btn-ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>cancelReservation(r.id)}>Cancelar</button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            ):(()=>{
+              const notClosed=r=>r.status!=="cancelled"&&r.status!=="completed";
+              const active=resvList.filter(r=>notClosed(r)&&reservationActive(r,turnos));
+              const blocked=resvList.filter(r=>notClosed(r)&&!reservationActive(r,turnos));
+              const closed=resvList.filter(r=>!notClosed(r));
+              const sectionBtn=(label,open,toggle)=>(
+                <button
+                  onClick={toggle}
+                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:6,background:T.elevated,border:`1px solid ${T.border}`,borderRadius:8,color:T.textSec,fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",padding:"10px 12px",cursor:"pointer"}}
+                >
+                  <span>{label}</span>
+                  <span style={{fontSize:11}}>{open?"▾":"▸"}</span>
+                </button>
+              );
+              return(
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted}}>Ativas agora</div>
+                  {active.length===0
+                    ? <div style={{textAlign:"center",color:T.textMuted,padding:"16px 0",fontSize:13}}>Nenhuma reserva ativa no turno atual</div>
+                    : active.map(r=>resvRow(r))}
+                  {blocked.length>0&&(
+                    <>
+                      {sectionBtn(`Fora do turno (${blocked.length})`,resvBlockedOpen,()=>setResvBlockedOpen(o=>!o))}
+                      {resvBlockedOpen&&blocked.map(r=>resvRow(r,true))}
+                    </>
+                  )}
+                  {closed.length>0&&(
+                    <>
+                      {sectionBtn(`Histórico (${closed.length})`,resvArchiveOpen,()=>setResvArchiveOpen(o=>!o))}
+                      {resvArchiveOpen&&closed.map(r=>resvRow(r))}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div className="modal-footer">
             <button className="btn btn-ghost" onClick={()=>setShowResvList(false)}>Fechar</button>
@@ -1569,6 +1662,7 @@ export default function POS({session,appName="RestaurantOS"}){
   const [menu,setMenu]=useState([]);
   const [staffList,setStaffList]=useState([]);
   const [menuStock,setMenuStock]=useState({});
+  const [turnos,setTurnos]=useState([]);
   const [activeTableId,setActiveTableId]=useState(null);
   const [toasts,setToasts]=useState([]);
   const [kdsNotif,setKdsNotif]=useState(null);
@@ -1600,7 +1694,7 @@ export default function POS({session,appName="RestaurantOS"}){
   useEffect(()=>{
     async function load(){
       try{
-        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,combosRes,ingsRes]=await Promise.all([
+        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,combosRes,ingsRes,settingsRes]=await Promise.all([
           fetch("/api/tables").then(r=>r.json()),
           fetch("/api/menu/items?include=modifiers").then(r=>r.json()),
           fetch("/api/orders?status=open").then(r=>r.json()),
@@ -1609,7 +1703,11 @@ export default function POS({session,appName="RestaurantOS"}){
           fetch("/api/auth/staff").then(r=>r.json()),
           fetch("/api/combos").then(r=>r.json()),
           fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
+          fetch("/api/settings").then(r=>r.json()).catch(()=>null),
         ]);
+
+        if(settingsRes&&Array.isArray(settingsRes["horario.turnos"]))
+          setTurnos(settingsRes["horario.turnos"]);
 
         // Build set of modifier ingredient IDs (gracefully empty if migration not run yet)
         const modifierIngIds=new Set(
@@ -1736,7 +1834,7 @@ export default function POS({session,appName="RestaurantOS"}){
     if(loading) return;
     const sync=async()=>{
       try{
-        const [tablesRes,openRes,sentRes,billRes,menuRes,combosRes,ingsRes]=await Promise.all([
+        const [tablesRes,openRes,sentRes,billRes,menuRes,combosRes,ingsRes,settingsRes]=await Promise.all([
           fetch("/api/tables").then(r=>r.json()),
           fetch("/api/orders?status=open").then(r=>r.json()),
           fetch("/api/orders?status=sent").then(r=>r.json()),
@@ -1744,8 +1842,12 @@ export default function POS({session,appName="RestaurantOS"}){
           fetch("/api/menu/items?include=modifiers").then(r=>r.json()).catch(()=>null),
           fetch("/api/combos").then(r=>r.json()).catch(()=>null),
           fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
+          fetch("/api/settings").then(r=>r.json()).catch(()=>null),
         ]);
         if(!Array.isArray(tablesRes)) return;
+
+        if(settingsRes&&Array.isArray(settingsRes["horario.turnos"]))
+          setTurnos(settingsRes["horario.turnos"]);
 
         // Rebuild menu (modifiers, linked library mods, combos) + refresh stock,
         // so changes made in the Backoffice appear without restarting the POS.
@@ -2079,7 +2181,7 @@ export default function POS({session,appName="RestaurantOS"}){
           />
         )}
         {screen==="floor"&&(
-          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}/>
+          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} turnos={turnos} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}/>
         )}
         {screen==="order"&&activeTable&&activeOrder&&(
           <OrderScreen

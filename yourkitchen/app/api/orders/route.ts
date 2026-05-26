@@ -33,8 +33,33 @@ export async function POST(req: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  // Mark table as occupied
   if (table_id) {
+    // If the table was reserved, the guests have now arrived and ordered, so
+    // confirm the earliest pending reservation for this table.
+    const { data: tbl } = await supabaseAdmin
+      .from("tables")
+      .select("status")
+      .eq("id", table_id)
+      .single();
+
+    if (tbl?.status === "reserved") {
+      const { data: resv } = await supabaseAdmin
+        .from("reservations")
+        .select("id")
+        .eq("table_id", table_id)
+        .eq("status", "pending")
+        .order("date")
+        .order("time")
+        .limit(1);
+      if (resv && resv.length > 0) {
+        await supabaseAdmin
+          .from("reservations")
+          .update({ status: "confirmed" })
+          .eq("id", resv[0].id);
+      }
+    }
+
+    // Mark table as occupied
     await supabaseAdmin
       .from("tables")
       .update({ status: "occupied" })
