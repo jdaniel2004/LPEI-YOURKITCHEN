@@ -240,9 +240,6 @@ on conflict do nothing;
 -- ─── MIGRATIONS ───────────────────────────────────────────────────────────────
 -- Run ALL of these in Supabase SQL Editor if upgrading an existing database
 
--- Combo stock loopback: track which combo a line belongs to
-alter table order_lines add column if not exists combo_id uuid;
-
 -- Per-line delivered flag: set when the KDS marks the order "Pronto" (bill).
 -- Lets a previous batch keep its "entregue" state when a new batch is sent.
 alter table order_lines add column if not exists delivered boolean not null default false;
@@ -250,10 +247,6 @@ alter table order_lines add column if not exists delivered boolean not null defa
 -- When the KDS marked the line ready. Prep time = ready_at - created_at.
 -- Also lets the KDS freeze the ticket timer once it's "Pronto".
 alter table order_lines add column if not exists ready_at timestamptz;
-
--- Drink/item choices within combos
-alter table combo_items add column if not exists is_choice boolean not null default false;
-alter table combo_items add column if not exists choice_group text default 'Bebida';
 
 -- Ingredient modifiers: ingredients the customer can add/remove on a per-item basis
 alter table ingredients add column if not exists is_modifier boolean not null default false;
@@ -294,28 +287,6 @@ create table if not exists item_modifier_templates (
   primary key (item_id, template_id)
 );
 
--- ─── REUSABLE MENU (COMBO) CHOICE GROUPS ──────────────────────────────────────
--- A reusable "choose one" group of menu items (e.g. "Bebida": Cola / Água) that
--- can be linked to many menus. Editing the group updates every linked menu.
-create table if not exists combo_modifiers (
-  id         uuid primary key default gen_random_uuid(),
-  name       text not null,
-  created_at timestamptz default now()
-);
-
-create table if not exists combo_modifier_options (
-  id                uuid primary key default gen_random_uuid(),
-  combo_modifier_id uuid references combo_modifiers(id) on delete cascade,
-  item_id           uuid references menu_items(id) on delete cascade
-);
-
--- Junction: which choice groups are attached to which menus
-create table if not exists combo_modifier_links (
-  combo_id          uuid references combos(id) on delete cascade,
-  combo_modifier_id uuid references combo_modifiers(id) on delete cascade,
-  primary key (combo_id, combo_modifier_id)
-);
-
 -- ─── INGREDIENT-AWARE MODIFIER OPTIONS ────────────────────────────────────────
 -- A modifier option can optionally consume a set quantity of an ingredient
 -- (e.g. "Espiral 200g" → 200g of Massa Espiral). Selecting it deducts that
@@ -334,3 +305,13 @@ alter table order_lines add column if not exists modifier_ingredients jsonb;
 -- bill be paid item-by-item (per unit) across several partial payments. A line is
 -- fully paid when paid_qty >= qty; the order closes once every line is fully paid.
 alter table order_lines add column if not exists paid_qty int not null default 0;
+
+-- ─── DROP COMBOS / MENUS (opcional) ───────────────────────────────────────────
+-- A funcionalidade de "Menus" (combos) foi removida. Correr este bloco no
+-- Supabase SQL Editor para limpar os artefactos relacionados na base de dados.
+-- alter table order_lines      drop column if exists combo_id;
+-- drop table  if exists combo_modifier_links;
+-- drop table  if exists combo_modifier_options;
+-- drop table  if exists combo_modifiers;
+-- drop table  if exists combo_items;
+-- drop table  if exists combos;

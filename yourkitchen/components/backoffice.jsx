@@ -220,7 +220,6 @@ const Ic={
   Leaf:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M17 8C8 10 5.9 16.17 3.82 19.32c1.51-1.26 3.99-2.1 6.77-1.3C13.11 18.89 16 21 19 21c1-5 0-13-2-13z"/></svg>,
   Grid:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><rect x="3"y="3"width="7"height="7"rx="1"/><rect x="14"y="3"width="7"height="7"rx="1"/><rect x="14"y="14"width="7"height="7"rx="1"/><rect x="3"y="14"width="7"height="7"rx="1"/></svg>,
   MapPin:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12"cy="10"r="3"/></svg>,
-  Combo:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12"y1="22.08"x2="12"y2="12"/></svg>,
   Layers:()=><svg viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
 };
 
@@ -320,10 +319,8 @@ function Analytics(){
   const [hourData,setHourData]=useState([]);
   const [payData,setPayData]=useState([]);
   const [topItems,setTopItems]=useState([]);
-  const [topCombos,setTopCombos]=useState([]);
   const [prepItems,setPrepItems]=useState([]);
   const [avgPrepMin,setAvgPrepMin]=useState(0);
-  const [expandedCombo,setExpandedCombo]=useState(null);
   const todayStr=(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;})();
   const [customFrom,setCustomFrom]=useState(todayStr);
   const [customTo,setCustomTo]=useState(todayStr);
@@ -359,26 +356,20 @@ function Analytics(){
       })):[]);
       if(itemsData&&!itemsData.error){
         setTopItems(Array.isArray(itemsData.standalone)?itemsData.standalone:[]);
-        setTopCombos(Array.isArray(itemsData.combos)?itemsData.combos:[]);
         setPrepItems(Array.isArray(itemsData.prep)?itemsData.prep:[]);
         setAvgPrepMin(itemsData.avgPrepMin||0);
       }
     }).catch(()=>{});
   },[period,customFrom,customTo]);
   const exportCSV=()=>{
-    const rows=[["Tipo","Item","Sub-item","Qtd","Receita"]];
-    topItems.forEach(i=>rows.push(["item",i.name,"",i.qty,i.revenue]));
-    topCombos.forEach(c=>{
-      rows.push(["menu",c.name,"",c.qty,c.revenue]);
-      (c.subItems||[]).forEach(s=>rows.push(["menu_subitem",c.name,s.name,s.qty,""]));
-    });
-    rows.push([]);rows.push(["Tipo","Item","Tempo médio (min)","Amostras",""]);
-    prepItems.forEach(p=>rows.push(["prep",p.name,p.avgMin,p.count,""]));
+    const rows=[["Tipo","Item","Qtd","Receita"]];
+    topItems.forEach(i=>rows.push(["item",i.name,i.qty,i.revenue]));
+    rows.push([]);rows.push(["Tipo","Item","Tempo médio (min)","Amostras"]);
+    prepItems.forEach(p=>rows.push(["prep",p.name,p.avgMin,p.count]));
     const csv=rows.map(r=>r.join(",")).join("\n");
     const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="analytics.csv";a.click();
   };
   const maxItem=topItems.length>0?Math.max(...topItems.map(i=>i.revenue)):1;
-  const maxCombo=topCombos.length>0?Math.max(...topCombos.map(c=>c.revenue)):1;
   return(
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:12,flexWrap:"wrap"}}>
@@ -460,60 +451,6 @@ function Analytics(){
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-        {/* Top combos with choice breakdown */}
-        <div className="card">
-          <div className="card-head"><div className="card-title">Top Menus <span style={{fontSize:11,color:T.textMuted,fontWeight:400}}>(clica para detalhe)</span></div></div>
-          <div className="card-body"style={{display:"flex",flexDirection:"column",gap:10}}>
-            {topCombos.length===0&&<div style={{color:T.textMuted,fontSize:12,textAlign:"center",padding:20}}>Sem dados</div>}
-            {topCombos.map((combo,i)=>{
-              const isExpanded=expandedCombo===combo.name;
-              return(
-                <div key={combo.name}style={{borderRadius:8,overflow:"hidden",border:`1px solid ${T.border}`}}>
-                  <div
-                    style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",cursor:"pointer",background:isExpanded?T.elevated:T.card,transition:"background .12s"}}
-                    onClick={()=>setExpandedCombo(isExpanded?null:combo.name)}
-                  >
-                    <span style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{color:T.textMuted,fontSize:11,fontFamily:"'DM Mono',monospace"}}>#{i+1}</span>
-                      <span style={{fontWeight:700,fontSize:13}}>📋 {combo.name}</span>
-                    </span>
-                    <span style={{display:"flex",alignItems:"center",gap:10}}>
-                      <span className="mono"style={{color:T.warning,fontSize:12}}>{fmtEur(combo.revenue)} <span style={{color:T.textMuted}}>({combo.qty}×)</span></span>
-                      <svg width="12"height="12"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"style={{transform:isExpanded?"rotate(180deg)":"rotate(0)",transition:"transform .15s",color:T.textMuted}}><polyline points="6 9 12 15 18 9"/></svg>
-                    </span>
-                  </div>
-                  {/* Bar */}
-                  <div style={{background:T.border,height:4,margin:"0 12px"}}>
-                    <div style={{background:T.warning,width:`${(combo.revenue/maxCombo)*100}%`,height:"100%",borderRadius:2}}/>
-                  </div>
-                  {/* Expanded sub-items breakdown */}
-                  {isExpanded&&combo.subItems&&combo.subItems.length>0&&(
-                    <div style={{padding:"8px 12px 10px",display:"flex",flexDirection:"column",gap:5,borderTop:`1px solid ${T.border}`,marginTop:4,background:T.card}}>
-                      <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:4}}>Composição ({combo.qty} pedidos)</div>
-                      {combo.subItems.map(sub=>{
-                        const pct=combo.qty>0?Math.round((sub.qty/combo.qty)*100):0;
-                        return(
-                          <div key={sub.name}>
-                            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                              <span style={{color:T.textSec}}>↳ {sub.name}</span>
-                              <span className="mono"style={{color:T.teal,fontSize:11}}>{sub.qty}× <span style={{color:T.textMuted}}>({pct}%)</span></span>
-                            </div>
-                            <div style={{background:T.border,borderRadius:3,height:4}}>
-                              <div style={{background:T.teal,width:`${pct}%`,height:"100%",borderRadius:3,transition:"width .4s"}}/>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {isExpanded&&(!combo.subItems||combo.subItems.length===0)&&(
-                    <div style={{padding:"8px 12px",fontSize:12,color:T.textMuted}}>Sem detalhe de composição (pedidos anteriores à migração)</div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
@@ -1094,16 +1031,7 @@ function CategoriesMgmt(){
 
 // ─── MODIFIERS LIBRARY ────────────────────────────────────────────────────────
 function ModifiersMgmt(){
-  const [cat,setCat]=useState("itens"); // itens | menus
-  return(
-    <div>
-      <div className="stab-row"style={{marginBottom:14}}>
-        <div className={`stab${cat==="itens"?" active":""}`}onClick={()=>setCat("itens")}>Itens do Menu</div>
-        <div className={`stab${cat==="menus"?" active":""}`}onClick={()=>setCat("menus")}>Menus</div>
-      </div>
-      {cat==="itens"?<ItemModifiersLib/>:<ComboModifiersLib/>}
-    </div>
-  );
+  return <ItemModifiersLib/>;
 }
 
 function ItemModifiersLib(){
@@ -1257,116 +1185,6 @@ function ItemModifiersLib(){
   );
 }
 
-// ─── MENU CHOICE GROUPS (combo modifiers) ─────────────────────────────────────
-function ComboModifiersLib(){
-  const [groups,setGroups]=useState([]);
-  const [allItems,setAllItems]=useState([]);
-  const [edit,setEdit]=useState(null); // "new" | id | null
-  const [form,setForm]=useState({name:"",itemIds:[]});
-  const [saving,setSaving]=useState(false);
-  const [pickSearch,setPickSearch]=useState("");
-  const [pickCat,setPickCat]=useState("Todas");
-
-  useEffect(()=>{
-    Promise.all([
-      fetch("/api/menu/combo-modifiers").then(r=>r.json()),
-      fetch("/api/menu/items?active=false").then(r=>r.json()),
-    ]).then(([gs,its])=>{
-      if(Array.isArray(gs))setGroups(gs);
-      if(Array.isArray(its))setAllItems(its.map(i=>({id:i.id,name:i.name,price:i.price,cat:i.category?.name||""})));
-    }).catch(()=>{});
-  },[]);
-
-  const openNew=()=>{setForm({name:"",itemIds:[]});setPickSearch("");setPickCat("Todas");setEdit("new");};
-  const openEdit=(g)=>{setForm({name:g.name,itemIds:(g.options||[]).map(o=>o.item_id||o.item?.id).filter(Boolean)});setPickSearch("");setPickCat("Todas");setEdit(g.id);};
-  const toggleItem=(id)=>setForm(p=>({...p,itemIds:p.itemIds.includes(id)?p.itemIds.filter(x=>x!==id):[...p.itemIds,id]}));
-  const save=async()=>{
-    if(!form.name.trim()||form.itemIds.length===0)return;
-    setSaving(true);
-    const body={name:form.name.trim(),item_ids:form.itemIds};
-    try{
-      if(edit==="new"){
-        const r=await fetch("/api/menu/combo-modifiers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-        const d=await r.json();if(!d.error)setGroups(p=>[...p,d]);
-      }else{
-        const r=await fetch(`/api/menu/combo-modifiers/${edit}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-        const d=await r.json();if(!d.error)setGroups(p=>p.map(g=>g.id===edit?d:g));
-      }
-      setEdit(null);
-    }finally{setSaving(false);}
-  };
-  const del=async(id)=>{
-    if(!confirm("Apagar este grupo de escolha? Será removido de todos os menus ligados."))return;
-    const r=await fetch(`/api/menu/combo-modifiers/${id}`,{method:"DELETE"});
-    if(r.status===204||r.ok)setGroups(p=>p.filter(g=>g.id!==id));
-  };
-  const itemName=(id)=>allItems.find(i=>i.id===id)?.name||"?";
-
-  return(
-    <div>
-      <div className="section-head">
-        <div className="section-h">{groups.length} grupos de escolha</div>
-        <button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Grupo</button>
-      </div>
-      <div style={{fontSize:12,color:T.textMuted,marginBottom:12}}>
-        Define um grupo de escolha (ex: <strong>Bebida</strong> → Cola, Água) e liga-o a vários menus em <strong>Menus</strong>. Editar aqui atualiza todos os menus ligados.
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
-        {groups.map(g=>(
-          <div key={g.id}className="card"style={{padding:"14px 16px"}}>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
-              <div style={{minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:14}}>{g.name}</div>
-                <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>
-                  {(g.options||[]).map(o=>o.item?.name||itemName(o.item_id)).join(" · ")||"Sem opções"}
-                </div>
-              </div>
-              <div style={{display:"flex",gap:4,flexShrink:0}}>
-                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(g)}><Ic.Edit/></button>
-                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>del(g.id)}><Ic.Trash/></button>
-              </div>
-            </div>
-          </div>
-        ))}
-        {groups.length===0&&<div className="empty-state">Sem grupos. Cria o primeiro (ex: "Bebida" com Cola e Água).</div>}
-      </div>
-      {edit&&(
-        <div className="overlay"onClick={()=>setEdit(null)}>
-          <div className="modal"style={{width:440}}onClick={e=>e.stopPropagation()}>
-            <div className="modal-hd"><div className="modal-title">{edit==="new"?"Novo Grupo de Escolha":"Editar Grupo de Escolha"}</div><CloseBtn onClick={()=>setEdit(null)}/></div>
-            <div className="modal-body">
-              <Inp label="Nome do Grupo (ex: Bebida)"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
-              <div className="form-label"style={{marginBottom:8}}>Opções (itens à escolha)</div>
-              <div style={{display:"flex",gap:8,marginBottom:8}}>
-                <input className="form-input"style={{flex:2}}placeholder="Procurar item..."value={pickSearch}onChange={e=>setPickSearch(e.target.value)}/>
-                <select className="form-select"style={{flex:1}}value={pickCat}onChange={e=>setPickCat(e.target.value)}>
-                  {["Todas",...Array.from(new Set(allItems.map(i=>i.cat).filter(Boolean)))].map(c=><option key={c}value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:280,overflowY:"auto"}}>
-                {allItems.filter(it=>(pickCat==="Todas"||it.cat===pickCat)&&(!pickSearch||it.name.toLowerCase().includes(pickSearch.toLowerCase()))).map(it=>{
-                  const on=form.itemIds.includes(it.id);
-                  return(
-                    <div key={it.id}onClick={()=>toggleItem(it.id)}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",border:`1px solid ${on?T.accent+"55":T.border}`,background:on?T.accentDim:T.card,borderRadius:8,cursor:"pointer"}}>
-                      <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${on?T.accent:T.border}`,background:on?T.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                        {on&&<svg width="10"height="10"viewBox="0 0 12 12"fill="none"><polyline points="2 6 5 9 10 3"stroke="#fff"strokeWidth="2"strokeLinecap="round"/></svg>}
-                      </div>
-                      <span style={{flex:1,fontSize:13,fontWeight:600}}>{it.name}</span>
-                      <span style={{fontSize:11,color:T.textMuted}}>{it.cat}</span>
-                      <span className="mono"style={{fontSize:11,color:T.textMuted}}>{fmtEur(it.price)}</span>
-                    </div>
-                  );
-                })}
-                {allItems.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens. Cria itens em <strong>Items do Menu</strong>.</span>}
-              </div>
-            </div>
-            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEdit(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name.trim()||form.itemIds.length===0||saving}>Guardar</button></div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── ZONES MGMT ───────────────────────────────────────────────────────────────
 function ZonesMgmt(){
@@ -1715,188 +1533,10 @@ function Reservations(){
   );
 }
 
-// ─── COMBOS MGMT ─────────────────────────────────────────────────────────────
-function CombosMgmt(){
-  const [combos,setCombos]=useState([]);
-  const [allItems,setAllItems]=useState([]);
-  const [editCombo,setEditCombo]=useState(null);
-  const [form,setForm]=useState({});
-  const [comboItems,setComboItems]=useState([]);
-  const [selItem,setSelItem]=useState("");
-  const [selQty,setSelQty]=useState("1");
-  const [allGroups,setAllGroups]=useState([]); // reusable choice groups (combo modifiers)
-  const [linkedGroupIds,setLinkedGroupIds]=useState([]);
-  useEffect(()=>{
-    Promise.all([
-      fetch("/api/combos").then(r=>r.json()),
-      fetch("/api/menu/items?active=false").then(r=>r.json()),
-      fetch("/api/menu/combo-modifiers").then(r=>r.json()).catch(()=>[]),
-    ]).then(([cs,its,gs])=>{
-      if(Array.isArray(cs))setCombos(cs);
-      if(Array.isArray(its))setAllItems(its.map(i=>({id:i.id,name:i.name,price:i.price,cat:i.category?.name||""})));
-      if(Array.isArray(gs))setAllGroups(gs);
-    }).catch(()=>{});
-  },[]);
-  const openNew=()=>{setForm({name:"",description:"",price:"",active:true});setComboItems([]);setLinkedGroupIds([]);setSelItem("");setSelQty("1");setEditCombo("new");};
-  const openEdit=(combo)=>{
-    setForm({name:combo.name,description:combo.description||"",price:combo.price,active:combo.active});
-    setComboItems((combo.items||[]).map(ci=>({item_id:ci.item_id,qty:ci.qty,item:ci.item,is_choice:!!ci.is_choice,cat:ci.item?.category?.name||allItems.find(i=>i.id===ci.item_id)?.cat||""})));
-    setLinkedGroupIds((combo.comboModifiers||[]).map(m=>m?.id).filter(Boolean));
-    setSelItem("");setSelQty("1");setEditCombo(combo.id);
-  };
-  const toggleGroup=async(gid)=>{
-    const isLinked=linkedGroupIds.includes(gid);
-    setLinkedGroupIds(p=>isLinked?p.filter(x=>x!==gid):[...p,gid]);
-    if(editCombo==="new")return; // applied after combo creation in save
-    const method=isLinked?"DELETE":"POST";
-    await fetch(`/api/combos/${editCombo}/modifier-links`,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({combo_modifier_id:gid})}).catch(()=>{
-      setLinkedGroupIds(p=>isLinked?[...p,gid]:p.filter(x=>x!==gid)); // rollback
-    });
-  };
-  const addItem=async()=>{
-    if(!selItem)return;
-    const item=allItems.find(i=>i.id===selItem);
-    const qty=parseInt(selQty)||1;
-    // Combo items are always included; choices come from linked reusable groups
-    const ci={item_id:selItem,qty,item:{id:selItem,name:item?.name||"",price:item?.price||0},is_choice:false};
-    if(editCombo==="new"){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");return;}
-    const r=await fetch(`/api/combos/${editCombo}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:selItem,qty,is_choice:false})});
-    const data=await r.json();
-    if(!data.error){setComboItems(p=>[...p.filter(x=>x.item_id!==selItem),ci]);setSelItem("");setSelQty("1");}
-  };
-  const removeItem=async(itemId)=>{
-    setComboItems(p=>p.filter(x=>x.item_id!==itemId));
-    if(editCombo!=="new") await fetch(`/api/combos/${editCombo}/items`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:itemId})}).catch(()=>{});
-  };
-  const save=async()=>{
-    const body={name:form.name,description:form.description||null,price:parseFloat(form.price)||0,active:form.active};
-    if(editCombo==="new"){
-      const r=await fetch("/api/combos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const data=await r.json();
-      if(data.error)return;
-      await Promise.all(comboItems.map(ci=>fetch(`/api/combos/${data.id}/items`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:ci.item_id,qty:ci.qty,is_choice:ci.is_choice,choice_group:ci.cat||""})}).catch(()=>{})));
-      await Promise.all(linkedGroupIds.map(gid=>fetch(`/api/combos/${data.id}/modifier-links`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({combo_modifier_id:gid})}).catch(()=>{})));
-      const linkedMods=allGroups.filter(g=>linkedGroupIds.includes(g.id));
-      setCombos(p=>[...p,{...data,items:comboItems,comboModifiers:linkedMods}]);
-    } else {
-      const r=await fetch(`/api/combos/${editCombo}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const data=await r.json();
-      if(data.error)return;
-      const linkedMods=allGroups.filter(g=>linkedGroupIds.includes(g.id));
-      setCombos(p=>p.map(c=>c.id===editCombo?{...c,...data,items:comboItems,comboModifiers:linkedMods}:c));
-    }
-    setEditCombo(null);
-  };
-  const deleteCombo=async(id)=>{
-    const r=await fetch(`/api/combos/${id}`,{method:"DELETE"});
-    if(r.status===204||r.ok){setCombos(p=>p.filter(c=>c.id!==id));}
-    else{const d=await r.json().catch(()=>({}));alert(`Erro: ${d.error||"erro desconhecido"}`);}
-  };
-  const toggleActive=async(id,v)=>{
-    setCombos(p=>p.map(c=>c.id===id?{...c,active:v}:c));
-    await fetch(`/api/combos/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:v})}).catch(()=>setCombos(p=>p.map(c=>c.id===id?{...c,active:!v}:c)));
-  };
-  const fixedStyle={fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:4,background:T.accentDim,color:T.accent,border:`1px solid ${T.accent}33`};
-  const choiceStyle={fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:4,background:T.tealDim,color:T.teal,border:`1px solid ${T.teal}33`};
-  return(
-    <div>
-      <div className="section-head"><div className="section-h">{combos.length} menus</div><button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Menu</button></div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
-        {combos.length===0&&<div className="empty-state">Sem menus. Um menu combina itens (ex: Entrada + Prato + Sobremesa).</div>}
-        {combos.map(c=>{const items=(c.items||[]);return(
-          <div key={c.id}className="card"style={{padding:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-              <div><div style={{fontWeight:700,fontSize:14}}>{c.name}</div>{c.description&&<div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{c.description}</div>}</div>
-              <span className="mono"style={{color:T.accent,fontWeight:700,fontSize:14,flexShrink:0,marginLeft:8}}>{fmtEur(c.price)}</span>
-            </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:12}}>
-              {items.map(ci=>(
-                <span key={ci.item_id||ci.item?.id}className="tag"style={{display:"flex",alignItems:"center",gap:4}}>
-                  {ci.qty}x {ci.item?.name||"?"}
-                  {ci.is_choice&&<span style={choiceStyle}>{ci.cat||ci.item?.category?.name||ci.choice_group||"Escolha"}</span>}
-                </span>
-              ))}
-              {items.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens</span>}
-            </div>
-            <div style={{display:"flex",gap:6,justifyContent:"space-between",alignItems:"center"}}>
-              <Toggle on={!!c.active}onChange={v=>toggleActive(c.id,v)}/>
-              <div style={{display:"flex",gap:4}}>
-                <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEdit(c)}><Ic.Edit/></button>
-                <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteCombo(c.id)}><Ic.Trash/></button>
-              </div>
-            </div>
-          </div>
-        );})}
-      </div>
-      {editCombo&&(
-        <div className="overlay"onClick={()=>setEditCombo(null)}>
-          <div className="modal"style={{width:560}}onClick={e=>e.stopPropagation()}>
-            <div className="modal-hd"><div className="modal-title">{editCombo==="new"?"Novo Menu":"Editar Menu"}</div><CloseBtn onClick={()=>setEditCombo(null)}/></div>
-            <div className="modal-body">
-              <div className="form-row"><Inp label="Nome do Menu"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/><Inp label="Preco (€)"type="number"step="0.01"value={form.price||""}onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
-              <Inp label="Descricao (opcional)"value={form.description||""}onChange={e=>setForm(p=>({...p,description:e.target.value}))}/>
-              <div style={{marginTop:14,borderTop:`1px solid ${T.border}`,paddingTop:12}}>
-                <span className="form-label"style={{display:"block",marginBottom:8}}>Itens do menu</span>
-                <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:8}}>
-                  {comboItems.map(ci=>(
-                    <div key={ci.item_id}style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:T.card,borderRadius:6,border:`1px solid ${T.border}`}}>
-                      <span style={{flex:1,fontSize:13}}>{ci.qty}x {ci.item?.name||"?"}</span>
-                      {ci.is_choice
-                        ?<span style={choiceStyle}>Escolha · {ci.cat||ci.item?.category?.name||"sem categoria"}</span>
-                        :<span style={fixedStyle}>Incluído</span>
-                      }
-                      <button className="tag-del"onClick={()=>removeItem(ci.item_id)}>x</button>
-                    </div>
-                  ))}
-                  {comboItems.length===0&&<span style={{fontSize:11,color:T.textMuted}}>Sem itens.</span>}
-                </div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"flex-end"}}>
-                  <select className="form-select"style={{flex:"2 1 140px"}}value={selItem}onChange={e=>setSelItem(e.target.value)}>
-                    <option value="">Selecionar item...</option>
-                    {allItems.filter(i=>!comboItems.find(ci=>ci.item_id===i.id)).map(i=><option key={i.id}value={i.id}>{i.name} — {fmtEur(i.price)}</option>)}
-                  </select>
-                  <input className="form-input"style={{width:55}}type="number"min="1"placeholder="Qtd"value={selQty}onChange={e=>setSelQty(e.target.value)}/>
-                  <button className="btn btn-ghost"onClick={addItem}disabled={!selItem}>Adicionar</button>
-                </div>
-                <div style={{fontSize:11,color:T.textMuted,marginTop:6}}>
-                  Estes itens estão <strong style={{color:T.accent}}>sempre incluídos</strong> no menu. Para escolhas (ex: bebida à escolha) usa os <strong style={{color:T.teal}}>grupos de escolha reutilizáveis</strong> abaixo.
-                </div>
-              </div>
-              <div style={{marginTop:14,borderTop:`1px solid ${T.border}`,paddingTop:12}}>
-                <span className="form-label"style={{display:"block",marginBottom:8}}>Grupos de escolha reutilizáveis</span>
-                {allGroups.length===0&&<div style={{fontSize:11,color:T.textMuted}}>Sem grupos. Cria em <strong>Modificadores → Menus</strong> (ex: "Bebida" com Cola e Água).</div>}
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {allGroups.map(g=>{
-                    const on=linkedGroupIds.includes(g.id);
-                    return(
-                      <div key={g.id}onClick={()=>toggleGroup(g.id)}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",border:`1px solid ${on?T.teal+"66":T.border}`,background:on?T.tealDim:T.card,borderRadius:8,cursor:"pointer"}}>
-                        <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${on?T.teal:T.border}`,background:on?T.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                          {on&&<svg width="10"height="10"viewBox="0 0 12 12"fill="none"><polyline points="2 6 5 9 10 3"stroke="#08080B"strokeWidth="2"strokeLinecap="round"/></svg>}
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:13,fontWeight:600}}>{g.name}</div>
-                          <div style={{fontSize:11,color:T.textMuted}}>{(g.options||[]).map(o=>o.item?.name||"?").join(" · ")||"Sem opções"}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Activo no POS</span></div>
-            </div>
-            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditCombo(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── DESCONTOS ────────────────────────────────────────────────────────────────
 function Campaigns(){
   const [camps,setCamps]=useState([]);
   const [menuItems,setMenuItems]=useState([]);
-  const [combosRef,setCombosRef]=useState([]);
   const [editC,setEditC]=useState(null);
   const [form,setForm]=useState({});
   const [errMsg,setErrMsg]=useState("");
@@ -1904,17 +1544,14 @@ function Campaigns(){
     Promise.all([
       fetch("/api/campaigns?active=false").then(r=>r.json()),
       fetch("/api/menu/items?active=false").then(r=>r.json()),
-      fetch("/api/combos").then(r=>r.json()),
-    ]).then(([cs,its,cbs])=>{
+    ]).then(([cs,its])=>{
       if(Array.isArray(cs))setCamps(cs.map(c=>({id:c.id,name:c.name,type:c.type,value:c.value,target:c.target||"all",targetId:c.target_id||null,days:c.days||[],start:c.start_time||"00:00",end:c.end_time||"23:59",active:c.active})));
       if(Array.isArray(its))setMenuItems(its.map(i=>({id:i.id,name:i.name})));
-      if(Array.isArray(cbs))setCombosRef(cbs.map(c=>({id:c.id,name:c.name})));
     }).catch(()=>{});
   },[]);
   const getTargetLabel=(c)=>{
     if(c.target==="all")return"Toda a encomenda";
     if(c.target==="item"){const it=menuItems.find(i=>i.id===c.targetId);return it?`Item: ${it.name}`:"Item";}
-    if(c.target==="combo"){const cb=combosRef.find(x=>x.id===c.targetId);return cb?`Menu: ${cb.name}`:"Menu";}
     return c.target;
   };
   const toggleDay=(d)=>setForm(p=>({...p,days:p.days.includes(d)?p.days.filter(x=>x!==d):[...p.days,d].sort()}));
@@ -1978,10 +1615,8 @@ function Campaigns(){
               <Sel label="Alvo do desconto"value={form.target||"all"}onChange={e=>setForm(p=>({...p,target:e.target.value,targetId:null}))}>
                 <option value="all">Toda a encomenda</option>
                 <option value="item">Item especifico</option>
-                <option value="combo">Menu especifico</option>
               </Sel>
               {form.target==="item"&&<Sel label="Item"value={form.targetId||""}onChange={e=>setForm(p=>({...p,targetId:e.target.value}))}><option value="">Selecionar...</option>{menuItems.map(i=><option key={i.id}value={i.id}>{i.name}</option>)}</Sel>}
-              {form.target==="combo"&&<Sel label="Menu"value={form.targetId||""}onChange={e=>setForm(p=>({...p,targetId:e.target.value}))}><option value="">Selecionar...</option>{combosRef.map(c=><option key={c.id}value={c.id}>{c.name}</option>)}</Sel>}
               <div><label className="form-label">Dias validos</label><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{DAYS_PT.slice(1).map((d,i)=><button key={i+1}onClick={()=>toggleDay(i+1)}style={{padding:"4px 8px",borderRadius:5,border:`1px solid ${(form.days||[]).includes(i+1)?T.accent:T.border}`,background:(form.days||[]).includes(i+1)?T.accentDim:T.card,color:(form.days||[]).includes(i+1)?T.accent:T.textSec,fontSize:11,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
               <div className="form-row"style={{marginTop:8}}><Inp label="Hora Inicio"type="time"value={form.start||"00:00"}onChange={e=>setForm(p=>({...p,start:e.target.value}))}/><Inp label="Hora Fim"type="time"value={form.end||"23:59"}onChange={e=>setForm(p=>({...p,end:e.target.value}))}/></div>
               {errMsg&&<div style={{marginTop:8,fontSize:12,color:T.danger,background:T.dangerDim,borderRadius:6,padding:"6px 10px"}}>{errMsg}</div>}
@@ -2252,7 +1887,6 @@ const NAV=[
   {id:"modifiers",label:"Modificadores",Icon:Ic.Layers},
   {id:"categories",label:"Categorias",Icon:Ic.Grid},
   {id:"ingredients",label:"Ingredientes",Icon:Ic.Leaf},
-  {id:"combos",label:"Menus",Icon:Ic.Combo},
   {id:"tables",label:"Mesas",Icon:Ic.Tables},
   {id:"zones",label:"Zonas",Icon:Ic.MapPin},
   {id:"staff",label:"Equipa",Icon:Ic.Staff},
@@ -2262,7 +1896,7 @@ const NAV=[
   {id:"logs",label:"Logs",Icon:Ic.Logs},
   {id:"settings",label:"Definicoes",Icon:Ic.Settings},
 ];
-const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",modifiers:"Modificadores",categories:"Categorias de Menu",ingredients:"Ingredientes",combos:"Menus",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",reservations:"Reservas",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
+const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",modifiers:"Modificadores",categories:"Categorias de Menu",ingredients:"Ingredientes",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",reservations:"Reservas",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
 
 function Sidebar({active,onSelect,collapsed,onCollapse,appName="RestaurantOS"}){
   return(
@@ -2297,7 +1931,7 @@ export default function Backoffice({appName="RestaurantOS",onAppNameChange}){
   const sections={
     dashboard:<Dashboard/>,analytics:<Analytics/>,menu:<MenuStock/>,
     modifiers:<ModifiersMgmt/>,
-    categories:<CategoriesMgmt/>,ingredients:<IngredientsMgmt/>,combos:<CombosMgmt/>,
+    categories:<CategoriesMgmt/>,ingredients:<IngredientsMgmt/>,
     tables:<TablesMgmt/>,zones:<ZonesMgmt/>,
     staff:<StaffMgmt/>,reservations:<Reservations/>,
     campaigns:<Campaigns/>,orders:<OrderHistory/>,logs:<LogsSection/>,settings:<SettingsSection onAppNameChange={onAppNameChange}/>,

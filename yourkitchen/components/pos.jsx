@@ -39,14 +39,16 @@ function mapOrder(o) {
       modifierIngredients: Array.isArray(l.modifier_ingredients) ? l.modifier_ingredients : [],
     })),
     notes: o.notes || "",
+    type: o.type || "table",
+    status: o.status,
     sentAt: o.created_at ? new Date(o.created_at).getTime() : null,
     paid: o.status === "paid",
   };
 }
 
-// Build the grouped POS menu (categories + items + combos) from API responses.
+// Build the grouped POS menu (categories + items) from API responses.
 // Pure function so it can run both on initial load and on the live-sync poll.
-function buildMenu(menuRes, combosRes, modifierIngIds){
+function buildMenu(menuRes, modifierIngIds){
   const catMap={};
   if(Array.isArray(menuRes)){
     menuRes.forEach(item=>{
@@ -75,39 +77,7 @@ function buildMenu(menuRes, combosRes, modifierIngIds){
       });
     });
   }
-  const mappedMenu=Object.values(catMap).sort((a,b)=>a.position-b.position);
-  if(Array.isArray(combosRes)&&combosRes.length>0){
-    mappedMenu.push({
-      id:"__combos__",name:"Menus",emoji:"📋",position:9999,
-      items:combosRes.filter(c=>c.active!==false).map(c=>{
-        const fixedItems=(c.items||[]).filter(ci=>!ci.is_choice);
-        const choiceRaw=(c.items||[]).filter(ci=>ci.is_choice);
-        const choiceGroupMap={};
-        choiceRaw.forEach(ci=>{
-          // Group per-combo choices by the item's category (fallback to legacy choice_group)
-          const g=ci.item?.category?.name||ci.choice_group||"Escolha";
-          if(!choiceGroupMap[g]) choiceGroupMap[g]=[];
-          choiceGroupMap[g].push({id:ci.item?.id,name:ci.item?.name||"?",price:ci.item?.price||0});
-        });
-        const choiceGroups=Object.entries(choiceGroupMap).map(([groupName,options])=>({groupName,options}));
-        // Linked reusable choice groups (combo modifiers) — synchronised
-        (c.comboModifiers||[]).forEach(m=>{
-          if(!m) return;
-          const options=(m.options||[]).map(o=>({id:o.item?.id,name:o.item?.name||"?",price:o.item?.price||0})).filter(o=>o.id);
-          if(options.length>0) choiceGroups.push({groupName:m.name,options});
-        });
-        return{
-          id:`combo_${c.id}`,comboId:c.id,
-          name:c.name,emoji:"📋",
-          price:c.price||0,vat:23,stock:null,
-          mods:[],isCombo:true,
-          comboItems:fixedItems.map(ci=>({name:ci.item?.name||"?",qty:ci.qty,itemId:ci.item?.id||null,included:true})),
-          choiceGroups,
-        };
-      }),
-    });
-  }
-  return mappedMenu;
+  return Object.values(catMap).sort((a,b)=>a.position-b.position);
 }
 
 
@@ -302,10 +272,10 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .table-card.status-bill{border-color:${T.danger}33;}
 .table-card.status-reserved{border-color:${T.purple}33;}
 .table-card.status-locked{border-color:${T.blue}33;opacity:.75;cursor:not-allowed;}
-.table-top{display:flex;align-items:center;justify-content:space-between;}
-.table-id{font-size:18px;font-weight:800;letter-spacing:-.5px;}
+.table-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.table-id{font-size:16px;font-weight:800;letter-spacing:-.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .table-status-dot{width:8px;height:8px;border-radius:50%;}
-.table-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.3px;}
+.table-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.3px;flex-shrink:0;white-space:nowrap;}
 .table-meta{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
 .table-seats{font-size:11px;color:${T.textMuted};display:flex;align-items:center;gap:3px;}
 .table-waiter-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;background:${T.accentDim};color:${T.accent};}
@@ -354,16 +324,6 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .ol-mods{font-size:11px;color:${T.textMuted};margin-top:2px;}
 .ol-price{font-family:'DM Mono',monospace;font-size:12px;color:${T.textSec};white-space:nowrap;padding-top:2px;}
 .ol-controls{display:flex;gap:3px;align-items:center;}
-.combo-subitems{padding:0 0 4px 28px;display:flex;flex-direction:column;gap:1px;}
-.combo-subitem{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:5px;transition:background .1s;}
-.combo-subitem:hover{background:${T.elevated};}
-.combo-subitem.excluded{opacity:.4;}
-.combo-subitem-indicator{font-size:10px;color:${T.textMuted};flex-shrink:0;}
-.combo-subitem-name{flex:1;font-size:11px;color:${T.textSec};}
-.combo-subitem.excluded .combo-subitem-name{text-decoration:line-through;}
-.combo-subitem-btn{background:none;border:1px solid ${T.border};color:${T.textMuted};cursor:pointer;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;font-family:'Syne',sans-serif;transition:all .12s;}
-.combo-subitem-btn:hover{border-color:${T.danger}55;color:${T.danger};}
-.combo-subitem.excluded .combo-subitem-btn{border-color:${T.success}55;color:${T.success};}
 .qty-btn{width:24px;height:24px;border-radius:5px;border:1px solid ${T.border};background:${T.elevated};color:${T.text};font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0;font-family:'DM Mono',monospace;}
 .qty-btn:hover{border-color:${T.accent}55;color:${T.accent};}
 .qty-btn:active{transform:scale(.9);}
@@ -658,84 +618,6 @@ function CancelLineModal({line,onConfirm,onClose}){
   );
 }
 
-// ─── COMBO CHOICE MODAL ───────────────────────────────────────────────────────
-function ComboChoiceModal({combo,onConfirm,onClose}){
-  const [sel,setSel]=useState(()=>{
-    const init={};
-    (combo.choiceGroups||[]).forEach(g=>{if(g.options.length>0)init[g.groupName]=g.options[0].id;});
-    return init;
-  });
-
-  const allSelected=(combo.choiceGroups||[]).every(g=>sel[g.groupName]);
-
-  const handleConfirm=()=>{
-    const chosenItems=(combo.choiceGroups||[]).map(g=>{
-      const opt=g.options.find(o=>o.id===sel[g.groupName]);
-      return opt?{name:opt.name,qty:1,itemId:opt.id,included:true}:null;
-    }).filter(Boolean);
-    onConfirm(chosenItems);
-  };
-
-  return(
-    <div className="overlay" onClick={onClose}>
-      <div className="modal mod-modal" onClick={e=>e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <div className="modal-title">📋 {combo.name}</div>
-            <div className="modal-sub">Personaliza o menu</div>
-          </div>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          {(combo.choiceGroups||[]).map(g=>(
-            <div key={g.groupName} className="mod-group">
-              <div className="mod-group-title">
-                {g.groupName}
-                <span className="mod-required-tag">OBRIGATÓRIO</span>
-              </div>
-              <div className="mod-options">
-                {g.options.map(opt=>(
-                  <div
-                    key={opt.id}
-                    className={`mod-option${sel[g.groupName]===opt.id?" selected":""}`}
-                    onClick={()=>setSel(p=>({...p,[g.groupName]:opt.id}))}
-                  >
-                    <div className="mod-radio"/>
-                    <div className="mod-option-label">{opt.name}</div>
-                    {opt.price>0&&<div className="mod-option-price">{fmtEur(opt.price)}</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {combo.comboItems&&combo.comboItems.length>0&&(
-            <div style={{marginTop:8,padding:"10px 12px",background:T.card,borderRadius:8,border:`1px solid ${T.border}`}}>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:6}}>Incluído</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                {combo.comboItems.map((ci,i)=>(
-                  <span key={i} style={{fontSize:12,color:T.textSec,background:T.elevated,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 8px"}}>
-                    {ci.qty>1?`${ci.qty}× `:""}{ci.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button
-            className="btn btn-solid-accent"
-            disabled={!allSelected}
-            onClick={handleConfirm}
-          >
-            Adicionar — {fmtEur(combo.price)}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── TRANSFER MODAL ───────────────────────────────────────────────────────────
 function TransferModal({currentWaiterId,staffList,onConfirm,onClose}){
   const [sel,setSel]=useState(null);
@@ -981,10 +863,9 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
 }
 
 // ─── ORDER SCREEN ─────────────────────────────────────────────────────────────
-function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,onSendKitchen,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
+function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,onSendKitchen,sending,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
   const [cat,setCat]=useState(0);
   const [modItem,setModItem]=useState(null);
-  const [comboChoiceItem,setComboChoiceItem]=useState(null);
   const [cancelTarget,setCancelTarget]=useState(null);
   const [showTransfer,setShowTransfer]=useState(false);
   const [showPayment,setShowPayment]=useState(false);
@@ -1017,16 +898,10 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
   const handleAddItem=(item)=>{
     const st=stockForItem(menuStock,item.id);
     if(st!==null&&st<=0){addToast("Item esgotado",T.danger);return;}
-    if(!item.isCombo&&st!==null&&!canAddMore(item.id)){
+    if(st!==null&&!canAddMore(item.id)){
       addToast(`Stock insuficiente — só restam ${st}`,T.warning);return;
     }
-    if(!item.isCombo&&(item.mods.length>0||(item.ingredientMods&&item.ingredientMods.length>0))){setModItem(item);return;}
-    if(item.isCombo){
-      if(item.choiceGroups&&item.choiceGroups.length>0){setComboChoiceItem(item);return;}
-      const line={lineId:newLineId(),itemId:null,comboId:item.comboId||null,name:item.name,qty:1,price:item.price,vat:item.vat,mods:[],comboItems:(item.comboItems||[]).map(ci=>({...ci,included:true})),notes:"",sent:false,cancelled:false,extraPrice:0};
-      onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
-      return;
-    }
+    if(item.mods.length>0||(item.ingredientMods&&item.ingredientMods.length>0)){setModItem(item);return;}
     const existing=pendingItems.find(l=>l.itemId===item.id&&l.mods.length===0);
     if(existing){
       onUpdateOrder(prev=>({...prev,items:prev.items.map(l=>l.lineId===existing.lineId?{...l,qty:l.qty+1}:l)}));
@@ -1059,14 +934,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
       }).filter(Boolean);
       return {...prev,items};
     });
-  };
-
-  const toggleComboItem=(lineId,idx)=>{
-    onUpdateOrder(prev=>({...prev,items:prev.items.map(l=>{
-      if(l.lineId!==lineId) return l;
-      const ci=l.comboItems.map((c,i)=>i===idx?{...c,included:!c.included}:c);
-      return {...l,comboItems:ci};
-    })}));
   };
 
   const total=orderTotal(order.items);
@@ -1144,19 +1011,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
                     </div>
                     <div className="ol-price">{fmtEur((l.price+(l.extraPrice||0))*l.qty)}</div>
                   </div>
-                  {l.comboItems&&l.comboItems.length>0&&(
-                    <div className="combo-subitems">
-                      {l.comboItems.map((ci,idx)=>(
-                        <div key={idx} className={`combo-subitem${!ci.included?" excluded":""}`}>
-                          <span className="combo-subitem-indicator">↳</span>
-                          <span className="combo-subitem-name">{ci.qty>1?`${ci.qty}× `:""}{ci.name}</span>
-                          <button className="combo-subitem-btn" onClick={()=>toggleComboItem(l.lineId,idx)}>
-                            {ci.included?"✕":"✓"}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ))}
             </>
@@ -1242,11 +1096,11 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
         <div className="op-actions">
           <button
             className="btn btn-accent"
-            disabled={pendingItems.length===0}
+            disabled={pendingItems.length===0||sending}
             onClick={onSendKitchen}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Enviar Cozinha
+            {sending?"A enviar...":"Enviar Cozinha"}
           </button>
           <button
             className="btn btn-solid-success"
@@ -1262,18 +1116,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
       </div>
 
       {/* MODALS */}
-      {comboChoiceItem&&(
-        <ComboChoiceModal
-          combo={comboChoiceItem}
-          onClose={()=>setComboChoiceItem(null)}
-          onConfirm={(chosenItems)=>{
-            const allComboItems=[...(comboChoiceItem.comboItems||[]),...chosenItems];
-            const line={lineId:newLineId(),itemId:null,comboId:comboChoiceItem.comboId||null,name:comboChoiceItem.name,qty:1,price:comboChoiceItem.price,vat:comboChoiceItem.vat,mods:[],comboItems:allComboItems,notes:"",sent:false,cancelled:false,extraPrice:0};
-            onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
-            setComboChoiceItem(null);
-          }}
-        />
-      )}
       {modItem&&(
         <ModifierModal item={modItem} onConfirm={handleModConfirm} onClose={()=>setModItem(null)}/>
       )}
@@ -1537,8 +1379,7 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
 
       <div className="fab-row">
         <button className="btn btn-teal btn-lg" onClick={()=>onQuickOrder("take-away")}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          Take-Away
+          🥡 Take-Away
         </button>
         <button className="btn btn-ghost btn-lg" onClick={openResvList}>
           📋 Ver Reservas
@@ -1682,6 +1523,9 @@ export default function POS({session,appName="RestaurantOS"}){
   },[]);
 
   const readyOrdersRef = useRef(new Set());
+  const sendingRef = useRef(false); // re-entrancy guard for handleSendKitchen
+  const seenOrderIdsRef = useRef(new Set()); // order IDs ever observed on the server
+  const [sending,setSending]=useState(false);
   // Refs so the live-sync interval always sees the current editing context
   const activeTableIdRef = useRef(null);
   const screenRef = useRef("fundo");
@@ -1694,14 +1538,13 @@ export default function POS({session,appName="RestaurantOS"}){
   useEffect(()=>{
     async function load(){
       try{
-        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,combosRes,ingsRes,settingsRes]=await Promise.all([
+        const [tablesRes,menuRes,openRes,sentRes,billRes,staffRes,ingsRes,settingsRes]=await Promise.all([
           fetch("/api/tables").then(r=>r.json()),
           fetch("/api/menu/items?include=modifiers").then(r=>r.json()),
           fetch("/api/orders?status=open").then(r=>r.json()),
           fetch("/api/orders?status=sent").then(r=>r.json()),
           fetch("/api/orders?status=bill").then(r=>r.json()),
           fetch("/api/auth/staff").then(r=>r.json()),
-          fetch("/api/combos").then(r=>r.json()),
           fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
           fetch("/api/settings").then(r=>r.json()).catch(()=>null),
         ]);
@@ -1715,7 +1558,7 @@ export default function POS({session,appName="RestaurantOS"}){
         );
 
         // Build grouped menu
-        const mappedMenu=buildMenu(menuRes,combosRes,modifierIngIds);
+        const mappedMenu=buildMenu(menuRes,modifierIngIds);
 
         // Build stock map
         const stock={};
@@ -1751,6 +1594,18 @@ export default function POS({session,appName="RestaurantOS"}){
           orderId:orderByTableDbId[t.id]||null,
           since:allOrders[orderByTableDbId[t.id]]?.sentAt||null,
         })):[];
+
+        // Synthesize floor cards for take-away orders that exist in the DB so they
+        // remain visible/accessible after a reload (no physical table backs them).
+        const haveOrderId=new Set(mappedTables.map(t=>t.orderId).filter(Boolean));
+        Object.values(allOrders).filter(o=>o.type==="takeaway"&&!o.paid).forEach(o=>{
+          if(haveOrderId.has(o.id)) return;
+          mappedTables.push({
+            id:`TA${o.id.slice(0,3).toUpperCase()}`,dbId:null,zone:"Take-Away",seats:0,
+            status:o.status==="bill"?"bill":"occupied",
+            waiter:o.waiterId,orderId:o.id,since:o.sentAt||Date.now(),type:"take-away",
+          });
+        });
 
         // Map staff
         const mappedStaff=Array.isArray(staffRes)?staffRes.map(s=>({
@@ -1790,6 +1645,10 @@ export default function POS({session,appName="RestaurantOS"}){
   useEffect(()=>{readyOrdersRef.current=readyOrders;},[readyOrders]);
 
   useEffect(()=>{
+    // Wait for the initial load to seed readyOrdersRef; otherwise the first tick
+    // sees an empty set and treats every existing "bill" order as newly ready,
+    // spamming a toast per order on login.
+    if(loading) return;
     const tick=async()=>{
       try{
         const data=await fetch("/api/orders?status=bill").then(r=>r.json());
@@ -1826,7 +1685,7 @@ export default function POS({session,appName="RestaurantOS"}){
     };
     const id=setInterval(tick,4000);
     return()=>clearInterval(id);
-  },[addToast]);
+  },[loading,addToast]);
 
   // Live sync: poll tables + orders every 5s so changes made by other
   // users (other waiters / manager) appear without re-entering a table.
@@ -1834,13 +1693,12 @@ export default function POS({session,appName="RestaurantOS"}){
     if(loading) return;
     const sync=async()=>{
       try{
-        const [tablesRes,openRes,sentRes,billRes,menuRes,combosRes,ingsRes,settingsRes]=await Promise.all([
+        const [tablesRes,openRes,sentRes,billRes,menuRes,ingsRes,settingsRes]=await Promise.all([
           fetch("/api/tables").then(r=>r.json()),
           fetch("/api/orders?status=open").then(r=>r.json()),
           fetch("/api/orders?status=sent").then(r=>r.json()),
           fetch("/api/orders?status=bill").then(r=>r.json()),
           fetch("/api/menu/items?include=modifiers").then(r=>r.json()).catch(()=>null),
-          fetch("/api/combos").then(r=>r.json()).catch(()=>null),
           fetch("/api/ingredients").then(r=>r.json()).catch(()=>[]),
           fetch("/api/settings").then(r=>r.json()).catch(()=>null),
         ]);
@@ -1849,11 +1707,11 @@ export default function POS({session,appName="RestaurantOS"}){
         if(settingsRes&&Array.isArray(settingsRes["horario.turnos"]))
           setTurnos(settingsRes["horario.turnos"]);
 
-        // Rebuild menu (modifiers, linked library mods, combos) + refresh stock,
+        // Rebuild menu (modifiers, linked library mods) + refresh stock,
         // so changes made in the Backoffice appear without restarting the POS.
         if(Array.isArray(menuRes)){
           const modifierIngIds=new Set((Array.isArray(ingsRes)?ingsRes:[]).filter(i=>i.is_modifier).map(i=>i.id));
-          setMenu(buildMenu(menuRes,combosRes,modifierIngIds));
+          setMenu(buildMenu(menuRes,modifierIngIds));
           const freshStock={};
           menuRes.forEach(it=>{if(it.stock!==null)freshStock[it.id]=it.stock;});
           setMenuStock(freshStock);
@@ -1867,6 +1725,13 @@ export default function POS({session,appName="RestaurantOS"}){
           ?(()=>{const at=tablesRef.current.find(t=>t.id===activeTableIdRef.current);return at?.orderId||null;})()
           :null;
 
+        // Remember every order we've ever seen on the server. We use this to tell a
+        // "just created" order (not in any server list yet) apart from one that was
+        // there and is now gone (cancelled / paid). Only the first case warrants
+        // local preservation; the second must drop so the POS reacts to the change.
+        const wasSeen=new Set(seenOrderIdsRef.current);
+        serverOrders.forEach(o=>seenOrderIdsRef.current.add(o.id));
+
         // Merge orders: keep local drafts + the order currently being edited
         setOrders(prev=>{
           const next={};
@@ -1878,21 +1743,63 @@ export default function POS({session,appName="RestaurantOS"}){
               next[o.id]=mapOrder(o);
             }
           });
-          // Preserve the active order if the server no longer lists it (e.g. just created)
-          if(editingId&&prev[editingId]&&!next[editingId]) next[editingId]=prev[editingId];
+          // Preserve the active order ONLY if the server has never listed it yet
+          // (e.g. just created). If we've seen it before, treat its absence as a
+          // server-side cancel/pay and let it drop so the UI reacts.
+          if(editingId&&prev[editingId]&&!next[editingId]&&!wasSeen.has(editingId))
+            next[editingId]=prev[editingId];
           return next;
         });
 
         // Map server orders to tables
         const orderByTableDbId={};
         serverOrders.forEach(o=>{if(o.table_id)orderByTableDbId[o.table_id]=o.id;});
-        setTables(prev=>prev.map(t=>{
-          const f=tablesRes.find(ft=>ft.label===t.id);
-          if(!f) return t; // dynamic takeaway/counter rows aren't in DB tables
-          const hasLocalDraft=t.orderId&&String(t.orderId).startsWith("draft_");
-          const serverOrderId=orderByTableDbId[t.dbId]||null;
-          return {...t,status:f.status,orderId:hasLocalDraft?t.orderId:serverOrderId};
-        }));
+        const serverById=new Map(serverOrders.map(o=>[o.id,o]));
+        setTables(prev=>{
+          const updated=prev.map(t=>{
+            const f=tablesRes.find(ft=>ft.label===t.id);
+            if(!f){
+              // Dynamic take-away/counter row. Migrate legacy "—" zone and reflect
+              // the order's current state (so KDS "Pronto" shows as "Servido").
+              let row=t.zone==="—"?{...t,zone:"Take-Away"}:t;
+              const so=row.orderId?serverById.get(row.orderId):null;
+              // Drop the synthetic row when its order has been removed server-side
+              // (cancelled or paid), but not when it's still freshly created.
+              if(row.orderId&&!so&&wasSeen.has(row.orderId)) return null;
+              if(so){
+                const newStatus=so.status==="bill"?"bill":so.status==="paid"?"free":"occupied";
+                if(newStatus!==row.status) row={...row,status:newStatus};
+              }
+              return row;
+            }
+            const hasLocalDraft=t.orderId&&String(t.orderId).startsWith("draft_");
+            const serverOrderId=orderByTableDbId[t.dbId]||null;
+            return {...t,status:f.status,orderId:hasLocalDraft?t.orderId:serverOrderId};
+          }).filter(Boolean);
+          // Add cards for take-away orders that appeared server-side without a row yet
+          const haveOrder=new Set(updated.map(r=>r.orderId).filter(Boolean));
+          for(const o of serverOrders){
+            if((o.type||"table")!=="takeaway") continue;
+            if(haveOrder.has(o.id)) continue;
+            updated.push({
+              id:`TA${o.id.slice(0,3).toUpperCase()}`,dbId:null,zone:"Take-Away",seats:0,
+              status:o.status==="bill"?"bill":"occupied",
+              waiter:o.waiter_id,orderId:o.id,
+              since:o.created_at?new Date(o.created_at).getTime():Date.now(),
+              type:"take-away",
+            });
+          }
+          return updated;
+        });
+
+        // If the active editing order was cancelled/paid server-side (it was seen
+        // before but is now missing from every status list), bail back to the floor
+        // — otherwise OrderScreen renders against a null order and goes blank.
+        if(editingId&&wasSeen.has(editingId)&&!serverById.has(editingId)){
+          addToast("Pedido cancelado",T.warning);
+          setActiveTableId(null);
+          setScreen("floor");
+        }
       }catch{}
     };
     const id=setInterval(sync,5000);
@@ -1933,10 +1840,10 @@ export default function POS({session,appName="RestaurantOS"}){
     });
     if(!res.ok){addToast("Erro ao criar pedido",T.danger);return;}
     const order=await res.json();
-    const fakeId=`${type==="take-away"?"TA":"BC"}${Date.now()%10000}`;
+    const fakeId=`${type==="take-away"?"TA":"BC"}${order.id.slice(0,3).toUpperCase()}`;
     const mapped=mapOrder({...order,lines:[],table:{label:fakeId},table_id:null});
     setOrders(p=>({...p,[order.id]:{...mapped,tableId:fakeId}}));
-    setTables(p=>[...p,{id:fakeId,dbId:null,zone:"—",seats:0,status:"occupied",waiter:currentStaff.id,orderId:order.id,since:Date.now(),type}]);
+    setTables(p=>[...p,{id:fakeId,dbId:null,zone:"Take-Away",seats:0,status:"occupied",waiter:currentStaff.id,orderId:order.id,since:Date.now(),type}]);
     setActiveTableId(fakeId);
     setScreen("order");
   };
@@ -1947,9 +1854,17 @@ export default function POS({session,appName="RestaurantOS"}){
   },[activeOrderId]);
 
   const handleSendKitchen=async()=>{
+    // Re-entrancy guard. Without this, a rapid double-click fires two parallel
+    // requests that each create lines + call /send — the same items end up in
+    // the KDS twice. The ref blocks the second call before any state racing.
+    if(sendingRef.current) return;
     if(!activeOrderId||!activeOrder) return;
     const pending=activeOrder.items.filter(i=>!i.sent&&!i.cancelled);
     if(pending.length===0) return;
+
+    sendingRef.current=true;
+    setSending(true);
+    try{
 
     let realOrderId=activeOrderId;
     const draftSnapshot={...activeOrder};
@@ -1981,11 +1896,10 @@ export default function POS({session,appName="RestaurantOS"}){
           method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
             item_id:item.itemId||null,
-            combo_id:item.comboId||null,
             name:item.name,qty:item.qty,
             unit_price:item.price,extra_price:item.extraPrice||0,
             vat_rate:item.vat,
-            modifiers:item.comboItems?item.comboItems.filter(ci=>ci.included).map(ci=>ci.name):item.mods,
+            modifiers:item.mods,
             modifier_ingredients:item.modifierIngredients||[],
             notes:item.notes||null,
           }),
@@ -2028,6 +1942,11 @@ export default function POS({session,appName="RestaurantOS"}){
         return wasPending?{...i,sent:false}:i;
       })}}));
       addToast(e?.message?`Erro: ${e.message}`:"Erro ao enviar pedido",T.danger);
+    }
+
+    }finally{
+      sendingRef.current=false;
+      setSending(false);
     }
   };
 
@@ -2193,6 +2112,7 @@ export default function POS({session,appName="RestaurantOS"}){
             onBack={()=>{setActiveTableId(null);setScreen("floor");}}
             onUpdateOrder={handleUpdateOrder}
             onSendKitchen={handleSendKitchen}
+            sending={sending}
             kdsReady={readyOrders.has(activeOrderId)}
             onPayment={handlePayment}
             onCancelLine={handleCancelLine}

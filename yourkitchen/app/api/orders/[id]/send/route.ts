@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "Encomenda não encontrada" }, { status: 404 });
 
   const lines = order.lines as Array<{
-    id: string; item_id: string | null; combo_id: string | null; qty: number;
+    id: string; item_id: string | null; qty: number;
     sent: boolean; cancelled: boolean; sent_batch: number; modifiers: string[] | null;
     modifier_ingredients: Array<{ ingredient_id: string; qty: number }> | null;
   }>;
@@ -73,43 +73,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         p_ingredient_id: m.ingredient_id,
         p_qty: Number(m.qty) * line.qty,
       });
-    }
-  }
-
-  // Loopback: decrement stock for combo sub-items using included names (modifiers)
-  for (const line of unsentLines) {
-    if (line.item_id || !line.combo_id) continue;
-    const includedNames = new Set(Array.isArray(line.modifiers) ? line.modifiers : []);
-    if (includedNames.size === 0) continue;
-
-    const { data: comboItems } = await supabaseAdmin
-      .from("combo_items")
-      .select("item_id, qty, item:menu_items(id, name)")
-      .eq("combo_id", line.combo_id);
-
-    if (!comboItems) continue;
-
-    for (const ci of comboItems) {
-      const itemName = (ci.item as { name?: string } | null)?.name;
-      if (!itemName || !includedNames.has(itemName)) continue;
-
-      await supabaseAdmin.rpc("decrement_stock", {
-        p_item_id: ci.item_id,
-        p_qty:     (ci.qty as number) * line.qty,
-      });
-
-      const { data: ings } = await supabaseAdmin
-        .from("item_ingredients")
-        .select("ingredient_id, qty")
-        .eq("item_id", ci.item_id);
-      if (ings && ings.length > 0) {
-        for (const ing of ings) {
-          await supabaseAdmin.rpc("decrement_ingredient_stock", {
-            p_ingredient_id: ing.ingredient_id,
-            p_qty: ing.qty * (ci.qty as number) * line.qty,
-          });
-        }
-      }
     }
   }
 

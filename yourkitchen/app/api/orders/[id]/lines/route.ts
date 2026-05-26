@@ -15,7 +15,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { item_id, combo_id, name, qty, unit_price, extra_price, vat_rate, modifiers, modifier_ingredients, notes } = body;
+  const { item_id, name, qty, unit_price, extra_price, vat_rate, modifiers, modifier_ingredients, notes } = body;
 
   if (!name || unit_price == null || vat_rate == null)
     return Response.json({ error: "name, unit_price e vat_rate obrigatórios" }, { status: 400 });
@@ -31,8 +31,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     modifiers:   modifiers ?? [],
     notes:       notes ?? null,
   };
-  // Only include combo_id when set — avoids breaking inserts if migration hasn't run yet
-  if (combo_id != null) row.combo_id = combo_id;
   // Ingredient deltas from selected modifier options (only if provided)
   if (Array.isArray(modifier_ingredients) && modifier_ingredients.length > 0)
     row.modifier_ingredients = modifier_ingredients;
