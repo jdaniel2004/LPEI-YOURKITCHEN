@@ -8,7 +8,7 @@ const T = {
   teal:"#3ECFAE", tealDim:"#3ECFAE18",
   danger:"#F75A5A", dangerDim:"#F75A5A18",
   success:"#4AF785", successDim:"#4AF78518",
-  text:"#EDEDF2", textSec:"#8888A0", textMuted:"#4A4A60",
+  text:"#FFFFFF", textSec:"#A8A8BC", textMuted:"#6E6E84",
 };
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
@@ -280,7 +280,7 @@ function Selector({onSelect}){
         </div>
       </div>
       <div style={{fontSize:11,color:T.textMuted,fontFamily:"'DM Mono',monospace",letterSpacing:.5}}>
-        RestaurantOS · v1.0 · MVP
+        YourKitchen · v1.0 · MVP
       </div>
     </div>
   );

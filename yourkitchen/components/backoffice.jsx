@@ -12,11 +12,12 @@ const T = {
   success:"#4AF785",successDim:"#4AF78518",
   purple:"#B06AF7",purpleDim:"#B06AF718",
   blue:"#4A9EF7",blueDim:"#4A9EF718",
-  text:"#EDEDF2",textSec:"#8888A0",textMuted:"#4A4A60",
+  text:"#FFFFFF",textSec:"#D0D0DC",textMuted:"#8E8EA4",
 };
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function fmtEur(v){return `€${Number(v).toFixed(2)}`;}
+function fmtElapsed(iso){const m=Math.floor((Date.now()-new Date(iso))/60000);return m<60?`${m}m`:`${Math.floor(m/60)}h${m%60<10?"0":""}${m%60}m`;}
 const DAYS_PT=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
 // ─── UNIT SYSTEM ─────────────────────────────────────────────────────────────
@@ -54,7 +55,6 @@ const STATUS_C={
   free:    {label:"Livre",   c:T.success, bg:T.successDim},
   occupied:{label:"Ocupada", c:T.warning, bg:T.warningDim},
   bill:    {label:"Servido", c:T.danger,  bg:T.dangerDim},
-  reserved:{label:"Reserva", c:T.purple,  bg:T.purpleDim},
   locked:  {label:"Em Uso",  c:T.blue,    bg:T.blueDim},
 };
 const LEVEL_C={INFO:{c:T.accent,bg:T.accentDim},WARN:{c:T.warning,bg:T.warningDim},ERROR:{c:T.danger,bg:T.dangerDim},ACTION:{c:T.teal,bg:T.tealDim},CANCEL:{c:T.danger,bg:T.dangerDim}};
@@ -88,8 +88,9 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
 .sb-bottom{padding:8px 6px 12px;border-top:1px solid ${T.border};}
 .sb-ext{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:7px;cursor:pointer;color:${T.textMuted};white-space:nowrap;overflow:hidden;transition:all .15s;font-size:11px;font-weight:600;}
 .sb-ext:hover{background:${T.elevated};color:${T.text};}
-.sb-collapse{width:100%;display:flex;align-items:center;justify-content:center;padding:8px;background:none;border:1px solid ${T.border};border-radius:6px;color:${T.textMuted};cursor:pointer;transition:all .15s;margin-top:6px;}
-.sb-collapse:hover{border-color:${T.borderBright};color:${T.text};}
+.sb-collapse{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 10px;background:${T.elevated};border:1px solid ${T.borderBright};border-radius:8px;color:${T.text};cursor:pointer;transition:all .15s;margin-top:6px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.3px;}
+.sb-collapse svg{width:22px;height:22px;flex-shrink:0;}
+.sb-collapse:hover{border-color:${T.accent};background:${T.accentDim};color:${T.accent};}
 
 /* MAIN */
 .bo-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -244,7 +245,7 @@ function Dashboard(){
       setOnShift(Array.isArray(staff)?staff.filter(s=>s.active):[]);
     }).catch(()=>{});
   },[]);
-  const occ=tables.filter(t=>t.status!=="free"&&t.status!=="reserved").length;
+  const occ=tables.filter(t=>t.status!=="free").length;
   const kpis=[
     {label:"Receita (7 dias)",value:summary?fmtEur(summary.revenue):"—",sub:`${summary?.orders||0} pedidos`,color:T.success},
     {label:"Pedidos",value:String(summary?.orders??0),sub:`Ticket médio: ${summary?fmtEur(summary.avgTicket):"—"}`,color:T.accent},
@@ -848,11 +849,15 @@ function TablesMgmt(){
   const [stateModal,setStateModal]=useState(null);
   const [newStatus,setNewStatus]=useState("");
   const [comment,setComment]=useState("");
+  const [selected,setSelected]=useState(new Set());
+  const [bulkStatus,setBulkStatus]=useState("free");
+  const [taOrders,setTaOrders]=useState([]);
   useEffect(()=>{
     Promise.all([
       fetch("/api/tables").then(r=>r.json()),
       fetch("/api/zones").then(r=>r.json()),
-    ]).then(([tablesData,zonesData])=>{
+      fetch("/api/orders?limit=200").then(r=>r.json()),
+    ]).then(([tablesData,zonesData,ordersData])=>{
       if(Array.isArray(zonesData)){
         setZones(zonesData);
         if(zonesData.length>0)setZone(zonesData[0].name);
@@ -860,8 +865,15 @@ function TablesMgmt(){
       if(!Array.isArray(tablesData))return;
       const mapped=tablesData.map(t=>({id:t.label,dbId:t.id,zoneId:t.zone?.id,zone:t.zone?.name||"",seats:t.seats,status:t.status}));
       setTables(mapped);
+      if(Array.isArray(ordersData)){
+        setTaOrders(ordersData.filter(o=>o.type==="takeaway"&&o.status!=="paid"&&o.status!=="cancelled"));
+      }
     }).catch(()=>{});
   },[]);
+  const closeTaOrder=async(orderId)=>{
+    await fetch(`/api/orders/${orderId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"paid"})}).catch(()=>{});
+    setTaOrders(p=>p.filter(o=>o.id!==orderId));
+  };
   const filtered=zone?tables.filter(t=>t.zone===zone):tables;
   const saveStateChange=async()=>{
     const prev=tables.find(t=>t.id===stateModal.id);
@@ -885,6 +897,22 @@ function TablesMgmt(){
     }
     setEditTable(null);
   };
+  const toggleSel=(dbId)=>setSelected(p=>{const n=new Set(p);n.has(dbId)?n.delete(dbId):n.add(dbId);return n;});
+  const clearOrders=async()=>{
+    for(const dbId of selected){
+      const orders=await fetch(`/api/orders?table_id=${dbId}&limit=50`).then(r=>r.json()).catch(()=>[]);
+      const open=Array.isArray(orders)?orders.filter(o=>o.status!=="paid"&&o.status!=="cancelled"):[];
+      await Promise.all(open.map(o=>fetch(`/api/orders/${o.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"paid"})})));
+      await fetch(`/api/tables/${dbId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"free"})});
+    }
+    setTables(p=>p.map(t=>selected.has(t.dbId)?{...t,status:"free"}:t));
+    setSelected(new Set());
+  };
+  const applyBulkStatus=async()=>{
+    await Promise.all([...selected].map(dbId=>fetch(`/api/tables/${dbId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:bulkStatus})})));
+    setTables(p=>p.map(t=>selected.has(t.dbId)?{...t,status:bulkStatus}:t));
+    setSelected(new Set());
+  };
   const deleteTable=async(dbId)=>{
     const r=await fetch(`/api/tables/${dbId}`,{method:"DELETE"});
     if(r.status===204||r.ok){
@@ -899,19 +927,67 @@ function TablesMgmt(){
       <div className="section-head">
         <div style={{display:"flex",gap:6}}>
           {zones.map(z=><button key={z.id}className={`filter-chip${zone===z.name?" active":""}`}onClick={()=>setZone(z.name)}>{z.name} ({tables.filter(t=>t.zone===z.name).length})</button>)}
+          <button className={`filter-chip${zone==="__ta__"?" active":""}`}onClick={()=>setZone("__ta__")}>Take-Away ({taOrders.length})</button>
         </div>
         <button className="btn btn-solid"onClick={()=>setEditTable({id:"",zoneId:zones[0]?.id||"",zone:zones[0]?.name||"",seats:4,status:"free",dbId:null})}><Ic.Plus/>Nova Mesa</button>
       </div>
+      {selected.size>0&&(
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:T.elevated,border:`1px solid ${T.accent}44`,borderRadius:10,marginBottom:12,flexWrap:"wrap"}}>
+          <span style={{fontSize:12,fontWeight:700,color:T.accent}}>{selected.size} mesa{selected.size!==1?"s":""} selecionada{selected.size!==1?"s":""}</span>
+          <button className="btn btn-ghost btn-sm"onClick={()=>setSelected(new Set())}>Desselecionar</button>
+          <div style={{flex:1}}/>
+          <button className="btn btn-danger btn-sm"onClick={clearOrders}>Limpar Pedidos &amp; Libertar</button>
+          <select style={{background:T.card,border:`1px solid ${T.border}`,color:T.text,borderRadius:6,padding:"5px 8px",fontSize:12,fontFamily:"inherit",cursor:"pointer"}}value={bulkStatus}onChange={e=>setBulkStatus(e.target.value)}>
+            {Object.entries(STATUS_C).map(([k,v])=><option key={k}value={k}>{v.label}</option>)}
+          </select>
+          <button className="btn btn-solid btn-sm"onClick={applyBulkStatus}>Aplicar Estado</button>
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
-        {filtered.map(t=>{const st=STATUS_C[t.status]||STATUS_C.free;return(
-          <div key={t.dbId}className="card"style={{border:`1px solid ${st.c}33`}}>
+        {zone==="__ta__"?taOrders.length===0
+          ?<div style={{gridColumn:"1/-1",color:T.textMuted,fontSize:13,padding:24,textAlign:"center"}}>Sem pedidos take-away activos</div>
+          :taOrders.map(o=>{
+            const taStMap={open:STATUS_C.occupied,sent:STATUS_C.occupied,bill:STATUS_C.bill};
+            const st=taStMap[o.status]||STATUS_C.occupied;
+            const items=(o.lines||[]).filter(l=>!l.cancelled).length;
+            return(
+              <div key={o.id}className="card"style={{border:`1px solid ${st.c}33`}}>
+                <div style={{padding:"14px 14px 10px"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <div style={{fontSize:15,fontWeight:800,color:st.c,fontFamily:"'DM Mono',monospace"}}>#{o.id.slice(0,6).toUpperCase()}</div>
+                    <Badge color={st.c}bg={st.bg}>{o.status==="bill"?"Conta":o.status==="sent"?"Cozinha":"Aberto"}</Badge>
+                  </div>
+                  <div style={{fontSize:11,color:T.textSec,marginBottom:10,display:"flex",flexDirection:"column",gap:2}}>
+                    <span>{o.waiter?.name||"—"}</span>
+                    <span style={{fontFamily:"'DM Mono',monospace"}}>{items} item{items!==1?"s":""} · {fmtElapsed(o.created_at)}</span>
+                  </div>
+                  <button className="btn btn-danger btn-sm"style={{width:"100%"}}onClick={()=>closeTaOrder(o.id)}>Fechar</button>
+                </div>
+              </div>
+            );
+          })
+        :filtered.map(t=>{const st=STATUS_C[t.status]||STATUS_C.free;const isSel=selected.has(t.dbId);return(
+          <div key={t.dbId}className="card"style={{border:`1px solid ${isSel?T.accent:st.c}33`,outline:isSel?`2px solid ${T.accent}`:undefined,cursor:"pointer"}}onClick={()=>toggleSel(t.dbId)}>
             <div style={{padding:"14px 14px 10px"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <div style={{fontSize:20,fontWeight:800,color:st.c}}>{t.id}</div>
+                <div style={{display:"flex",alignItems:"center",gap:7}}>
+                  <div style={{width:15,height:15,borderRadius:"50%",border:`2px solid ${isSel?T.accent:T.border}`,background:isSel?T.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .12s"}}>
+                    {isSel&&<svg width="8"height="8"viewBox="0 0 12 12"fill="none"><polyline points="2,6 5,9 10,3"stroke={T.bg}strokeWidth="2.2"strokeLinecap="round"strokeLinejoin="round"/></svg>}
+                  </div>
+                  <div style={{fontSize:20,fontWeight:800,color:st.c}}>{t.id}</div>
+                </div>
                 <Badge color={st.c}bg={st.bg}>{st.label}</Badge>
               </div>
-              {t.seats>0&&<div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>{t.seats} lugares · {t.zone}</div>}
-              <div style={{display:"flex",gap:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:T.textSec,marginBottom:10}}>
+                <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                  <span style={{fontFamily:"'DM Mono',monospace",fontWeight:600,color:T.text}}>{t.seats}</span>
+                  <span>{t.seats===1?"lugar":"lugares"}</span>
+                </span>
+                <span style={{color:T.textMuted}}>·</span>
+                <span>{t.zone||"—"}</span>
+              </div>
+              <div style={{display:"flex",gap:6}}onClick={e=>e.stopPropagation()}>
                 <button className="btn btn-ghost btn-sm"style={{flex:1}}onClick={()=>{setStateModal(t);setNewStatus(t.status);}}>Estado</button>
                 <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>setEditTable({...t})}><Ic.Edit/></button>
                 <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteTable(t.dbId)}><Ic.Trash/></button>
@@ -1148,24 +1224,24 @@ function ItemModifiersLib(){
       </div>
       {edit&&(
         <div className="overlay"onClick={()=>setEdit(null)}>
-          <div className="modal"style={{width:540}}onClick={e=>e.stopPropagation()}>
+          <div className="modal"style={{width:720}}onClick={e=>e.stopPropagation()}>
             <div className="modal-hd"><div className="modal-title">{edit==="new"?"Novo Modificador":"Editar Modificador"}</div><CloseBtn onClick={()=>setEdit(null)}/></div>
             <div className="modal-body">
               <Inp label="Nome do Grupo (ex: Tipo de massa)"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
               <div className="form-label"style={{marginBottom:8,marginTop:6}}>Opções</div>
-              <div style={{display:"flex",fontSize:10,color:T.textMuted,gap:6,padding:"0 4px 4px"}}>
-                <span style={{flex:2}}>Etiqueta</span><span style={{width:56}}>+€</span><span style={{flex:2}}>Ingrediente</span><span style={{width:52}}>Qtd</span><span style={{width:60}}>Un.</span><span style={{width:28}}/>
+              <div style={{display:"flex",fontSize:10,color:T.textMuted,gap:10,padding:"0 4px 4px"}}>
+                <span style={{flex:2}}>Etiqueta</span><span style={{width:90}}>Preço (+€)</span><span style={{flex:2}}>Ingrediente</span><span style={{width:80}}>Qtd</span><span style={{width:90}}>Unidade</span><span style={{width:32}}/>
               </div>
               {form.options.map((opt,i)=>(
-                <div key={i}style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                <div key={i}style={{display:"flex",gap:10,marginBottom:8,alignItems:"center"}}>
                   <input className="form-input"style={{flex:2}}placeholder="ex: Espiral 200g"value={opt.label}onChange={e=>setOpt(i,"label",e.target.value)}/>
-                  <input className="form-input"style={{width:56}}type="number"step="0.01"placeholder="0"value={opt.price}onChange={e=>setOpt(i,"price",e.target.value)}/>
+                  <input className="form-input"style={{width:90}}type="number"step="0.01"placeholder="0"value={opt.price}onChange={e=>setOpt(i,"price",e.target.value)}/>
                   <select className="form-select"style={{flex:2}}value={opt.ingredientId}onChange={e=>setOpt(i,"ingredientId",e.target.value)}>
                     <option value="">— extra/nenhum —</option>
                     {allIngredients.map(ing=><option key={ing.id}value={ing.id}>{ing.name}</option>)}
                   </select>
-                  <input className="form-input"style={{width:52}}type="number"step="any"placeholder="0"value={opt.ingredientQty}onChange={e=>setOpt(i,"ingredientQty",e.target.value)}/>
-                  <select className="form-select"style={{width:60}}value={opt.ingredientUnit||""}onChange={e=>setOpt(i,"ingredientUnit",e.target.value)}>
+                  <input className="form-input"style={{width:80}}type="number"step="any"placeholder="0"value={opt.ingredientQty}onChange={e=>setOpt(i,"ingredientQty",e.target.value)}/>
+                  <select className="form-select"style={{width:90}}value={opt.ingredientUnit||""}onChange={e=>setOpt(i,"ingredientUnit",e.target.value)}>
                     {unitOptsFor(opt).map(u=><option key={u.id}value={u.id}>{u.id}</option>)}
                   </select>
                   <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>removeOpt(i)}><Ic.Trash/></button>
@@ -1367,6 +1443,7 @@ function StaffMgmt(){
   const [staff,setStaff]=useState([]);
   const [editStaff,setEditStaff]=useState(null);
   const [form,setForm]=useState({});
+  const [staffErr,setStaffErr]=useState("");
   useEffect(()=>{
     fetch("/api/staff").then(r=>r.json()).then(data=>{
       if(!Array.isArray(data))return;
@@ -1374,12 +1451,17 @@ function StaffMgmt(){
     }).catch(()=>{});
   },[]);
   const openEdit=(s)=>{setForm({...s,pin:""});setEditStaff(s.id);};
-  const openNew=()=>{setForm({name:"",role:"waiter",pin:"",active:true});setEditStaff("new");};
+  const openNew=()=>{setForm({name:"",role:"waiter",pin:"",email:"",password:"",active:true});setEditStaff("new");};
   const save=async()=>{
+    setStaffErr("");
     if(editStaff==="new"){
-      const r=await fetch("/api/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,role:form.role,pin:form.pin})});
+      const payload={name:form.name,role:form.role};
+      if(form.role==="manager"){payload.email=form.email;payload.password=form.password;}
+      else{payload.pin=form.pin;}
+      const r=await fetch("/api/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const data=await r.json();
-      if(!data.error)setStaff(p=>[...p,{id:data.id,name:data.name,role:data.role,active:data.active,since:new Date(data.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})}]);
+      if(data.error){setStaffErr(data.error);return;}
+      setStaff(p=>[...p,{id:data.id,name:data.name,role:data.role,active:data.active,since:new Date(data.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})}]);
     } else {
       const body={name:form.name,role:form.role,active:form.active};
       if(form.pin)body.pin=form.pin;
@@ -1428,104 +1510,25 @@ function StaffMgmt(){
             <div className="modal-hd"><div className="modal-title">{editStaff==="new"?"Novo Funcionário":"Editar Funcionário"}</div><CloseBtn onClick={()=>setEditStaff(null)}/></div>
             <div className="modal-body">
               <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
-              <div className="form-row">
+              {form.role!=="manager"?(
+                <div className="form-row">
+                  <Sel label="Função"value={form.role||"waiter"}onChange={e=>setForm(p=>({...p,role:e.target.value}))}><option value="waiter">Waiter</option><option value="kitchen">Cozinha</option><option value="manager">Gestor</option></Sel>
+                  <Inp label={editStaff==="new"?"PIN (4 dígitos)":"Novo PIN (vazio = manter)"}type="password"maxLength={4}value={form.pin||""}onChange={e=>setForm(p=>({...p,pin:e.target.value}))}/>
+                </div>
+              ):(
                 <Sel label="Função"value={form.role||"waiter"}onChange={e=>setForm(p=>({...p,role:e.target.value}))}><option value="waiter">Waiter</option><option value="kitchen">Cozinha</option><option value="manager">Gestor</option></Sel>
-                <Inp label={editStaff==="new"?"PIN (4 dígitos)":"Novo PIN (vazio = manter)"}type="password"maxLength={4}value={form.pin||""}onChange={e=>setForm(p=>({...p,pin:e.target.value}))}/>
-              </div>
+              )}
+              {editStaff==="new"&&form.role==="manager"&&(
+                <>
+                  <Inp label="Email (login do gestor)"type="email"value={form.email||""}onChange={e=>setForm(p=>({...p,email:e.target.value}))}/>
+                  <Inp label="Password"type="password"value={form.password||""}onChange={e=>setForm(p=>({...p,password:e.target.value}))}/>
+                  <div style={{fontSize:11,color:T.textMuted,marginTop:-4,marginBottom:8,lineHeight:1.5}}>Os gestores entram no Backoffice/KDS com email + password.</div>
+                </>
+              )}
               <div style={{display:"flex",alignItems:"center",gap:10,marginTop:4}}><Toggle on={!!form.active}onChange={v=>setForm(p=>({...p,active:v}))}/><span style={{fontSize:13,color:T.textSec}}>Activo</span></div>
+              {staffErr&&<div style={{marginTop:8,fontSize:12,color:T.danger,background:T.dangerDim,borderRadius:6,padding:"6px 10px"}}>{staffErr}</div>}
             </div>
-            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditStaff(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}>Guardar</button></div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── RESERVATIONS ─────────────────────────────────────────────────────────────
-function Reservations(){
-  const [reservas,setReservas]=useState([]);
-  const [tableMap,setTableMap]=useState({});
-  const [allTables,setAllTables]=useState([]);
-  const [editR,setEditR]=useState(null);
-  const [form,setForm]=useState({});
-  useEffect(()=>{
-    Promise.all([
-      fetch("/api/reservations").then(r=>r.json()),
-      fetch("/api/tables").then(r=>r.json()),
-    ]).then(([res,tbls])=>{
-      if(Array.isArray(res))setReservas(res.map(r=>({id:r.id,name:r.name,phone:r.phone||"",date:r.date,time:r.time,persons:r.persons,tableId:r.table?.label||"",tableDbId:r.table_id||null,notes:r.notes||"",status:r.status})));
-      if(Array.isArray(tbls)){
-        const m={};tbls.forEach(t=>{m[t.label]=t.id;});
-        setTableMap(m);
-        setAllTables(tbls.map(t=>({id:t.id,label:t.label})).sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true})));
-      }
-    }).catch(()=>{});
-  },[]);
-  const openNew=()=>{setForm({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:"",status:"pending"});setEditR("new");};
-  const save=async()=>{
-    const body={name:form.name,phone:form.phone,date:form.date,time:form.time,persons:parseInt(form.persons)||2,notes:form.notes,status:form.status,table_id:tableMap[form.tableId]||null};
-    if(editR==="new"){
-      const r=await fetch("/api/reservations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const data=await r.json();
-      if(!data.error)setReservas(p=>[...p,{...form,id:data.id}]);
-    } else {
-      await fetch(`/api/reservations/${editR}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      setReservas(p=>p.map(x=>x.id===editR?{...form,id:editR}:x));
-    }
-    setEditR(null);
-  };
-  const toggleStatus=async(id)=>{
-    const r=reservas.find(x=>x.id===id);if(!r)return;
-    const ns=r.status==="confirmed"?"pending":"confirmed";
-    setReservas(p=>p.map(x=>x.id===id?{...x,status:ns}:x));
-    await fetch(`/api/reservations/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:ns})}).catch(()=>{});
-  };
-  const deleteR=async(id)=>{
-    setReservas(p=>p.filter(x=>x.id!==id));
-    await fetch(`/api/reservations/${id}`,{method:"DELETE"}).catch(()=>{});
-  };
-  const sorted=[...reservas].sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
-  return(
-    <div>
-      <div className="section-head"><div className="section-h">{reservas.length} reservas</div><button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Nova Reserva</button></div>
-      <div className="card">
-        <table className="data-table">
-          <thead><tr><th>Nome</th><th>Data / Hora</th><th>Pessoas</th><th>Mesa</th><th>Notas</th><th>Estado</th><th></th></tr></thead>
-          <tbody>
-            {sorted.length===0&&<tr><td colSpan={7}><div className="empty-state">Sem reservas</div></td></tr>}
-            {sorted.map(r=>(
-              <tr key={r.id}>
-                <td><div style={{fontWeight:600}}>{r.name}</div><div style={{fontSize:11,color:T.textMuted}}>{r.phone}</div></td>
-                <td><span className="mono"style={{color:T.text}}>{r.date}</span><span style={{marginLeft:8,color:T.accent,fontWeight:700}}>{r.time}</span></td>
-                <td><span className="mono">{r.persons}</span></td>
-                <td><Badge color={T.accent}bg={T.accentDim}>{r.tableId||"—"}</Badge></td>
-                <td style={{color:T.textSec,fontSize:12,maxWidth:140}}>{r.notes||"—"}</td>
-                <td><div onClick={()=>toggleStatus(r.id)}style={{cursor:"pointer"}}><Badge color={r.status==="confirmed"?T.success:T.warning}bg={r.status==="confirmed"?T.successDim:T.warningDim}>{r.status==="confirmed"?"Confirmada":"Pendente"}</Badge></div></td>
-                <td><div style={{display:"flex",gap:4}}><button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...r});setEditR(r.id);}}><Ic.Edit/></button><button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteR(r.id)}><Ic.Trash/></button></div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {editR&&(
-        <div className="overlay"onClick={()=>setEditR(null)}>
-          <div className="modal"style={{width:460}}onClick={e=>e.stopPropagation()}>
-            <div className="modal-hd"><div className="modal-title">{editR==="new"?"Nova Reserva":"Editar Reserva"}</div><CloseBtn onClick={()=>setEditR(null)}/></div>
-            <div className="modal-body">
-              <div className="form-row"><Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/><Inp label="Telefone"value={form.phone||""}onChange={e=>setForm(p=>({...p,phone:e.target.value}))}/></div>
-              <div className="form-row"><Inp label="Data"type="date"value={form.date||""}onChange={e=>setForm(p=>({...p,date:e.target.value}))}/><Inp label="Hora"type="time"value={form.time||""}onChange={e=>setForm(p=>({...p,time:e.target.value}))}/></div>
-              <div className="form-row">
-                <Inp label="Nº Pessoas"type="number"value={form.persons||""}onChange={e=>setForm(p=>({...p,persons:e.target.value}))}/>
-                <Sel label="Mesa"value={form.tableId||""}onChange={e=>setForm(p=>({...p,tableId:e.target.value}))}>
-                  <option value="">Sem mesa atribuída</option>
-                  {allTables.map(t=><option key={t.id}value={t.label}>{t.label}</option>)}
-                </Sel>
-              </div>
-              <Inp label="Notas"value={form.notes||""}onChange={e=>setForm(p=>({...p,notes:e.target.value}))}placeholder="Alergias, preferências..."/>
-              <Sel label="Estado"value={form.status||"pending"}onChange={e=>setForm(p=>({...p,status:e.target.value}))}><option value="pending">Pendente</option><option value="confirmed">Confirmada</option></Sel>
-            </div>
-            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditR(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}>Guardar</button></div>
+            <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>{setEditStaff(null);setStaffErr("");}}>Cancelar</button><button className="btn btn-solid"onClick={save}>Guardar</button></div>
           </div>
         </div>
       )}
@@ -1536,29 +1539,19 @@ function Reservations(){
 // ─── DESCONTOS ────────────────────────────────────────────────────────────────
 function Campaigns(){
   const [camps,setCamps]=useState([]);
-  const [menuItems,setMenuItems]=useState([]);
   const [editC,setEditC]=useState(null);
   const [form,setForm]=useState({});
   const [errMsg,setErrMsg]=useState("");
   useEffect(()=>{
-    Promise.all([
-      fetch("/api/campaigns?active=false").then(r=>r.json()),
-      fetch("/api/menu/items?active=false").then(r=>r.json()),
-    ]).then(([cs,its])=>{
-      if(Array.isArray(cs))setCamps(cs.map(c=>({id:c.id,name:c.name,type:c.type,value:c.value,target:c.target||"all",targetId:c.target_id||null,days:c.days||[],start:c.start_time||"00:00",end:c.end_time||"23:59",active:c.active})));
-      if(Array.isArray(its))setMenuItems(its.map(i=>({id:i.id,name:i.name})));
+    fetch("/api/campaigns?active=false").then(r=>r.json()).then(cs=>{
+      if(Array.isArray(cs))setCamps(cs.map(c=>({id:c.id,name:c.name,type:c.type,value:c.value,days:c.days||[],start:c.start_time||"00:00",end:c.end_time||"23:59",active:c.active})));
     }).catch(()=>{});
   },[]);
-  const getTargetLabel=(c)=>{
-    if(c.target==="all")return"Toda a encomenda";
-    if(c.target==="item"){const it=menuItems.find(i=>i.id===c.targetId);return it?`Item: ${it.name}`:"Item";}
-    return c.target;
-  };
   const toggleDay=(d)=>setForm(p=>({...p,days:p.days.includes(d)?p.days.filter(x=>x!==d):[...p.days,d].sort()}));
   const save=async()=>{
     if(!form.name){setErrMsg("Nome obrigatório");return;}
     setErrMsg("");
-    const body={name:form.name,type:form.type,value:parseFloat(form.value)||0,target:form.target,target_id:form.targetId||null,days:form.days,start_time:form.start,end_time:form.end};
+    const body={name:form.name,type:form.type,value:parseFloat(form.value)||0,days:form.days,start_time:form.start,end_time:form.end};
     if(editC==="new"){
       const r=await fetch("/api/campaigns",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
@@ -1582,17 +1575,16 @@ function Campaigns(){
   };
   return(
     <div>
-      <div className="section-head"><div className="section-h">{camps.length} descontos</div><button className="btn btn-solid"onClick={()=>{setForm({name:"",type:"percent",value:0,target:"all",targetId:null,days:[],start:"00:00",end:"23:59",active:true});setEditC("new");}}><Ic.Plus/>Novo Desconto</button></div>
+      <div className="section-head"><div className="section-h">{camps.length} descontos</div><button className="btn btn-solid"onClick={()=>{setForm({name:"",type:"percent",value:0,days:[],start:"00:00",end:"23:59",active:true});setEditC("new");}}><Ic.Plus/>Novo Desconto</button></div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th>Nome</th><th>Desconto</th><th>Alvo</th><th>Dias</th><th>Horario</th><th>Activa</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Desconto</th><th>Dias</th><th>Horario</th><th>Activa</th><th></th></tr></thead>
           <tbody>
-            {camps.length===0&&<tr><td colSpan={7}><div className="empty-state">Sem descontos</div></td></tr>}
+            {camps.length===0&&<tr><td colSpan={6}><div className="empty-state">Sem descontos</div></td></tr>}
             {camps.map(c=>(
               <tr key={c.id}>
                 <td style={{fontWeight:600}}>{c.name}</td>
                 <td><span style={{color:T.warning,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{c.type==="percent"?`${c.value}%`:`-€${Number(c.value).toFixed(2)}`}</span></td>
-                <td><Badge color={T.teal}bg={T.tealDim}>{getTargetLabel(c)}</Badge></td>
                 <td><span style={{fontSize:11,color:T.textSec}}>{(c.days||[]).map(d=>DAYS_PT[d%7]).join(", ")||"—"}</span></td>
                 <td><span className="mono"style={{fontSize:11,color:T.textMuted}}>{c.start}–{c.end}</span></td>
                 <td><Toggle on={c.active}onChange={v=>toggleActive(c.id,v)}/></td>
@@ -1612,11 +1604,6 @@ function Campaigns(){
                 <Sel label="Tipo"value={form.type||"percent"}onChange={e=>setForm(p=>({...p,type:e.target.value}))}><option value="percent">Percentagem (%)</option><option value="fixed">Valor Fixo (€)</option></Sel>
                 <Inp label={form.type==="fixed"?"Valor (€)":"Percentagem (%)"}type="number"value={form.value||""}onChange={e=>setForm(p=>({...p,value:parseFloat(e.target.value)||0}))}/>
               </div>
-              <Sel label="Alvo do desconto"value={form.target||"all"}onChange={e=>setForm(p=>({...p,target:e.target.value,targetId:null}))}>
-                <option value="all">Toda a encomenda</option>
-                <option value="item">Item especifico</option>
-              </Sel>
-              {form.target==="item"&&<Sel label="Item"value={form.targetId||""}onChange={e=>setForm(p=>({...p,targetId:e.target.value}))}><option value="">Selecionar...</option>{menuItems.map(i=><option key={i.id}value={i.id}>{i.name}</option>)}</Sel>}
               <div><label className="form-label">Dias validos</label><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{DAYS_PT.slice(1).map((d,i)=><button key={i+1}onClick={()=>toggleDay(i+1)}style={{padding:"4px 8px",borderRadius:5,border:`1px solid ${(form.days||[]).includes(i+1)?T.accent:T.border}`,background:(form.days||[]).includes(i+1)?T.accentDim:T.card,color:(form.days||[]).includes(i+1)?T.accent:T.textSec,fontSize:11,fontWeight:600,cursor:"pointer"}}>{d}</button>)}</div></div>
               <div className="form-row"style={{marginTop:8}}><Inp label="Hora Inicio"type="time"value={form.start||"00:00"}onChange={e=>setForm(p=>({...p,start:e.target.value}))}/><Inp label="Hora Fim"type="time"value={form.end||"23:59"}onChange={e=>setForm(p=>({...p,end:e.target.value}))}/></div>
               {errMsg&&<div style={{marginTop:8,fontSize:12,color:T.danger,background:T.dangerDim,borderRadius:6,padding:"6px 10px"}}>{errMsg}</div>}
@@ -1764,7 +1751,7 @@ function LogsSection(){
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 const SETTINGS_DEFAULTS={
-  geral:{name:"RestaurantOS",address:"",phone:"",email:""},
+  geral:{name:"YourKitchen",address:"",phone:"",email:""},
   fiscal:{nif:"",regime:"normal",rates:[
     {id:"r6",label:"Taxa Reduzida",value:6,active:true},
     {id:"r13",label:"Taxa Intermédia",value:13,active:true},
@@ -1890,13 +1877,12 @@ const NAV=[
   {id:"tables",label:"Mesas",Icon:Ic.Tables},
   {id:"zones",label:"Zonas",Icon:Ic.MapPin},
   {id:"staff",label:"Equipa",Icon:Ic.Staff},
-  {id:"reservations",label:"Reservas",Icon:Ic.Calendar},
   {id:"campaigns",label:"Descontos",Icon:Ic.Tag},
   {id:"orders",label:"Pedidos",Icon:Ic.Orders},
   {id:"logs",label:"Logs",Icon:Ic.Logs},
   {id:"settings",label:"Definicoes",Icon:Ic.Settings},
 ];
-const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",modifiers:"Modificadores",categories:"Categorias de Menu",ingredients:"Ingredientes",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",reservations:"Reservas",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
+const SECTION_TITLES={dashboard:"Dashboard",analytics:"Analytics",menu:"Items do Menu",modifiers:"Modificadores",categories:"Categorias de Menu",ingredients:"Ingredientes",tables:"Gestao de Mesas",zones:"Zonas",staff:"Gestao de Equipa",campaigns:"Descontos",orders:"Historico de Pedidos",logs:"Logs do Sistema",settings:"Definicoes"};
 
 function Sidebar({active,onSelect,collapsed,onCollapse,appName="RestaurantOS"}){
   return(
@@ -1933,7 +1919,7 @@ export default function Backoffice({appName="RestaurantOS",onAppNameChange}){
     modifiers:<ModifiersMgmt/>,
     categories:<CategoriesMgmt/>,ingredients:<IngredientsMgmt/>,
     tables:<TablesMgmt/>,zones:<ZonesMgmt/>,
-    staff:<StaffMgmt/>,reservations:<Reservations/>,
+    staff:<StaffMgmt/>,
     campaigns:<Campaigns/>,orders:<OrderHistory/>,logs:<LogsSection/>,settings:<SettingsSection onAppNameChange={onAppNameChange}/>,
   };
 

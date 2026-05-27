@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     .from("menu_items")
     .select(
       includeModifiers
-        ? "*, category:menu_categories(id,name,emoji,position), modifiers:item_modifiers(*, options:modifier_options(*, ingredient:ingredients(id,name,unit))), ingredients:item_ingredients(ingredient_id, ingredient:ingredients(id,name))"
+        ? "*, category:menu_categories(id,name,emoji,position), modifiers:item_modifiers(*, options:modifier_options(*, ingredient:ingredients(id,name,unit))), ingredients:item_ingredients(ingredient_id, qty, ingredient:ingredients(id,name))"
         : "*, category:menu_categories(id,name,emoji,position)"
     )
     .order("name");

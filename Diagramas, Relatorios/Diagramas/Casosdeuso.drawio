@@ -1,6 +1,6 @@
 <mxfile host="Electron">
   <diagram name="Page-1" id="Uukz1dO90E66vG9cr91-">
-    <mxGraphModel dx="566" dy="476" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="770" dy="960" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -219,7 +219,7 @@
         <mxCell id="fHKKBFc6xrSqwk-Zx7iS-92" parent="5IMxpMw5YRBKH_s2C0RM-15" style="ellipse;whiteSpace=wrap;html=1;" value="Gerir Fichas Técnicas" vertex="1">
           <mxGeometry height="80" width="130" x="240" y="454.6875" as="geometry" />
         </mxCell>
-        <mxCell id="fHKKBFc6xrSqwk-Zx7iS-93" parent="5IMxpMw5YRBKH_s2C0RM-15" style="ellipse;whiteSpace=wrap;html=1;" value="Registar Entradas de Stock" vertex="1">
+        <mxCell id="fHKKBFc6xrSqwk-Zx7iS-93" parent="5IMxpMw5YRBKH_s2C0RM-15" style="ellipse;whiteSpace=wrap;html=1;" value="Registar Stock" vertex="1">
           <mxGeometry height="80" width="120" x="245" y="554.6875" as="geometry" />
         </mxCell>
         <mxCell id="fHKKBFc6xrSqwk-Zx7iS-94" parent="5IMxpMw5YRBKH_s2C0RM-15" style="ellipse;whiteSpace=wrap;html=1;" value="Consultar Analytics" vertex="1">
@@ -321,10 +321,10 @@
         <mxCell id="fHKKBFc6xrSqwk-Zx7iS-13" parent="fHKKBFc6xrSqwk-Zx7iS-25" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;div align=&quot;left&quot;&gt;Kitchen Display System&lt;/div&gt;" vertex="1">
           <mxGeometry height="28.125" width="177.27272727272725" x="13.636363636363637" as="geometry" />
         </mxCell>
-        <mxCell id="fHKKBFc6xrSqwk-Zx7iS-22" parent="fHKKBFc6xrSqwk-Zx7iS-25" style="ellipse;whiteSpace=wrap;html=1;" value="Visualizar Fila de Receitas" vertex="1">
+        <mxCell id="fHKKBFc6xrSqwk-Zx7iS-22" parent="fHKKBFc6xrSqwk-Zx7iS-25" style="ellipse;whiteSpace=wrap;html=1;" value="Visualizar Fila de Pedidos" vertex="1">
           <mxGeometry height="80" width="120" x="29.99999999999997" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="fHKKBFc6xrSqwk-Zx7iS-68" parent="fHKKBFc6xrSqwk-Zx7iS-25" style="ellipse;whiteSpace=wrap;html=1;" value="Atualizar estado das Receitas" vertex="1">
+        <mxCell id="fHKKBFc6xrSqwk-Zx7iS-68" parent="fHKKBFc6xrSqwk-Zx7iS-25" style="ellipse;whiteSpace=wrap;html=1;" value="Atualizar estado das Pedidos" vertex="1">
           <mxGeometry height="80" width="120" x="30" y="130" as="geometry" />
         </mxCell>
         <mxCell id="fHKKBFc6xrSqwk-Zx7iS-73" parent="fHKKBFc6xrSqwk-Zx7iS-25" style="ellipse;whiteSpace=wrap;html=1;" value="Finalizar Pedido" vertex="1">

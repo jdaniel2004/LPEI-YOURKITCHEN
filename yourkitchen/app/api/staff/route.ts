@@ -13,23 +13,56 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { name, role, pin } = body;
+  const { name, role, pin, email, password } = body;
 
-  if (!name || !role || !pin)
-    return Response.json({ error: "name, role e pin obrigatórios" }, { status: 400 });
+  if (!name || !role)
+    return Response.json({ error: "name e role obrigatórios" }, { status: 400 });
   if (!["manager", "waiter", "kitchen"].includes(role))
     return Response.json({ error: "role inválido" }, { status: 400 });
-  if (String(pin).length !== 4)
+  if (role === "manager" && (!email || !password))
+    return Response.json({ error: "Gestores precisam de email e password" }, { status: 400 });
+  if (role !== "manager" && !pin)
+    return Response.json({ error: "PIN obrigatório" }, { status: 400 });
+  if (role !== "manager" && String(pin).length !== 4)
     return Response.json({ error: "PIN deve ter 4 dígitos" }, { status: 400 });
 
-  const pin_hash = await bcrypt.hash(String(pin), 10);
+  // Managers authenticate via email+password; store an unusable random hash
+  // so the column is never null without exposing a real PIN.
+  const pin_hash = await bcrypt.hash(
+    role === "manager" ? crypto.randomUUID() : String(pin),
+    10
+  );
+
+  // Managers also authenticate via Supabase Auth (email/password). Create the
+  // auth user first so the staff insert references an existing account.
+  if (role === "manager") {
+    const { error: authErr } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (authErr) return Response.json({ error: `Erro ao criar conta: ${authErr.message}` }, { status: 500 });
+  }
+
+  const row: Record<string, unknown> = { name, role, pin_hash };
+  if (role === "manager") row.email = email;
 
   const { data, error } = await supabaseAdmin
     .from("staff")
-    .insert({ name, role, pin_hash })
+    .insert(row)
     .select("id, name, role, active, created_at")
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // Best-effort: clean up the auth user we just created so we don't orphan it
+    if (role === "manager" && email) {
+      try {
+        const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+        const u = users.users.find((x) => x.email === email);
+        if (u) await supabaseAdmin.auth.admin.deleteUser(u.id);
+      } catch {}
+    }
+    return Response.json({ error: error.message }, { status: 500 });
+  }
   return Response.json(data, { status: 201 });
 }

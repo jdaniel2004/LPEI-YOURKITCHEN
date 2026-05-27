@@ -3,11 +3,6 @@ import { writeLog } from "@/lib/log";
 
 export async function POST(req: Request) {
   const staffId = req.headers.get("x-session-id");
-  const body = await req.json();
-  const { fundo_value } = body;
-
-  if (fundo_value == null)
-    return Response.json({ error: "fundo_value obrigatório" }, { status: 400 });
 
   // Close any open shift for this staff member first
   await supabaseAdmin
@@ -18,13 +13,13 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("shifts")
-    .insert({ staff_id: staffId, fundo_value })
+    .insert({ staff_id: staffId })
     .select()
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  await writeLog("ACTION", "POS", `Turno aberto — Fundo €${fundo_value}`, staffId);
+  await writeLog("ACTION", "POS", "Turno aberto", staffId);
   return Response.json(data, { status: 201 });
 }
 

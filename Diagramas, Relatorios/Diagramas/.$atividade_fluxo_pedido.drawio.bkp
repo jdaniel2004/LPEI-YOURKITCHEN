@@ -16,22 +16,22 @@
         <mxCell id="a2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Selecionar Mesa Livre" vertex="1">
           <mxGeometry height="40" width="160" x="270" y="210" as="geometry" />
         </mxCell>
-        <mxCell id="a3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Abrir Mesa&lt;br&gt;(Estado: Livre -&amp;gt; Ocupada)" vertex="1">
+        <mxCell id="a3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Abrir Mesa&#xa;(Estado: Livre → Ocupada)" vertex="1">
           <mxGeometry height="40" width="160" x="270" y="290" as="geometry" />
         </mxCell>
         <mxCell id="a4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Selecionar Item do Menu" vertex="1">
           <mxGeometry height="40" width="160" x="270" y="370" as="geometry" />
         </mxCell>
-        <mxCell id="d1" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Adicionar&#10;Modificador?" vertex="1">
+        <mxCell id="d1" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Adicionar&#xa;Modificador?" vertex="1">
           <mxGeometry height="70" width="150" x="275" y="450" as="geometry" />
         </mxCell>
         <mxCell id="a5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Adicionar Modificador" vertex="1">
           <mxGeometry height="40" width="150" x="500" y="465" as="geometry" />
         </mxCell>
-        <mxCell id="d2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Mais Itens&#10;para Adicionar?" vertex="1">
+        <mxCell id="d2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Mais Itens&#xa;para Adicionar?" vertex="1">
           <mxGeometry height="70" width="150" x="275" y="560" as="geometry" />
         </mxCell>
-        <mxCell id="d3" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cancelar ou&#10;Editar Item?" vertex="1">
+        <mxCell id="d3" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cancelar ou&#xa;Editar Item?" vertex="1">
           <mxGeometry height="70" width="150" x="275" y="670" as="geometry" />
         </mxCell>
         <mxCell id="a6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Editar / Remover Item" vertex="1">
@@ -40,11 +40,11 @@
         <mxCell id="a7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Enviar Pedido para KDS" vertex="1">
           <mxGeometry height="40" width="160" x="270" y="780" as="geometry" />
         </mxCell>
-        <mxCell id="a8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Sistema Regista Pedido" vertex="1">
+        <mxCell id="a8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Sistema Regista Pedido&#xa;e Abate Stock Automaticamente" vertex="1">
           <mxGeometry height="40" width="190" x="255" y="860" as="geometry" />
         </mxCell>
         <mxCell id="e1" parent="1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" value="" vertex="1">
-          <mxGeometry height="30" width="30" x="335" y="1060" as="geometry" />
+          <mxGeometry height="30" width="30" x="335" y="940" as="geometry" />
         </mxCell>
         <mxCell id="ed1" edge="1" parent="1" source="s1" target="a1">
           <mxGeometry relative="1" as="geometry" />
@@ -103,7 +103,10 @@
         <mxCell id="ed14" edge="1" parent="1" source="a7" target="a8">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a9" parent="1" value="KDS marca Pedido Pronto" vertex="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;"><mxGeometry x="265" y="940" width="170" height="40" as="geometry" /></mxCell><mxCell id="a10" parent="1" value="Sistema Abate Stock&lt;br&gt;Automaticamente" vertex="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;"><mxGeometry x="255" y="1010" width="190" height="40" as="geometry" /></mxCell><mxCell id="ed15b" parent="1" edge="1" source="a8" target="a9" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;"><mxGeometry relative="1" as="geometry" /></mxCell><mxCell id="ed16" parent="1" edge="1" source="a9" target="a10" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;"><mxGeometry relative="1" as="geometry" /></mxCell><mxCell id="ed17" parent="1" edge="1" source="a10" target="e1" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;"><mxGeometry relative="1" as="geometry" /></mxCell></root>
+        <mxCell id="ed15" edge="1" parent="1" source="a8" target="e1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
     </mxGraphModel>
   </diagram>
 </mxfile>

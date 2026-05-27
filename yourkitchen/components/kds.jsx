@@ -18,9 +18,9 @@ const T = {
   warningDim: "#F7A94A18",
   success: "#4AF785",
   successDim: "#4AF78518",
-  text: "#EDEDF2",
-  textSec: "#8888A0",
-  textMuted: "#4A4A60",
+  text: "#FFFFFF",
+  textSec: "#D0D0DC",
+  textMuted: "#8E8EA4",
 };
 
 // ─── API HELPERS ──────────────────────────────────────────────────────────────
@@ -395,26 +395,6 @@ const css = `
     margin-top: 2px;
     line-height: 1.3;
   }
-  .item-cancel-btn {
-    opacity: 0;
-    background: ${T.dangerDim};
-    border: 1px solid ${T.danger}44;
-    color: ${T.danger};
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 6px;
-    cursor: pointer;
-    letter-spacing: 0.5px;
-    transition: all 0.15s;
-    flex-shrink: 0;
-    align-self: center;
-    font-family: 'Syne', sans-serif;
-  }
-  .ticket-item:hover .item-cancel-btn:not([disabled]) { opacity: 1; }
-  .item-cancel-btn:hover { background: ${T.danger}33 !important; border-color: ${T.danger}; }
-  .item-cancel-btn:disabled { display: none; }
-
   .ticket-footer {
     padding: 10px 12px;
     border-top: 1px solid ${T.border};
@@ -757,7 +737,7 @@ function CancelModal({ title, subtitle, confirmLabel, onConfirm, onClose }) {
 }
 
 // ─── TICKET ────────────────────────────────────────────────────────────────────
-function KDSTicket({ ticket, onAdvance, onCancelItem, onCancelOrder }) {
+function KDSTicket({ ticket, onAdvance, onCancelOrder }) {
   const isDone = ticket.status === "pronto";
   // Don't show "urgent" pulsing once the order is ready
   const secs = elapsed(ticket.startedAt ?? ticket.createdAt);
@@ -765,10 +745,7 @@ function KDSTicket({ ticket, onAdvance, onCancelItem, onCancelOrder }) {
   const { label, color, bg } = typeLabel(ticket.type, ticket.table);
   const next = nextStatus(ticket.status);
   const nextLbl = nextLabel(ticket.status);
-  const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
-
-  const activeItems = ticket.items.filter(i => !i.cancelled);
 
   return (
     <>
@@ -806,22 +783,9 @@ function KDSTicket({ ticket, onAdvance, onCancelItem, onCancelOrder }) {
                 <div className="item-name">{item.name}</div>
                 {item.notes && <div className="item-notes">⚠ {item.notes}</div>}
               </div>
-              <button
-                className="item-cancel-btn"
-                onClick={() => setCancelTarget(item)}
-                disabled={item.cancelled || isDone}
-              >
-                ANULAR
-              </button>
             </div>
           ))}
         </div>
-
-        {activeItems.length === 0 && (
-          <div style={{ padding: "8px 12px 4px", fontSize: 11, color: T.textMuted, fontStyle: "italic" }}>
-            — Todos os itens anulados —
-          </div>
-        )}
 
         <div className="ticket-footer">
           {next && (
@@ -856,19 +820,6 @@ function KDSTicket({ ticket, onAdvance, onCancelItem, onCancelOrder }) {
         </div>
       </div>
 
-      {cancelTarget && (
-        <CancelModal
-          title="Anular Item"
-          subtitle={<><strong>{cancelTarget.qty}× {cancelTarget.name}</strong> — Ticket #{ticket.id}</>}
-          confirmLabel="Anular Item"
-          onClose={() => setCancelTarget(null)}
-          onConfirm={(motivo) => {
-            onCancelItem(ticket.id, cancelTarget.id, motivo);
-            setCancelTarget(null);
-          }}
-        />
-      )}
-
       {cancelOrderOpen && (
         <CancelModal
           title="Cancelar Pedido Completo"
@@ -886,7 +837,7 @@ function KDSTicket({ ticket, onAdvance, onCancelItem, onCancelOrder }) {
 }
 
 // ─── COLUMN ────────────────────────────────────────────────────────────────────
-function KDSColumn({ status, tickets, onAdvance, onCancelItem, onCancelOrder }) {
+function KDSColumn({ status, tickets, onAdvance, onCancelOrder }) {
   const col = {
     pendente: { title: "Pendente", cls: "col-pendente" },
     em_preparacao: { title: "Em Preparação", cls: "col-em_preparacao" },
@@ -911,7 +862,6 @@ function KDSColumn({ status, tickets, onAdvance, onCancelItem, onCancelOrder }) 
               key={t.id}
               ticket={t}
               onAdvance={onAdvance}
-              onCancelItem={onCancelItem}
               onCancelOrder={onCancelOrder}
             />
           ))
@@ -1045,29 +995,6 @@ export default function KDS() {
     }
   }, [addLog, addToast, tickets]);
 
-  const handleCancelItem = useCallback(async (ticketId, itemId, motivo) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    const item = ticket?.items.find(i => i.id === itemId);
-    // Optimistic
-    setTickets(prev => prev.map(t =>
-      t.id !== ticketId ? t : { ...t, items: t.items.map(i => i.id === itemId ? { ...i, cancelled: true } : i) }
-    ));
-    try {
-      await fetch(`/api/orders/${ticketId}/lines/${itemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cancelled: true, cancel_note: motivo }),
-      });
-      addLog("CANCEL", `Item <strong>${item?.name}</strong> anulado no ticket <strong>#${ticketId.slice(0,8)}</strong>.`, motivo);
-      addToast(`Item anulado — ${item?.name}`, T.danger);
-    } catch {
-      setTickets(prev => prev.map(t =>
-        t.id !== ticketId ? t : { ...t, items: t.items.map(i => i.id === itemId ? { ...i, cancelled: false } : i) }
-      ));
-      addToast("Erro ao anular item", T.danger);
-    }
-  }, [addLog, addToast, tickets]);
-
   const handleCancelOrder = useCallback(async (ticketId, motivo) => {
     const ticket = tickets.find(t => t.id === ticketId);
     // Optimistic — remove the whole ticket from the board
@@ -1145,7 +1072,6 @@ export default function KDS() {
               status={s}
               tickets={byStatus(s)}
               onAdvance={handleAdvance}
-              onCancelItem={handleCancelItem}
               onCancelOrder={handleCancelOrder}
             />
           ))}

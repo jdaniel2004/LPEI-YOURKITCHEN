@@ -14,7 +14,7 @@ const T = {
   danger:"#F75A5A", dangerDim:"#F75A5A18",
   warning:"#F7A94A",warningDim:"#F7A94A18",
   success:"#4AF785",successDim:"#4AF78518",
-  text:"#EDEDF2",   textSec:"#8888A0", textMuted:"#4A4A60",
+  text:"#FFFFFF",   textSec:"#A8A8BC", textMuted:"#6E6E84",
 };
 
 // ─── ROLE CONFIG ─────────────────────────────────────────────────────────────

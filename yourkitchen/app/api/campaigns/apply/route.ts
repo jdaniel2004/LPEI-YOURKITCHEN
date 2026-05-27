@@ -5,8 +5,6 @@ interface Campaign {
   name: string;
   type: "percent" | "fixed";
   value: number;
-  target: "all" | "category" | "item";
-  target_id: string | null;
   days: number[];
   start_time: string;
   end_time: string;
@@ -14,7 +12,7 @@ interface Campaign {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { order_total, category_id, item_id } = body;
+  const { order_total } = body;
 
   if (order_total == null)
     return Response.json({ error: "order_total obrigatório" }, { status: 400 });
@@ -33,14 +31,7 @@ export async function POST(req: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  const applicable = (campaigns as Campaign[]).filter((c) => {
-    if (c.target === "all") return true;
-    if (c.target === "category" && c.target_id === category_id) return true;
-    if (c.target === "item" && c.target_id === item_id) return true;
-    return false;
-  });
-
-  const discounts = applicable.map((c) => ({
+  const discounts = (campaigns as Campaign[]).map((c) => ({
     id:      c.id,
     name:    c.name,
     type:    c.type,

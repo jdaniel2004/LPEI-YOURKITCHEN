@@ -1,144 +1,92 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1050" math="0" shadow="0">
-  <root>
-    <mxCell id="0" />
-    <mxCell id="1" parent="0" />
-
-    <!-- Title -->
-    <mxCell id="t1" value="Diagrama de Atividade — Fluxo KDS (Kitchen Display System)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontStyle=1;" vertex="1" parent="1">
-      <mxGeometry x="100" y="10" width="560" height="30" as="geometry" />
-    </mxCell>
-
-    <!-- Swimlane: POS -->
-    <mxCell id="sw1" value="POS / Empregado de Mesa" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
-      <mxGeometry x="20" y="55" width="230" height="920" as="geometry" />
-    </mxCell>
-
-    <!-- Swimlane: KDS / Cozinheiro -->
-    <mxCell id="sw2" value="KDS / Cozinheiro" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
-      <mxGeometry x="280" y="55" width="250" height="920" as="geometry" />
-    </mxCell>
-
-    <!-- Start (in POS lane) -->
-    <mxCell id="s1" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="sw1">
-      <mxGeometry x="100" y="50" width="30" height="30" as="geometry" />
-    </mxCell>
-
-    <!-- A1: Empregado confirma envio do pedido (POS) -->
-    <mxCell id="a1" value="Empregado confirma&#xa;Envio do Pedido" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw1">
-      <mxGeometry x="35" y="120" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A2: POS envia via WebSocket (POS) -->
-    <mxCell id="a2" value="POS envia pedido&#xa;via WebSocket" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw1">
-      <mxGeometry x="35" y="200" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A3: KDS recebe e exibe (KDS lane) -->
-    <mxCell id="a3" value="KDS recebe e exibe pedido&#xa;(por mesa e hora de envio)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="200" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A4: Cozinheiro seleciona item (KDS) -->
-    <mxCell id="a4" value="Cozinheiro seleciona Item" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="280" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A5: Marcar item Em Preparação (KDS) -->
-    <mxCell id="a5" value="Marcar Item&#xa;&quot;Em Preparação&quot;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="360" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A6: Preparar Item (KDS) -->
-    <mxCell id="a6" value="Preparar Item&#xa;(tempo decorrido visível)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="440" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A7: Marcar item Pronto (KDS) -->
-    <mxCell id="a7" value="Marcar Item &quot;Pronto&quot;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="520" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- D1: Todos os itens prontos? (KDS) -->
-    <mxCell id="d1" value="Todos os Itens&#xa;do Pedido Prontos?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sw2">
-      <mxGeometry x="50" y="600" width="150" height="70" as="geometry" />
-    </mxCell>
-
-    <!-- A8: Marcar pedido Pronto para Servir (KDS) -->
-    <mxCell id="a8" value="Sistema marca Pedido&#xa;&quot;Pronto para Servir&quot;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="720" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A9: Notificar POS (KDS → POS) -->
-    <mxCell id="a9" value="Notificar POS&#xa;via WebSocket" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw2">
-      <mxGeometry x="45" y="800" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- A10: POS exibe notificação (POS) -->
-    <mxCell id="a10" value="POS exibe notificação&#xa;&quot;Pronto para Servir&quot;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="sw1">
-      <mxGeometry x="35" y="800" width="160" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- End (POS lane) -->
-    <mxCell id="e1" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" vertex="1" parent="sw1">
-      <mxGeometry x="100" y="880" width="30" height="30" as="geometry" />
-    </mxCell>
-
-    <!-- EDGES (inside POS lane) -->
-    <mxCell id="ed1" edge="1" source="s1" target="a1" parent="sw1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="ed2" edge="1" source="a1" target="a2" parent="sw1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- EDGE: A2 (POS) → A3 (KDS) — cross-lane, use parent="1" -->
-    <mxCell id="ed3" value="WebSocket" edge="1" source="a2" target="a3" parent="1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- EDGES inside KDS lane -->
-    <mxCell id="ed4" edge="1" source="a3" target="a4" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="ed5" edge="1" source="a4" target="a5" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="ed6" edge="1" source="a5" target="a6" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="ed7" edge="1" source="a6" target="a7" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="ed8" edge="1" source="a7" target="d1" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <!-- D1 Não → back to A4 -->
-    <mxCell id="ed9" value="Não" edge="1" source="d1" target="a4" parent="sw2">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="220" y="635" />
-          <mxPoint x="220" y="300" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <!-- D1 Sim → A8 -->
-    <mxCell id="ed10" value="Sim" edge="1" source="d1" target="a8" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="ed11" edge="1" source="a8" target="a9" parent="sw2">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- EDGE: A9 (KDS) → A10 (POS) — cross-lane -->
-    <mxCell id="ed12" value="WebSocket" edge="1" source="a9" target="a10" parent="1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- A10 → End (POS) -->
-    <mxCell id="ed13" edge="1" source="a10" target="e1" parent="sw1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-  </root>
-</mxGraphModel>
+<mxfile host="Electron">
+  <diagram id="ZU31CPkrzW0QYAGqA4uL" name="Page-1">
+    <mxGraphModel dx="407" dy="494" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontStyle=1;" value="Diagrama de Atividade — Fluxo KDS (Kitchen Display System)" vertex="1">
+          <mxGeometry height="30" width="480" x="40" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="sw1" parent="1" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="POS / Empregado de Mesa" vertex="1">
+          <mxGeometry height="920" width="230" x="20" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" parent="sw1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" parent="sw1" style="rounded=1;whiteSpace=wrap;html=1;" value="Empregado confirma&#xa;Envio do Pedido" vertex="1">
+          <mxGeometry height="40" width="160" x="35" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" parent="sw1" style="rounded=1;whiteSpace=wrap;html=1;" value="POS envia pedido&#xa;via WebSocket" vertex="1">
+          <mxGeometry height="40" width="160" x="35" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="a10" parent="sw1" style="rounded=1;whiteSpace=wrap;html=1;" value="POS exibe notificação&#xa;&quot;Pronto para Servir&quot;" vertex="1">
+          <mxGeometry height="40" width="160" x="35" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="sw1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" edge="1" parent="sw1" source="s1" target="a1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" edge="1" parent="sw1" source="a1" target="a2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed13" edge="1" parent="sw1" source="a10" target="e1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sw2" parent="1" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="KDS / Cozinheiro" vertex="1">
+          <mxGeometry height="920" width="250" x="280" y="55" as="geometry">
+            <mxRectangle height="30" width="130" x="280" y="55" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a3" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="KDS recebe e exibe pedido&#xa;(por mesa e hora de envio)" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="Cozinheiro seleciona pedido" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="Marcar pedido&lt;br&gt;&quot;Em Preparação&quot;" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="Preparar pedido" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="Marcar pedido &quot;Pronto&quot;" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="a8" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="Sistema marca Pedido&#xa;&quot;Pronto para Servir&quot;" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="655" as="geometry" />
+        </mxCell>
+        <mxCell id="a9" parent="sw2" style="rounded=1;whiteSpace=wrap;html=1;" value="Notificar POS&#xa;via WebSocket" vertex="1">
+          <mxGeometry height="40" width="160" x="45" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="ed4" edge="1" parent="sw2" source="a3" target="a4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed5" edge="1" parent="sw2" source="a4" target="a5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed6" edge="1" parent="sw2" source="a5" target="a6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed7" edge="1" parent="sw2" source="a6" target="a7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed8" edge="1" parent="sw2" source="a7" target="a8">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="124.99999999999989" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed11" edge="1" parent="sw2" source="a8" target="a9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed3" edge="1" parent="1" source="a2" target="a3" value="WebSocket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed12" edge="1" parent="1" source="a9" target="a10" value="WebSocket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

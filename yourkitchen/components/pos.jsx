@@ -11,7 +11,7 @@ const T = {
   success:"#4AF785",successDim:"#4AF78518",
   purple:"#B06AF7",purpleDim:"#B06AF718",
   blue:"#4A9EF7",blueDim:"#4A9EF718",
-  text:"#EDEDF2",textSec:"#8888A0",textMuted:"#4A4A60",
+  text:"#FFFFFF",textSec:"#D0D0DC",textMuted:"#8E8EA4",
 };
 
 // ─── API HELPERS ──────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ function buildMenu(menuRes, modifierIngIds){
         mods:[...customMods,...linkedMods],
         ingredientMods:(item.ingredients||[])
           .filter(ii=>ii.ingredient?.id&&modifierIngIds.has(ii.ingredient.id))
-          .map(ii=>({id:ii.ingredient.id,name:ii.ingredient.name})),
+          .map(ii=>({id:ii.ingredient.id,name:ii.ingredient.name,qty:Number(ii.qty)||0})),
       });
     });
   }
@@ -126,17 +126,9 @@ const STATUS_MAP = {
   free:   {label:"Livre",   color:T.success, bg:T.successDim, border:`${T.success}44`},
   occupied:{label:"Ocupada",color:T.warning, bg:T.warningDim, border:`${T.warning}44`},
   bill:   {label:"Servido", color:T.danger,  bg:T.dangerDim,  border:`${T.danger}44`},
-  reserved:{label:"Reserva",color:T.purple,  bg:T.purpleDim,  border:`${T.purple}44`},
   locked: {label:"Em uso",  color:T.blue,    bg:T.blueDim,    border:`${T.blue}44`},
 };
 
-const RESV_STATUS = {
-  pending:   {label:"Pendente",  color:T.warning, bg:T.warningDim},
-  confirmed: {label:"Confirmada",color:T.success, bg:T.successDim},
-  seated:    {label:"Sentada",   color:T.blue,    bg:T.blueDim},
-  cancelled: {label:"Cancelada", color:T.danger,  bg:T.dangerDim},
-  completed: {label:"Concluída", color:T.textMuted,bg:"#ffffff10"},
-};
 
 // ─── TURNOS (operating shifts) ──────────────────────────────────────────────────
 function hhmmToMin(t){
@@ -154,22 +146,6 @@ function inTurnoWindow(mins,start,end){
 function currentTurno(turnos,now=new Date()){
   const mins=now.getHours()*60+now.getMinutes();
   return (turnos||[]).find(t=>inTurnoWindow(mins,t.start,t.end))||null;
-}
-function turnoForTime(turnos,time){
-  return (turnos||[]).find(t=>inTurnoWindow(hhmmToMin(time),t.start,t.end))||null;
-}
-function localDateStr(now=new Date()){
-  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
-}
-// A reservation is active only on its day and during the turno that covers its time.
-// With no turnos configured we don't block anything.
-function reservationActive(resv,turnos,now=new Date()){
-  if(!Array.isArray(turnos)||turnos.length===0) return true;
-  if(resv.date!==localDateStr(now)) return false;
-  const cur=currentTurno(turnos,now);
-  if(!cur) return false;
-  const rt=turnoForTime(turnos,resv.time);
-  return !!rt && rt.start===cur.start && rt.end===cur.end;
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -235,21 +211,6 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .modal-body{padding:20px 24px;}
 .modal-footer{padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end;}
 
-/* ─ FUNDO MANEIO ─ */
-.fundo-screen{flex:1;display:flex;align-items:center;justify-content:center;background:${T.bg};animation:fadeIn .3s;}
-.fundo-card{width:440px;background:${T.surface};border:1px solid ${T.border};border-radius:16px;overflow:hidden;}
-.fundo-card-head{padding:24px 28px 20px;border-bottom:1px solid ${T.border};}
-.fundo-card-title{font-size:20px;font-weight:800;margin-bottom:4px;}
-.fundo-card-sub{font-size:13px;color:${T.textSec};}
-.fundo-display{font-family:'DM Mono',monospace;font-size:42px;font-weight:500;letter-spacing:2px;color:${T.text};padding:24px 28px 0;text-align:center;}
-.fundo-display.empty{color:${T.textMuted};}
-.fundo-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:16px 20px 20px;background:${T.bg};}
-.numpad-btn{background:${T.card};border:1px solid ${T.border};color:${T.text};font-size:20px;font-family:'DM Mono',monospace;font-weight:500;padding:16px;cursor:pointer;transition:all .1s;border-radius:6px;}
-.numpad-btn:hover{background:${T.elevated};border-color:${T.borderBright};}
-.numpad-btn:active{transform:scale(.95);background:${T.accentDim};}
-.numpad-btn.del{color:${T.textSec};font-size:16px;}
-.numpad-btn.zero{grid-column:span 2;}
-.fundo-confirm{margin:0 20px 20px;padding:14px;font-size:15px;}
 
 /* ─ FLOOR ─ */
 .floor-screen{flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fadeIn .2s;}
@@ -270,7 +231,6 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .table-card.status-free{border-color:${T.success}33;}
 .table-card.status-occupied{border-color:${T.warning}33;}
 .table-card.status-bill{border-color:${T.danger}33;}
-.table-card.status-reserved{border-color:${T.purple}33;}
 .table-card.status-locked{border-color:${T.blue}33;opacity:.75;cursor:not-allowed;}
 .table-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .table-id{font-size:16px;font-weight:800;letter-spacing:-.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -280,7 +240,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .table-seats{font-size:11px;color:${T.textMuted};display:flex;align-items:center;gap:3px;}
 .table-waiter-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;background:${T.accentDim};color:${T.accent};}
 .table-since{font-size:10px;font-family:'DM Mono',monospace;color:${T.textMuted};}
-.table-reserved-label{font-size:10px;color:${T.purple};margin-top:2px;}
+
 .fab-row{position:fixed;bottom:20px;right:20px;display:flex;gap:8px;z-index:10;}
 
 /* ─ ORDER SCREEN ─ */
@@ -379,7 +339,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .staff-item.self{opacity:.35;cursor:not-allowed;pointer-events:none;}
 
 /* ─ PAYMENT MODAL ─ */
-.pay-modal{width:560px;max-height:92vh;overflow-y:auto;}
+.pay-modal{width:auto;max-width:92vw;max-height:92vh;overflow-y:auto;}
 .pay-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;}
 .pay-method{padding:16px;border:1px solid ${T.border};border-radius:10px;cursor:pointer;transition:all .15s;background:${T.card};text-align:center;}
 .pay-method:hover{border-color:${T.borderBright};background:${T.elevated};}
@@ -500,10 +460,19 @@ function ModifierModal({item,onConfirm,onClose}){
   if(baseSel.length===1&&extraSel.length>0){
     extraSel.forEach(e=>modifierIngredients.push({ingredient_id:baseSel[0].ingredient_id,qty:convUnit(e.qty,e.unit,baseSel[0].storedUnit)}));
   }
+  // For "+ Extra" / "− Retirar" toggles, also emit stock deltas. The send route
+  // already debits the base recipe via item_ingredients, so:
+  //   "extra"   → debit another base_qty (extra portion of the ingredient)
+  //   "removed" → credit base_qty (negative qty), netting out the base debit
   (item.ingredientMods||[]).forEach(ing=>{
     const st=ingState[ing.id];
-    if(st==="removed") modsText.push(`sem ${ing.name}`);
-    else if(st==="extra") modsText.push(`+${ing.name}`);
+    if(st==="removed"){
+      modsText.push(`sem ${ing.name}`);
+      if(ing.qty) modifierIngredients.push({ingredient_id:ing.id,qty:-ing.qty});
+    } else if(st==="extra"){
+      modsText.push(`+${ing.name}`);
+      if(ing.qty) modifierIngredients.push({ingredient_id:ing.id,qty:ing.qty});
+    }
   });
 
   const ingMods=item.ingredientMods||[];
@@ -661,7 +630,7 @@ function TransferModal({currentWaiterId,staffList,onConfirm,onClose}){
 }
 
 // ─── PAYMENT MODAL ────────────────────────────────────────────────────────────
-function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
+function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
   const METHODS=[
     {id:"numerario",label:"Numerário",icon:"💶"},
     {id:"cartao",label:"Cartão",icon:"💳"},
@@ -671,7 +640,7 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
   const [payMode,setPayMode]=useState("pessoas"); // "pessoas" | "itens"
   const [method,setMethod]=useState("numerario");
   const [received,setReceived]=useState("");
-  const [split,setSplit]=useState(seats&&seats>1?seats:1);
+  const [split,setSplit]=useState(1);
   const [sel,setSel]=useState({}); // lineId -> units selected to pay now
 
   // Lines still owing money: sent (so they exist in the DB and were actually
@@ -692,9 +661,17 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
     vatMap[i.vat]=(vatMap[i.vat]||0)+(gross-net);
   });
 
+  // Apply discount proportionally to whatever is being paid right now.
+  const fullGross=order.items.filter(i=>!i.cancelled).reduce((s,i)=>s+unitOf(i)*i.qty,0);
+  const discountRatio=discount&&fullGross>0?Math.min(1,discount.savings/fullGross):0;
+  const remainingDiscount=remaining*discountRatio;
+  const remainingNet=remaining-remainingDiscount;
+
   const selectedUnits=Object.values(sel).reduce((s,n)=>s+(n||0),0);
-  const selectedTotal=payableLines.reduce((s,i)=>s+(sel[i.lineId]||0)*unitOf(i),0);
-  const perPerson=split>0?remaining/split:remaining;
+  const selectedGross=payableLines.reduce((s,i)=>s+(sel[i.lineId]||0)*unitOf(i),0);
+  const selectedDiscount=selectedGross*discountRatio;
+  const selectedTotal=selectedGross-selectedDiscount;
+  const perPerson=split>0?remainingNet/split:remainingNet;
   const amountDue=payMode==="itens"?selectedTotal:perPerson;
 
   const setQty=(lineId,n,max)=>setSel(p=>({...p,[lineId]:Math.max(0,Math.min(max,n))}));
@@ -718,13 +695,14 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
     if(busy) return;
     setBusy(true);
     try{
+      const discountPayload=discount?{discount_id:discount.id,discount_value:remainingDiscount}:{};
       if(payMode==="itens"){
         const items=payableLines
           .filter(i=>(sel[i.lineId]||0)>0)
           .map(i=>({line_id:i.lineId,qty:sel[i.lineId]}));
-        await onConfirm({mode:"itens",method,amount:selectedTotal,items});
+        await onConfirm({mode:"itens",method,amount:selectedTotal,items,...discountPayload});
       }else{
-        await onConfirm({mode:"pessoas",method,amount:remaining,split});
+        await onConfirm({mode:"pessoas",method,amount:remainingNet,split,...discountPayload});
       }
     }finally{
       setBusy(false);
@@ -739,7 +717,7 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
         <div className="modal-header">
           <div>
             <div className="modal-title">Pagamento — {tableLabel}</div>
-            <div className="modal-sub">{payableLines.reduce((s,i)=>s+(i.qty-(i.paidQty||0)),0)} itens por pagar · {fmtEur(remaining)}</div>
+            <div className="modal-sub">{payableLines.reduce((s,i)=>s+(i.qty-(i.paidQty||0)),0)} itens por pagar · {fmtEur(remainingNet)}</div>
           </div>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
@@ -757,7 +735,13 @@ function PaymentModal({order,tableLabel,seats,onConfirm,onClose}){
               {Object.entries(vatMap).map(([rate,val])=>(
                 <div key={rate} className="pay-sum-row"><div className="pay-sum-label" style={{fontSize:11}}>IVA {rate}%</div><div className="pay-sum-val" style={{fontSize:11}}>{fmtEur(val)}</div></div>
               ))}
-              <div className="pay-sum-row total"><div className="pay-sum-label">Total</div><div className="pay-sum-val">{fmtEur(remaining)}</div></div>
+              {discount&&remainingDiscount>0&&(
+                <>
+                  <div className="pay-sum-row"><div className="pay-sum-label">Sem desconto</div><div className="pay-sum-val">{fmtEur(remaining)}</div></div>
+                  <div className="pay-sum-row" style={{color:T.success}}><div className="pay-sum-label" style={{color:T.success}}>− {discount.name}{discount.type==="percent"?` (${discount.value}%)`:""}</div><div className="pay-sum-val">− {fmtEur(remainingDiscount)}</div></div>
+                </>
+              )}
+              <div className="pay-sum-row total"><div className="pay-sum-label">Total</div><div className="pay-sum-val">{fmtEur(remainingNet)}</div></div>
             </div>
 
             {payMode==="pessoas"?(
@@ -870,6 +854,9 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
   const [showTransfer,setShowTransfer]=useState(false);
   const [showPayment,setShowPayment]=useState(false);
   const [payTick,setPayTick]=useState(0); // bumps to remount PaymentModal after a partial payment
+  // Active campaign-driven discount applicable to the whole bill. Refreshed
+  // whenever items change so what's shown matches the current order.
+  const [discount,setDiscount]=useState(null);
 
   const tableLabel = table.id;
   const waiter = staffList.find(s=>s.id===order.waiterId)||{name:"?",initials:"?"};
@@ -938,6 +925,28 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
 
   const total=orderTotal(order.items);
   const vatMap=orderVAT(order.items);
+
+  // Look up active campaign discounts for the whole bill and pick the best one.
+  useEffect(()=>{
+    if(total<=0) return; // derived effectiveDiscount handles the empty-order case
+    let cancelled=false;
+    fetch("/api/campaigns/apply",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({order_total:total}),
+    }).then(r=>r.json()).then(arr=>{
+      if(cancelled) return;
+      if(Array.isArray(arr)&&arr.length>0){
+        const best=arr.reduce((a,b)=>(b.savings>a.savings?b:a));
+        setDiscount(best);
+      } else setDiscount(null);
+    }).catch(()=>{if(!cancelled) setDiscount(null);});
+    return()=>{cancelled=true;};
+  },[total]);
+
+  const effectiveDiscount=total>0?discount:null;
+  const discountValue=effectiveDiscount?.savings||0;
+  const finalTotal=Math.max(0,total-discountValue);
 
   return(
     <div className="order-screen">
@@ -1027,7 +1036,7 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
                     <div className="ol-name">{l.name}</div>
                     {l.mods.length>0&&<div className="ol-mods">{l.mods.join(" · ")}</div>}
                   </div>
-                  <button className="cancel-line-btn" onClick={()=>setCancelTarget(l)}>ANULAR</button>
+                  {!kdsReady&&<button className="cancel-line-btn" onClick={()=>setCancelTarget(l)}>ANULAR</button>}
                   <div className="ol-price">{fmtEur((l.price+(l.extraPrice||0))*l.qty)}</div>
                 </div>
               ))}
@@ -1087,9 +1096,18 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
           {Object.keys(vatMap).length>0&&Object.entries(vatMap).map(([rate,val])=>(
             <div key={rate} className="vat-row"><span>IVA {rate}%</span><span>{fmtEur(val)}</span></div>
           ))}
+          {effectiveDiscount&&(
+            <>
+              <div className="vat-row"><span>Subtotal</span><span>{fmtEur(total)}</span></div>
+              <div className="vat-row" style={{color:T.success}}>
+                <span>− {effectiveDiscount.name}{effectiveDiscount.type==="percent"?` (${effectiveDiscount.value}%)`:""}</span>
+                <span>− {fmtEur(discountValue)}</span>
+              </div>
+            </>
+          )}
           <div className="total-row grand">
             <div className="total-label">Total</div>
-            <div className="total-val">{fmtEur(total)}</div>
+            <div className="total-val">{fmtEur(finalTotal)}</div>
           </div>
         </div>
 
@@ -1140,6 +1158,7 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
           order={order}
           tableLabel={tableLabel}
           seats={table?.seats}
+          discount={effectiveDiscount}
           onClose={()=>setShowPayment(false)}
           onConfirm={async(payData)=>{
             const res=await onPayment(payData);
@@ -1156,126 +1175,14 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
 }
 
 // ─── FUNDO MANEIO SCREEN ──────────────────────────────────────────────────────
-function FundoManeioScreen({staffName,onConfirm,appName="RestaurantOS"}){
-  const [val,setVal]=useState("");
-  const press=(d)=>{
-    if(d==="⌫"){setVal(p=>p.slice(0,-1));return;}
-    if(d==="."&&val.includes(".")) return;
-    if(val.length>=7) return;
-    setVal(p=>p+d);
-  };
-  const display=val||"0.00";
-  const num=parseFloat(val)||0;
 
-  return(
-    <div className="fundo-screen">
-      <style>{CSS}</style>
-      <div style={{animation:"slideUp .3s ease"}}>
-        <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{fontSize:11,fontWeight:700,letterSpacing:"3px",textTransform:"uppercase",color:T.textMuted,marginBottom:8}}>{appName} · POS</div>
-          <div style={{fontSize:13,color:T.textSec}}>{staffName} · {new Date().toLocaleDateString("pt-PT",{weekday:"long",day:"numeric",month:"long"})}</div>
-        </div>
-        <div className="fundo-card">
-          <div className="fundo-card-head">
-            <div className="fundo-card-title">💰 Fundo de Maneio</div>
-            <div className="fundo-card-sub">Regista o valor inicial em caixa para iniciar o turno</div>
-          </div>
-          <div className={`fundo-display${!val?" empty":""}`}>{fmtEur(parseFloat(display)||0)}</div>
-          <div className="fundo-numpad">
-            {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(d=>(
-              <button key={d} className={`numpad-btn${d==="⌫"?" del":""}${d==="0"?" zero":""}`} onClick={()=>press(d)}>{d}</button>
-            ))}
-          </div>
-          <div style={{padding:"0 20px 20px",display:"flex",gap:8}}>
-            <button className="btn btn-ghost btn-lg" style={{flex:1}} onClick={()=>onConfirm(0)}>
-              Sem fundo
-            </button>
-            <button
-              className="btn btn-solid-accent btn-lg"
-              style={{flex:2}}
-              onClick={()=>num>0&&onConfirm(num)}
-              disabled={num<=0}
-            >
-              Iniciar Turno — {fmtEur(num)}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── FLOOR SCREEN ─────────────────────────────────────────────────────────────
 function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast}){
   const [zone,setZone]=useState(zones[0]||"Interior");
-  const [showResv,setShowResv]=useState(false);
-  const [resvForm,setResvForm]=useState({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:""});
-  const [resvSaving,setResvSaving]=useState(false);
-  const [showResvList,setShowResvList]=useState(false);
-  const [resvList,setResvList]=useState([]);
-  const [resvListLoading,setResvListLoading]=useState(false);
-  const [resvArchiveOpen,setResvArchiveOpen]=useState(false);
-  const [resvBlockedOpen,setResvBlockedOpen]=useState(false);
   const zoneTables=tables.filter(t=>t.zone===zone);
   const occupiedCount=tables.filter(t=>t.status==="occupied"||t.status==="bill").length;
   const turnoNow=currentTurno(turnos||[]);
-
-  const inp={width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:7,color:T.text,fontFamily:"'Syne',sans-serif",fontSize:13,padding:"9px 11px",outline:"none"};
-  const lbl={fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,marginBottom:6,display:"block"};
-
-  const saveReservation=async()=>{
-    if(!resvForm.name) return;
-    setResvSaving(true);
-    const tableObj=tables.find(t=>t.id===resvForm.tableId);
-    const body={name:resvForm.name,phone:resvForm.phone,date:resvForm.date,time:resvForm.time,persons:parseInt(resvForm.persons)||2,notes:resvForm.notes,table_id:tableObj?.dbId||null,status:"pending"};
-    const r=await fetch("/api/reservations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).catch(()=>null);
-    setResvSaving(false);
-    if(r?.ok){
-      setShowResv(false);
-      setResvForm({name:"",phone:"",date:new Date().toISOString().slice(0,10),time:"20:00",persons:2,tableId:"",notes:""});
-      if(addToast) addToast("Reserva criada",T.success);
-    } else {
-      if(addToast) addToast("Erro ao criar reserva",T.danger);
-    }
-  };
-
-  const openResvList=async()=>{
-    setShowResvList(true);
-    setResvListLoading(true);
-    const data=await fetch("/api/reservations").then(r=>r.json()).catch(()=>[]);
-    setResvList(Array.isArray(data)?data:[]);
-    setResvListLoading(false);
-  };
-  const cancelReservation=async(id)=>{
-    const r=await fetch(`/api/reservations/${id}`,{method:"DELETE"}).catch(()=>null);
-    if(r&&(r.ok||r.status===204)){
-      setResvList(prev=>prev.map(x=>x.id===id?{...x,status:"cancelled"}:x));
-      if(addToast) addToast("Reserva cancelada",T.warning);
-    } else if(addToast) addToast("Erro ao cancelar reserva",T.danger);
-  };
-  const resvRow=(r,dim=false)=>{
-    const sc=RESV_STATUS[r.status]||RESV_STATUS.pending;
-    const closed=r.status==="cancelled"||r.status==="completed";
-    return(
-      <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:"10px 12px",opacity:(closed||dim)?.5:1}}>
-        <div style={{textAlign:"center",minWidth:56}}>
-          <div style={{fontFamily:"'DM Mono',monospace",fontSize:15,fontWeight:700,color:T.text}}>{(r.time||"").slice(0,5)}</div>
-          <div style={{fontSize:10,color:T.textMuted,fontFamily:"'DM Mono',monospace"}}>{r.date}</div>
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:14,fontWeight:700,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
-          <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>
-            👥 {r.persons}{r.table?.label?` · ${r.table.label}`:" · sem mesa"}{r.phone?` · ${r.phone}`:""}
-          </div>
-          {r.notes&&<div style={{fontSize:11,color:T.textSec,marginTop:2,fontStyle:"italic"}}>{r.notes}</div>}
-        </div>
-        <div style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:6,color:sc.color,background:sc.bg,whiteSpace:"nowrap"}}>{sc.label}</div>
-        {!closed&&(
-          <button className="btn btn-ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>cancelReservation(r.id)}>Cancelar</button>
-        )}
-      </div>
-    );
-  };
   const activeOrders=Object.values(orders).filter(o=>o.items.length>0&&!o.paid).length;
   const turnoVendas=Object.values(orders).filter(o=>o.paid).reduce((s,o)=>s+orderTotal(o.items),0);
 
@@ -1346,9 +1253,6 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
                   </div>
                 </div>
 
-                {table.status==="reserved"&&table.reservedFor&&(
-                  <div className="table-reserved-label">📅 {table.reservedFor}</div>
-                )}
                 {table.status==="locked"&&(
                   <div style={{fontSize:11,color:T.blue,marginTop:2}}>
                     🔒 {staffList.find(s=>s.id===table.waiter)?.name||"outro"}
@@ -1381,99 +1285,8 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
         <button className="btn btn-teal btn-lg" onClick={()=>onQuickOrder("take-away")}>
           🥡 Take-Away
         </button>
-        <button className="btn btn-ghost btn-lg" onClick={openResvList}>
-          📋 Ver Reservas
-        </button>
-        <button className="btn btn-ghost btn-lg" onClick={()=>setShowResv(true)}>
-          📅 Nova Reserva
-        </button>
       </div>
     </div>
-    {showResv&&(
-      <div className="overlay" onClick={()=>setShowResv(false)}>
-        <div className="modal" style={{width:480}} onClick={e=>e.stopPropagation()}>
-          <div className="modal-header">
-            <div><div className="modal-title">Nova Reserva</div></div>
-            <button className="modal-close" onClick={()=>setShowResv(false)}>✕</button>
-          </div>
-          <div className="modal-body">
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-              <div><span style={lbl}>Nome *</span><input style={inp} value={resvForm.name} onChange={e=>setResvForm(p=>({...p,name:e.target.value}))}/></div>
-              <div><span style={lbl}>Telefone</span><input style={inp} value={resvForm.phone} onChange={e=>setResvForm(p=>({...p,phone:e.target.value}))}/></div>
-              <div><span style={lbl}>Data</span><input type="date" style={inp} value={resvForm.date} onChange={e=>setResvForm(p=>({...p,date:e.target.value}))}/></div>
-              <div><span style={lbl}>Hora</span><input type="time" style={inp} value={resvForm.time} onChange={e=>setResvForm(p=>({...p,time:e.target.value}))}/></div>
-              <div><span style={lbl}>Pessoas</span><input type="number" min="1" style={inp} value={resvForm.persons} onChange={e=>setResvForm(p=>({...p,persons:e.target.value}))}/></div>
-              <div><span style={lbl}>Mesa</span>
-                <select style={{...inp,appearance:"none"}} value={resvForm.tableId} onChange={e=>setResvForm(p=>({...p,tableId:e.target.value}))}>
-                  <option value="">— Sem mesa —</option>
-                  {tables.filter(t=>t.dbId&&t.status==="free").map(t=><option key={t.id} value={t.id}>{t.id} · {t.zone}</option>)}
-                </select>
-              </div>
-            </div>
-            <div><span style={lbl}>Notas</span><input style={inp} value={resvForm.notes} onChange={e=>setResvForm(p=>({...p,notes:e.target.value}))} placeholder="Alergias, preferências..."/></div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-ghost" onClick={()=>setShowResv(false)}>Cancelar</button>
-            <button className="btn btn-solid-accent" disabled={!resvForm.name||resvSaving} onClick={saveReservation}>{resvSaving?"A guardar...":"Criar Reserva"}</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {showResvList&&(
-      <div className="overlay" onClick={()=>setShowResvList(false)}>
-        <div className="modal" style={{width:560,maxHeight:"86vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
-          <div className="modal-header">
-            <div><div className="modal-title">Reservas</div><div className="modal-sub">{resvList.filter(r=>r.status!=="cancelled"&&r.status!=="completed"&&reservationActive(r,turnos)).length} ativa(s) · {resvList.length} total</div></div>
-            <button className="modal-close" onClick={()=>setShowResvList(false)}>✕</button>
-          </div>
-          <div className="modal-body" style={{overflowY:"auto"}}>
-            {resvListLoading?(
-              <div style={{textAlign:"center",color:T.textMuted,padding:"32px 0"}}>A carregar…</div>
-            ):resvList.length===0?(
-              <div style={{textAlign:"center",color:T.textMuted,padding:"32px 0"}}>Sem reservas</div>
-            ):(()=>{
-              const notClosed=r=>r.status!=="cancelled"&&r.status!=="completed";
-              const active=resvList.filter(r=>notClosed(r)&&reservationActive(r,turnos));
-              const blocked=resvList.filter(r=>notClosed(r)&&!reservationActive(r,turnos));
-              const closed=resvList.filter(r=>!notClosed(r));
-              const sectionBtn=(label,open,toggle)=>(
-                <button
-                  onClick={toggle}
-                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:6,background:T.elevated,border:`1px solid ${T.border}`,borderRadius:8,color:T.textSec,fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",padding:"10px 12px",cursor:"pointer"}}
-                >
-                  <span>{label}</span>
-                  <span style={{fontSize:11}}>{open?"▾":"▸"}</span>
-                </button>
-              );
-              return(
-                <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted}}>Ativas agora</div>
-                  {active.length===0
-                    ? <div style={{textAlign:"center",color:T.textMuted,padding:"16px 0",fontSize:13}}>Nenhuma reserva ativa no turno atual</div>
-                    : active.map(r=>resvRow(r))}
-                  {blocked.length>0&&(
-                    <>
-                      {sectionBtn(`Fora do turno (${blocked.length})`,resvBlockedOpen,()=>setResvBlockedOpen(o=>!o))}
-                      {resvBlockedOpen&&blocked.map(r=>resvRow(r,true))}
-                    </>
-                  )}
-                  {closed.length>0&&(
-                    <>
-                      {sectionBtn(`Histórico (${closed.length})`,resvArchiveOpen,()=>setResvArchiveOpen(o=>!o))}
-                      {resvArchiveOpen&&closed.map(r=>resvRow(r))}
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-ghost" onClick={()=>setShowResvList(false)}>Fechar</button>
-            <button className="btn btn-solid-accent" onClick={()=>{setShowResvList(false);setShowResv(true);}}>📅 Nova Reserva</button>
-          </div>
-        </div>
-      </div>
-    )}
     </>
   );
 }
@@ -1494,9 +1307,8 @@ function KDSNotifBanner({notif,onClose}){
 let _toastId=0;
 
 // ─── MAIN POS ─────────────────────────────────────────────────────────────────
-export default function POS({session,appName="RestaurantOS"}){
-  const [screen,setScreen]=useState("fundo");
-  const [fundoValue,setFundoValue]=useState(0);
+export default function POS({session,appName="YourKitchen"}){
+  const [screen,setScreen]=useState("floor");
   const [shiftId,setShiftId]=useState(null);
   const [tables,setTables]=useState([]);
   const [orders,setOrders]=useState({});
@@ -1528,7 +1340,7 @@ export default function POS({session,appName="RestaurantOS"}){
   const [sending,setSending]=useState(false);
   // Refs so the live-sync interval always sees the current editing context
   const activeTableIdRef = useRef(null);
-  const screenRef = useRef("fundo");
+  const screenRef = useRef("floor");
   const tablesRef = useRef([]);
   useEffect(()=>{activeTableIdRef.current=activeTableId;},[activeTableId]);
   useEffect(()=>{screenRef.current=screen;},[screen]);
@@ -1574,16 +1386,19 @@ export default function POS({session,appName="RestaurantOS"}){
           .forEach(o=>{
             allOrders[o.id]=mapOrder(o);
           });
-        // Orders already confirmed ready by KDS
+        // Orders already confirmed ready by KDS. Seed every bill order — not just
+        // the recent ones — otherwise stale (>24h, abandoned in "bill") orders are
+        // missing from the ref and each one triggers a false "pronta para servir"
+        // toast on the first bill-poll tick after login.
         if(Array.isArray(billRes)&&billRes.length>0){
-          const initialReady=new Set(billRes.filter(isRecent).map(o=>o.id));
+          const initialReady=new Set(billRes.map(o=>o.id));
           setReadyOrders(initialReady);
           readyOrdersRef.current=initialReady;
         }
 
-        // Build table → order map
+        // Build table → order map: process bill→sent→open so "open" wins on conflict
         const orderByTableDbId={};
-        Object.values(allOrders).forEach(o=>{if(o.tableDbId)orderByTableDbId[o.tableDbId]=o.id;});
+        ["bill","sent","open"].forEach(st=>Object.values(allOrders).filter(o=>o.status===st).forEach(o=>{if(o.tableDbId)orderByTableDbId[o.tableDbId]=o.id;}));
 
         // Map tables
         const mappedTables=Array.isArray(tablesRes)?tablesRes.map(t=>({
@@ -1618,20 +1433,8 @@ export default function POS({session,appName="RestaurantOS"}){
         setOrders(allOrders);
         setTables(mappedTables);
         setStaffList(mappedStaff);
-        if(session?.role!=="manager"){
-          fetch("/api/shifts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fundo_value:0})}).then(r=>r.json()).then(d=>{if(!d.error)setShiftId(d.id);}).catch(()=>{});
-          setScreen("floor");
-        } else {
-          // Manager: skip fundo if an open shift already exists
-          try{
-            const openShifts=await fetch("/api/shifts?open=true").then(r=>r.json());
-            if(Array.isArray(openShifts)&&openShifts.length>0){
-              setShiftId(openShifts[0].id);
-              setFundoValue(openShifts[0].fundo_value||0);
-              setScreen("floor");
-            }
-          }catch{}
-        }
+        fetch("/api/shifts",{method:"POST"}).then(r=>r.json()).then(d=>{if(!d.error)setShiftId(d.id);}).catch(()=>{});
+        setScreen("floor");
       }catch(e){
         addToast("Erro ao carregar dados",T.danger);
       }finally{
@@ -1649,10 +1452,21 @@ export default function POS({session,appName="RestaurantOS"}){
     // sees an empty set and treats every existing "bill" order as newly ready,
     // spamming a toast per order on login.
     if(loading) return;
+    let initialized=readyOrdersRef.current.size>0;
     const tick=async()=>{
       try{
         const data=await fetch("/api/orders?status=bill").then(r=>r.json());
         if(!Array.isArray(data)) return;
+
+        // Fallback: if the load didn't seed (e.g. fetch failed, billRes wasn't an
+        // array), do it here from the first successful tick — silently, no toasts.
+        if(!initialized){
+          const seed=new Set(data.map(o=>o.id));
+          readyOrdersRef.current=seed;
+          setReadyOrders(seed);
+          initialized=true;
+          return;
+        }
 
         const newlyReady=data.filter(o=>!readyOrdersRef.current.has(o.id));
         if(newlyReady.length>0){
@@ -1678,6 +1492,8 @@ export default function POS({session,appName="RestaurantOS"}){
             if(label){
               setKdsNotif({label});
               addToast(`KDS — Mesa ${label} pronta para servir`,T.success);
+            } else if(o.type==="takeaway"){
+              addToast(`KDS — Take-Away pronto para servir`,T.teal);
             }
           });
         }
@@ -1751,9 +1567,9 @@ export default function POS({session,appName="RestaurantOS"}){
           return next;
         });
 
-        // Map server orders to tables
+        // Map server orders to tables: open wins over sent/bill
         const orderByTableDbId={};
-        serverOrders.forEach(o=>{if(o.table_id)orderByTableDbId[o.table_id]=o.id;});
+        ["bill","sent","open"].forEach(st=>serverOrders.filter(o=>o.status===st).forEach(o=>{if(o.table_id)orderByTableDbId[o.table_id]=o.id;}));
         const serverById=new Map(serverOrders.map(o=>[o.id,o]));
         setTables(prev=>{
           const updated=prev.map(t=>{
@@ -1810,6 +1626,18 @@ export default function POS({session,appName="RestaurantOS"}){
   const activeTable=activeTableId?tables.find(t=>t.id===activeTableId):null;
   const activeOrderId=activeTable?.orderId;
   const activeOrder=activeOrderId?orders[activeOrderId]:null;
+
+  // All non-paid orders for the active table (used for combined display and payment)
+  const allTableOrders=activeTable
+    ?Object.values(orders).filter(o=>{
+        if(o.paid||o.draft) return false;
+        return activeTable.dbId?o.tableDbId===activeTable.dbId:o.tableId===activeTable.id;
+      })
+    :[];
+  // Merge items from all table orders for display; new items go into activeOrder only
+  const combinedOrder=activeOrder&&allTableOrders.length>1
+    ?{...activeOrder,items:allTableOrders.flatMap(o=>o.items)}
+    :activeOrder;
 
   const handleTablePress=(table)=>{
     if(table.status==="locked"){
@@ -1936,6 +1764,22 @@ export default function POS({session,appName="RestaurantOS"}){
       const tl=activeTable?.id||"?";
       addToast(`Pedido enviado — ${tl}`,T.accent);
       setReadyOrders(prev=>{const n=new Set(prev);n.delete(realOrderId);return n;});
+      // Create a new empty order for the table so the next batch gets its own KDS ticket.
+      // Only for table orders (not take-away/counter which have no physical table card).
+      if(activeTable?.dbId){
+        const followUpRes=await fetch("/api/orders",{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({table_id:activeTable.dbId,type:"table"}),
+        }).catch(()=>null);
+        if(followUpRes?.ok){
+          const followUpOrder=await followUpRes.json().catch(()=>null);
+          if(followUpOrder?.id){
+            const newMapped={id:followUpOrder.id,tableId:activeTableId,tableDbId:activeTable.dbId,waiterId:currentStaff.id,items:[],notes:"",type:"table",status:"open",paid:false,draft:false};
+            setOrders(p=>({...p,[followUpOrder.id]:newMapped}));
+            setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:followUpOrder.id}:t));
+          }
+        }
+      }
     }catch(e){
       setOrders(p=>({...p,[realOrderId]:{...p[realOrderId],items:(p[realOrderId]?.items||[]).map(i=>{
         const wasPending=pending.find(pi=>pi.lineId===i.lineId);
@@ -1953,57 +1797,100 @@ export default function POS({session,appName="RestaurantOS"}){
   const handlePayment=async(payData)=>{
     if(!activeOrderId) return {fullyPaid:false};
     const isItems=Array.isArray(payData.items)&&payData.items.length>0;
-    const body=isItems
-      ? {method:payData.method,items:payData.items}
-      : {method:payData.method,amount:payData.amount??orderTotal(activeOrder.items),split_n:payData.split};
-    try{
-      const res=await fetch(`/api/orders/${activeOrderId}/pay`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(body),
-      });
-      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||"");}
-      const data=await res.json().catch(()=>({}));
-      const fullyPaid=data?.fullyPaid!==false;
-      const paidAmount=isItems?(payData.amount||0):(payData.amount??orderTotal(activeOrder.items));
-
-      if(fullyPaid){
-        addToast(`Pagamento — ${activeTableId} — ${fmtEur(paidAmount)}`,T.success);
-        setReadyOrders(prev=>{const n=new Set(prev);n.delete(activeOrderId);return n;});
-        setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],paid:true}}));
-        setTables(p=>p.map(t=>{
-          if(t.id!==activeTableId) return t;
-          if(t.type==="take-away"||t.type==="balcao") return null;
-          return {...t,status:"free",waiter:null,orderId:null,since:null};
-        }).filter(Boolean));
-        setActiveTableId(null);
-        setScreen("floor");
-      }else{
-        // Partial payment: bump paidQty on the settled lines, keep the table open.
-        const add={};
-        payData.items.forEach(it=>{add[it.line_id]=(add[it.line_id]||0)+it.qty;});
-        setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],
-          items:p[activeOrderId].items.map(l=>add[l.lineId]?{...l,paidQty:(l.paidQty||0)+add[l.lineId]}:l)}}));
-        addToast(`Pagamento parcial — ${fmtEur(paidAmount)}`,T.success);
+    // Gross remaining per order (sent items only — matches what PaymentModal shows)
+    const oPayable=(o)=>(o.items||[]).filter(i=>i.sent&&!i.cancelled).reduce((s,i)=>s+(i.price+(i.extraPrice||0))*(i.qty-(i.paidQty||0)),0);
+    const billableOrders=allTableOrders.filter(o=>!o.paid&&!o.draft&&o.id&&oPayable(o)>0);
+    if(billableOrders.length===0) return {fullyPaid:false};
+    const cleanupEmptyFollowUp=()=>{
+      // Patch the empty follow-up order to "paid" so it doesn't reattach on sync
+      if(activeOrder&&activeOrder.id&&!activeOrder.draft&&(activeOrder.items||[]).length===0){
+        fetch(`/api/orders/${activeOrder.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"paid"})}).catch(()=>{});
+        setOrders(p=>{const{[activeOrder.id]:_,...rest}=p;return rest;});
       }
-      return {fullyPaid};
+    };
+    const closeTable=()=>{
+      cleanupEmptyFollowUp();
+      billableOrders.forEach(o=>{setReadyOrders(prev=>{const n=new Set(prev);n.delete(o.id);return n;});setOrders(p=>({...p,[o.id]:{...p[o.id],paid:true}}));});
+      setTables(p=>p.map(t=>{if(t.id!==activeTableId)return t;if(t.type==="take-away"||t.type==="balcao")return null;return{...t,status:"free",waiter:null,orderId:null,since:null};}).filter(Boolean));
+      setActiveTableId(null);setScreen("floor");
+    };
+    try{
+      if(isItems){
+        // Group item lines by owning order, distribute discount proportionally
+        const lineToOid={};
+        allTableOrders.forEach(o=>o.items.forEach(i=>{lineToOid[i.lineId]=o.id;}));
+        const byOrder={};
+        payData.items.forEach(it=>{const oid=lineToOid[it.line_id]||activeOrderId;(byOrder[oid]=byOrder[oid]||[]).push(it);});
+        const totalGross=payData.items.reduce((s,it)=>{const o=allTableOrders.find(x=>x.id===lineToOid[it.line_id]);const l=(o?.items||[]).find(i=>i.lineId===it.line_id);return s+(l?(l.price+(l.extraPrice||0))*it.qty:0);},0);
+        let remDisc=payData.discount_value!=null?payData.discount_value:0;
+        let overallFullyPaid=true;
+        for(const[oid,items] of Object.entries(byOrder)){
+          const groupGross=items.reduce((s,it)=>{const o=allTableOrders.find(x=>x.id===oid);const l=(o?.items||[]).find(i=>i.lineId===it.line_id);return s+(l?(l.price+(l.extraPrice||0))*it.qty:0);},0);
+          const ratio=totalGross>0?groupGross/totalGross:1/Object.keys(byOrder).length;
+          const disc=Number((remDisc*ratio).toFixed(2));remDisc-=disc;
+          const body={method:payData.method,items};
+          if(payData.discount_id&&disc>0){body.discount_id=payData.discount_id;body.discount_value=disc;}
+          const res=await fetch(`/api/orders/${oid}/pay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+          if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||"");}
+          const data=await res.json().catch(()=>({}));
+          if(data?.fullyPaid===false) overallFullyPaid=false;
+        }
+        const paidAmount=payData.amount||0;
+        if(overallFullyPaid){
+          addToast(`Pagamento — ${activeTableId} — ${fmtEur(paidAmount)}`,T.success);
+          closeTable();
+        }else{
+          const add={};payData.items.forEach(it=>{add[it.line_id]=(add[it.line_id]||0)+it.qty;});
+          allTableOrders.forEach(o=>{if((o.items||[]).some(i=>add[i.lineId])){setOrders(p=>({...p,[o.id]:{...p[o.id],items:p[o.id].items.map(l=>add[l.lineId]?{...l,paidQty:(l.paidQty||0)+add[l.lineId]}:l)}}));}});
+          addToast(`Pagamento parcial — ${fmtEur(paidAmount)}`,T.success);
+        }
+        return{fullyPaid:overallFullyPaid};
+      }else{
+        // Full (or split) payment: distribute payData.amount proportionally across orders
+        const combinedPayable=billableOrders.reduce((s,o)=>s+oPayable(o),0);
+        const paidAmount=payData.amount!=null?payData.amount:combinedPayable;
+        let remDisc=payData.discount_value!=null?payData.discount_value:0;
+        let allFullyPaid=true;
+        for(const o of billableOrders){
+          const ratio=combinedPayable>0?oPayable(o)/combinedPayable:1/billableOrders.length;
+          const oAmount=Number((paidAmount*ratio).toFixed(2));
+          const disc=Number((remDisc*ratio).toFixed(2));remDisc-=disc;
+          const body={method:payData.method,amount:oAmount,split_n:payData.split};
+          if(payData.discount_id&&disc>0){body.discount_id=payData.discount_id;body.discount_value=disc;}
+          const res=await fetch(`/api/orders/${o.id}/pay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+          if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||"");}
+          const data=await res.json().catch(()=>({}));
+          if(data?.fullyPaid===false) allFullyPaid=false;
+        }
+        if(allFullyPaid){
+          addToast(`Pagamento — ${activeTableId} — ${fmtEur(paidAmount)}`,T.success);
+          closeTable();
+          return{fullyPaid:true};
+        }else{
+          addToast(`Pagamento parcial — ${fmtEur(paidAmount)}`,T.success);
+          return{fullyPaid:false};
+        }
+      }
     }catch(e){
       addToast(e?.message?`Erro: ${e.message}`:"Erro ao processar pagamento",T.danger);
-      return {fullyPaid:false,error:true};
+      return{fullyPaid:false,error:true};
     }
   };
 
   const handleCancelLine=async(lineId,motivo)=>{
-    if(!activeOrderId) return;
-    const line=activeOrder.items.find(l=>l.lineId===lineId);
-    setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],items:p[activeOrderId].items.map(l=>l.lineId===lineId?{...l,cancelled:true}:l)}}));
+    const ownerOrder=allTableOrders.find(o=>o.items.some(i=>i.lineId===lineId));
+    const ownerOrderId=ownerOrder?.id||activeOrderId;
+    if(!ownerOrderId) return;
+    const line=(ownerOrder||activeOrder)?.items.find(l=>l.lineId===lineId);
+    setOrders(p=>({...p,[ownerOrderId]:{...p[ownerOrderId],items:(p[ownerOrderId]?.items||[]).map(l=>l.lineId===lineId?{...l,cancelled:true}:l)}}));
     try{
-      await fetch(`/api/orders/${activeOrderId}/lines/${lineId}`,{
+      await fetch(`/api/orders/${ownerOrderId}/lines/${lineId}`,{
         method:"PATCH",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({cancelled:true,cancel_note:motivo}),
       });
       addToast(`Item anulado — ${line?.name}`,T.danger);
     }catch{
-      setOrders(p=>({...p,[activeOrderId]:{...p[activeOrderId],items:p[activeOrderId].items.map(l=>l.lineId===lineId?{...l,cancelled:false}:l)}}));
+      setOrders(p=>({...p,[ownerOrderId]:{...p[ownerOrderId],items:(p[ownerOrderId]?.items||[]).map(l=>l.lineId===lineId?{...l,cancelled:false}:l)}}));
       addToast("Erro ao anular item",T.danger);
     }
   };
@@ -2020,12 +1907,8 @@ export default function POS({session,appName="RestaurantOS"}){
     setShiftId(null);
     setActiveTableId(null);
     setEndShiftTarget("");
-    if(session?.role!=="manager"){
-      fetch("/api/shifts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fundo_value:0})}).then(r=>r.json()).then(d=>{if(!d.error)setShiftId(d.id);}).catch(()=>{});
-      setScreen("floor");
-    } else {
-      setScreen("fundo");
-    }
+    fetch("/api/shifts",{method:"POST"}).then(r=>r.json()).then(d=>{if(!d.error)setShiftId(d.id);}).catch(()=>{});
+    setScreen("floor");
   };
 
   const handleTransfer=async(staffId)=>{
@@ -2059,8 +1942,7 @@ export default function POS({session,appName="RestaurantOS"}){
     <>
       <style>{CSS}</style>
       <div className="pos-root">
-        {screen!=="fundo"&&(
-          <header className="topbar">
+        <header className="topbar">
             <div className="topbar-logo">
               <div className="topbar-dot"/>
               POS
@@ -2069,7 +1951,6 @@ export default function POS({session,appName="RestaurantOS"}){
             <div className="topbar-staff">
               <div className="staff-avatar">{currentStaff.initials}</div>
               {currentStaff.name}
-              <span style={{fontSize:10,color:T.textMuted}}>· Fundo {fmtEur(fundoValue)}</span>
             </div>
             <div className="topbar-right">
               <button className="btn btn-ghost btn-sm" onClick={()=>{if(screen==="order"){if(activeOrder?.draft&&activeOrderId){setOrders(p=>{const{[activeOrderId]:_,...rest}=p;return rest;});setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:null,waiter:null,since:null}:t));}setActiveTableId(null);setScreen("floor");}}} style={{display:screen==="order"?"flex":"none"}}>
@@ -2082,30 +1963,16 @@ export default function POS({session,appName="RestaurantOS"}){
               <Clock/>
             </div>
           </header>
-        )}
 
         <KDSNotifBanner notif={kdsNotif} onClose={()=>setKdsNotif(null)}/>
 
-        {screen==="fundo"&&(
-          <FundoManeioScreen
-            appName={appName}
-            staffName={currentStaff.name}
-            onConfirm={async(v)=>{
-              setFundoValue(v);
-              const r=await fetch("/api/shifts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fundo_value:v})});
-              const d=await r.json();
-              if(!d.error) setShiftId(d.id);
-              setScreen("floor");
-            }}
-          />
-        )}
         {screen==="floor"&&(
           <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} turnos={turnos} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}/>
         )}
         {screen==="order"&&activeTable&&activeOrder&&(
           <OrderScreen
             table={activeTable}
-            order={activeOrder}
+            order={combinedOrder||activeOrder}
             menu={menu}
             staffList={staffList}
             menuStock={menuStock}
@@ -2113,7 +1980,7 @@ export default function POS({session,appName="RestaurantOS"}){
             onUpdateOrder={handleUpdateOrder}
             onSendKitchen={handleSendKitchen}
             sending={sending}
-            kdsReady={readyOrders.has(activeOrderId)}
+            kdsReady={allTableOrders.filter(o=>(o.items||[]).some(i=>i.sent&&!i.cancelled)).every(o=>readyOrders.has(o.id))}
             onPayment={handlePayment}
             onCancelLine={handleCancelLine}
             onTransfer={handleTransfer}

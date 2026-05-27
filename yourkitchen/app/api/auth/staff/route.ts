@@ -18,6 +18,8 @@ export async function POST(req: Request) {
     return Response.json({ error: "Funcionário não encontrado" }, { status: 404 });
   if (!staff.active)
     return Response.json({ error: "Funcionário inactivo" }, { status: 403 });
+  if (staff.role === "manager")
+    return Response.json({ error: "Gestores entram com email e password" }, { status: 403 });
 
   const ok = await bcrypt.compare(String(pin), staff.pin_hash);
   if (!ok) return Response.json({ error: "PIN incorrecto" }, { status: 401 });
@@ -31,12 +33,14 @@ export async function POST(req: Request) {
   return res;
 }
 
-// List staff for the PIN picker (no auth required — names only, no PINs)
+// List staff for the PIN picker (no auth required — names only, no PINs).
+// Managers are excluded: they authenticate via email+password, not PIN.
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("staff")
     .select("id, name, role")
     .eq("active", true)
+    .neq("role", "manager")
     .order("name");
 
   if (error) return Response.json({ error: error.message }, { status: 500 });

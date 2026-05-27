@@ -76,9 +76,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  // Reset to "open" so KDS sees this batch as "pendente".
-  // If in-progress (sent/bill), a new batch resets back to pendente.
-  if (order.status === "sent" || order.status === "bill") {
+  // Only reset to "open" when the kitchen had already marked the order ready
+  // ("bill"). Resetting while still "sent" would yank the ticket the cook is
+  // actively preparing back to the "Pendente" column — the reported "going back"
+  // bug. The new batch's lines appear in the same ticket via the KDS mapping
+  // (undelivered lines), so no status change is needed while preparing.
+  if (order.status === "bill") {
     const { error: resetErr } = await supabaseAdmin
       .from("orders")
       .update({ status: "open" })

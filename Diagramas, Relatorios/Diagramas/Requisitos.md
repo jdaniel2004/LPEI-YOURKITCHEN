@@ -3,29 +3,29 @@
 ### Gestão de Mesas
 
 RF1 O sistema deve permitir visualizar um mapa de mesas com estado em tempo real (livre, ocupada, reservada)
-RF2 O sistema deve permitir abrir, transferir e fundir mesas
+RF2 O sistema deve permitir abrir e transferir mesas
 
 ### Registo de Pedidos
 
 RF3 O sistema deve permitir adicionar, editar e remover itens de um pedido via interface tátil
-RF4 O sistema deve suportar modificadores de itens (ex: "sem cebola", "bem passado")
+RF4 O sistema deve suportar modificadores de itens (ex: "extra molho", "bem passado")
 RF5 O sistema deve permitir enviar pedidos parciais para a cozinha sem fechar a mesa
 RF6 O sistema deve suportar múltiplos pedidos por mesa ao longo do tempo
-RF7 O sistema deve permitir cancelar ou editar um item antes de ser enviado para a cozinha
+RF7 O sistema deve permitir cancelar ou editar um pedido no POS e no KDS
 
 ### Gestão de Pagamentos
 
-RF8 O sistema deve suportar pagamento em dinheiro
+RF8 O sistema deve suportar pagamento em várias opções
 RF9 O sistema deve permitir divisão de conta por número de pessoas ou por itens selecionados
-RF10 O sistema deve permitir aplicar descontos em percentagem ou valor fixo por item ou total
+RF10 O sistema deve permitir aplicar descontos em percentagem ou valor fixo pelo total
 RF11 O sistema deve poder gerar recibos 
-RF12 O sistema deve calcular o troco automaticamente em pagamentos em dinheiro
+RF12 O sistema deve calcular o troco automaticamente em pagamentos a dinheiro
 RF13 O sistema deve registar gorjetas
 
 ### Gestão de Menu
 
 RF14 O sistema deve permitir criar, editar, desativar e apagar categorias e produtos
-RF15 O sistema deve suportar preços variáveis por tamanho ou variante (ex: meia dose / dose)
+RF15 O sistema deve suportar preços variáveis através de modificadores (ex: francesinha -> com ovo )
 RF16 O sistema deve permitir associar imagens aos produtos
 RF17 O sistema deve indicar produtos esgotados em tempo real
 
@@ -33,7 +33,7 @@ RF17 O sistema deve indicar produtos esgotados em tempo real
 
 RF18 O sistema deve exibir os pedidos enviados pelo POS em tempo real via WebSockets
 RF19 O sistema deve organizar os pedidos por mesa e por hora de envio
-RF20 O sistema deve permitir marcar itens individualmente como "em preparação" e "pronto"
+RF20 O sistema deve permitir marcar um pedido como "em preparação" e "pronto"
 RF21 O sistema deve marcar um pedido completo como "pronto para servir" e notificar o POS
 RF22 O sistema deve exibir o tempo decorrido desde que o pedido foi enviado, com alertas visuais para atrasos
 
@@ -42,7 +42,7 @@ RF22 O sistema deve exibir o tempo decorrido desde que o pedido foi enviado, com
 RF23 O sistema deve permitir criar fichas técnicas de receitas associando ingredientes e quantidades
 RF24 O sistema deve realizar abate automático de stock quando um pedido é confirmado
 RF25 O sistema deve alertar quando um ingrediente atingir o stock mínimo definido
-RF26 O sistema deve permitir registar entradas de stock manualmente
+RF26 O sistema deve permitir editar o stock manualmente
 
 ## 📊 Backoffice e Analytics
 
