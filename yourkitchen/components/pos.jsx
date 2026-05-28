@@ -955,11 +955,10 @@ function ReceiptModal({receipt,onClose}){
 }
 
 // ─── ORDER SCREEN ─────────────────────────────────────────────────────────────
-function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBack,onUpdateOrder,onSendKitchen,sending,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
+function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBack,onUpdateOrder,onSendKitchen,sending,kdsReady,onPayment,onCancelLine,addToast}){
   const [cat,setCat]=useState(0);
   const [modItem,setModItem]=useState(null);
   const [cancelTarget,setCancelTarget]=useState(null);
-  const [showTransfer,setShowTransfer]=useState(false);
   const [showPayment,setShowPayment]=useState(false);
   const [payTick,setPayTick]=useState(0); // bumps to remount PaymentModal after a partial payment
   // Active campaign-driven discount applicable to the whole bill. Refreshed
@@ -1119,12 +1118,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
           </button>
           <div style={{fontSize:13,color:T.textMuted}}>
             <strong style={{color:T.text}}>{tableLabel}</strong> · {waiter.name}
-          </div>
-          <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setShowTransfer(true)} title="Transferir mesa">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              Transferir
-            </button>
           </div>
         </div>
         <div className="menu-cats">
@@ -1301,14 +1294,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
           line={cancelTarget}
           onClose={()=>setCancelTarget(null)}
           onConfirm={(motivo)=>{onCancelLine(cancelTarget.lineId,motivo);setCancelTarget(null);}}
-        />
-      )}
-      {showTransfer&&(
-        <TransferModal
-          currentWaiterId={order.waiterId}
-          staffList={staffList}
-          onClose={()=>setShowTransfer(false)}
-          onConfirm={(staffId)=>{onTransfer(staffId);setShowTransfer(false);}}
         />
       )}
       {showPayment&&(
@@ -2158,7 +2143,6 @@ export default function POS({session,appName="YourKitchen"}){
             kdsReady={allTableOrders.filter(o=>(o.items||[]).some(i=>i.sent&&!i.cancelled)).every(o=>readyOrders.has(o.id))}
             onPayment={handlePayment}
             onCancelLine={handleCancelLine}
-            onTransfer={handleTransfer}
             addToast={addToast}
           />
         )}

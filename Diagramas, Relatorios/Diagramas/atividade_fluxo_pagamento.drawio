@@ -1,6 +1,6 @@
 <mxfile host="Electron">
   <diagram id="zWEmGzQZ2ErBR5wI5Ncb" name="Page-1">
-    <mxGraphModel dx="629" dy="764" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1200" math="0" shadow="0">
+    <mxGraphModel dx="1571" dy="933" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -15,12 +15,6 @@
         </mxCell>
         <mxCell id="a2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Sistema apresenta total&lt;br&gt;da mesa&lt;div&gt;(Descontos automaticos)&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="160" x="270" y="210" as="geometry" />
-        </mxCell>
-        <mxCell id="d1" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Aplicar&lt;br&gt;Desconto?" vertex="1">
-          <mxGeometry height="70" width="150" x="275" y="290" as="geometry" />
-        </mxCell>
-        <mxCell id="a3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Selecionar Desconto&lt;br&gt;(% ou valor fixo)" vertex="1">
-          <mxGeometry height="40" width="170" x="490" y="305" as="geometry" />
         </mxCell>
         <mxCell id="d2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Dividir&lt;br&gt;Conta?" vertex="1">
           <mxGeometry height="70" width="150" x="275" y="400" as="geometry" />
@@ -47,13 +41,13 @@
           <mxGeometry height="40" width="160" x="495" y="825" as="geometry" />
         </mxCell>
         <mxCell id="a9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Sistema Gera Recibo" vertex="1">
-          <mxGeometry height="40" width="160" x="275" y="920" as="geometry" />
+          <mxGeometry height="40" width="160" x="275" y="1000" as="geometry" />
         </mxCell>
         <mxCell id="a10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Fechar Mesa&lt;br&gt;(Estado: Ocupada → Livre)" vertex="1">
-          <mxGeometry height="40" width="190" x="260" y="1000" as="geometry" />
+          <mxGeometry height="40" width="190" x="260" y="1220" as="geometry" />
         </mxCell>
         <mxCell id="e1" parent="1" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;shape=doubleEllipse;" value="" vertex="1">
-          <mxGeometry height="30" width="30" x="340" y="1080" as="geometry" />
+          <mxGeometry height="30" width="30" x="340" y="1300" as="geometry" />
         </mxCell>
         <mxCell id="ed1" edge="1" parent="1" source="s1" target="a1">
           <mxGeometry relative="1" as="geometry" />
@@ -61,20 +55,9 @@
         <mxCell id="ed2" edge="1" parent="1" source="a1" target="a2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ed3" edge="1" parent="1" source="a2" target="d1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ed4" edge="1" parent="1" source="d1" target="a3" value="Sim">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ed5" edge="1" parent="1" source="d1" target="d2" value="Não">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ed6" edge="1" parent="1" source="a3" style="edgeStyle=orthogonalEdgeStyle;" target="d2">
+        <mxCell id="ed3" edge="1" parent="1" source="a2" target="d2">
           <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="575" y="410" />
-            </Array>
+            <mxPoint x="350" y="290" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="ed7" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;startArrow=none;startFill=0;" target="a4" value="Sim">
@@ -117,11 +100,17 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="575" y="940" />
+              <mxPoint x="390" y="940" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="ed16" edge="1" parent="1" source="a9" target="a10">
+        <mxCell id="ed16" edge="1" parent="1" source="YVpFZOz0iY-kX-6xKNWe-2" target="a10">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YVpFZOz0iY-kX-6xKNWe-4" connectable="0" parent="ed16" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Sim" vertex="1">
+          <mxGeometry relative="1" x="-0.0357" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="ed17" edge="1" parent="1" source="a10" target="e1">
           <mxGeometry relative="1" as="geometry" />
@@ -151,6 +140,28 @@
             <mxPoint x="480" y="610" as="sourcePoint" />
             <mxPoint x="569" y="610" as="targetPoint" />
           </mxGeometry>
+        </mxCell>
+        <mxCell id="YVpFZOz0iY-kX-6xKNWe-3" edge="1" parent="1" source="a9" target="YVpFZOz0iY-kX-6xKNWe-2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="355" y="1040" as="sourcePoint" />
+            <mxPoint x="355" y="1180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YVpFZOz0iY-kX-6xKNWe-5" edge="1" parent="1" source="YVpFZOz0iY-kX-6xKNWe-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="d2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="1105" />
+              <mxPoint x="170" y="435" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YVpFZOz0iY-kX-6xKNWe-6" connectable="0" parent="YVpFZOz0iY-kX-6xKNWe-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Não" vertex="1">
+          <mxGeometry relative="1" x="-0.8418" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YVpFZOz0iY-kX-6xKNWe-2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Tudo Pago?" vertex="1">
+          <mxGeometry height="70" width="150" x="280" y="1070" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

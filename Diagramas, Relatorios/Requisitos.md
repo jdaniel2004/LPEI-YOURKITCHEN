@@ -3,7 +3,7 @@
 ### Gestão de Mesas
 
 RF1 O sistema deve permitir visualizar um mapa de mesas com estado em tempo real (livre, ocupada, reservada)
-RF2 O sistema deve permitir abrir e transferir mesas
+RF2 O sistema deve permitir abrir e fechar mesas
 
 ### Registo de Pedidos
 
