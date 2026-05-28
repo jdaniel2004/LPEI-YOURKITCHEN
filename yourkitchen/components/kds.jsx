@@ -810,13 +810,13 @@ function KDSTicket({ ticket, onAdvance, onCancelOrder }) {
               Servido — Arquivar
             </button>
           )}
-          <button
+          {!isDone && <button
             className="ticket-action-btn btn-cancel-order"
             onClick={() => setCancelOrderOpen(true)}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
             Cancelar Pedido
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -939,6 +939,7 @@ export default function KDS() {
   }, []);
 
   const archivedRef = useRef(new Set());
+  const inFlightRef = useRef(new Set());
 
   // Load archived IDs from localStorage on mount, then start polling
   useEffect(() => {
@@ -960,7 +961,15 @@ export default function KDS() {
             staleArchived.forEach(id => archivedRef.current.delete(id));
             try { localStorage.setItem("kds_archived", JSON.stringify([...archivedRef.current])); } catch {}
           }
-          setTickets(incoming.filter(t => !archivedRef.current.has(t.id)));
+          const fresh = incoming.filter(t => !archivedRef.current.has(t.id));
+          // Don't overwrite tickets whose PATCH is still in-flight — the server
+          // may not have committed yet and would roll back the optimistic state.
+          setTickets(prev => fresh.map(t => {
+            if (inFlightRef.current.has(t.id)) {
+              return prev.find(p => p.id === t.id) ?? t;
+            }
+            return t;
+          }));
         })
         .catch(() => {});
     };
@@ -979,19 +988,26 @@ export default function KDS() {
       addToast(`Ticket arquivado`, T.teal);
       return;
     }
-    // Optimistic update
+    // Capture current state for rollback and toast before the optimistic update
+    const prevTicket = tickets.find(t => t.id === ticketId);
+    const prevStatus = prevTicket?.status;
+    // Mark in-flight so the poll doesn't overwrite our optimistic state
+    inFlightRef.current.add(ticketId);
     setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: next } : t));
     try {
       await fetch(`/api/kds/tickets/${ticketId}`, { method: "PATCH" });
       addLog("ACTION", `Ticket <strong>#${ticketId.slice(0,8)}</strong> → <strong>${statusLabel(next)}</strong>.`);
       if (next === "pronto") {
-        const t = tickets.find(t => t.id === ticketId);
-        addToast(`Mesa ${t?.table || "—"} pronto! 🔔`, T.success);
+        addToast(`Mesa ${prevTicket?.table || "—"} pronto! 🔔`, T.success);
       }
     } catch {
-      // Rollback
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: nextStatus(t.status) === next ? t.status : t.status } : t));
+      // Rollback to actual previous status
+      if (prevStatus) {
+        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: prevStatus } : t));
+      }
       addToast("Erro ao avançar ticket", T.danger);
+    } finally {
+      inFlightRef.current.delete(ticketId);
     }
   }, [addLog, addToast, tickets]);
 

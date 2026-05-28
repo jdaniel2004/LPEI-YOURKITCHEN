@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const staffId = req.headers.get("x-session-id");
   const body = await req.json();
-  const { method, amount, split_n, discount_id, discount_value, items } = body;
+  const { method, amount, split_n, discount_id, discount_value, items, tip } = body;
 
   if (!method)
     return Response.json({ error: "method obrigatório" }, { status: 400 });
@@ -94,6 +94,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     method,
     amount: payAmount,
     split_n: split_n ?? 1,
+    tip: Number(tip ?? 0),
   });
   if (payErr) return Response.json({ error: payErr.message }, { status: 500 });
 

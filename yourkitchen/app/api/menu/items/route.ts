@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   // Best-effort: attach linked library modifiers. Done as a separate query so a
   // missing migration (item_modifier_templates) never breaks the whole menu.
   if (includeModifiers && Array.isArray(data) && data.length > 0) {
-    const ids = data.map((i) => i.id);
+    const ids = (data as unknown as Array<{ id: string }>).map((i) => i.id);
     const { data: links } = await supabaseAdmin
       .from("item_modifier_templates")
       .select("item_id, template:modifier_templates(id,name,required,options:modifier_template_options(*, ingredient:ingredients(id,name,unit)))")
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     if (Array.isArray(links)) {
       const byItem: Record<string, { template: unknown }[]> = {};
       for (const l of links) (byItem[l.item_id as string] ||= []).push({ template: l.template });
-      for (const item of data as Array<{ id: string; templateLinks?: unknown }>)
+      for (const item of data as unknown as Array<{ id: string; templateLinks?: unknown }>)
         item.templateLinks = byItem[item.id] || [];
     }
   }

@@ -12,56 +12,58 @@ RF4 O sistema deve suportar modificadores de itens (ex: "extra molho", "bem pass
 RF5 O sistema deve permitir enviar pedidos parciais para a cozinha sem fechar a mesa
 RF6 O sistema deve suportar múltiplos pedidos por mesa ao longo do tempo
 RF7 O sistema deve permitir cancelar ou editar um pedido no POS e no KDS
+RF8 O sistema deve suportar pedidos Take-away
 
 ### Gestão de Pagamentos
 
-RF8 O sistema deve suportar pagamento em várias opções
-RF9 O sistema deve permitir divisão de conta por número de pessoas ou por itens selecionados
-RF10 O sistema deve permitir aplicar descontos em percentagem ou valor fixo pelo total
-RF11 O sistema deve poder gerar recibos 
-RF12 O sistema deve calcular o troco automaticamente em pagamentos a dinheiro
-RF13 O sistema deve registar gorjetas
+RF9 O sistema deve suportar pagamento em várias opções
+RF10 O sistema deve permitir divisão de conta por número de pessoas ou por itens selecionados
+RF11 O sistema deve permitir aplicar descontos em percentagem ou valor fixo pelo valor total
+RF12 O sistema deve poder gerar recibos 
+RF13 O sistema deve calcular o troco automaticamente em pagamentos a dinheiro
+RF14 O sistema deve registar gorjetas
 
 ### Gestão de Menu
 
-RF14 O sistema deve permitir criar, editar, desativar e apagar categorias e produtos
-RF15 O sistema deve suportar preços variáveis através de modificadores (ex: francesinha -> com ovo )
-RF16 O sistema deve permitir associar imagens aos produtos
-RF17 O sistema deve indicar produtos esgotados em tempo real
+RF15 O sistema deve permitir criar, editar, desativar e apagar categorias e produtos
+RF16 O sistema deve suportar preços variáveis através de modificadores (ex: francesinha -> com ovo )
+RF17 O sistema deve permitir associar imagens aos produtos
+RF18 O sistema deve indicar produtos esgotados em tempo real
 
 ## 👨‍🍳 Kitchen Display System (KDS)
 
-RF18 O sistema deve exibir os pedidos enviados pelo POS em tempo real via WebSockets
-RF19 O sistema deve organizar os pedidos por mesa e por hora de envio
-RF20 O sistema deve permitir marcar um pedido como "em preparação" e "pronto"
-RF21 O sistema deve marcar um pedido completo como "pronto para servir" e notificar o POS
-RF22 O sistema deve exibir o tempo decorrido desde que o pedido foi enviado, com alertas visuais para atrasos
+RF19 O sistema deve exibir os pedidos enviados pelo POS em tempo real via WebSockets
+RF20 O sistema deve organizar os pedidos por mesa e por hora de envio
+RF21 O sistema deve permitir marcar um pedido como "em preparação" e "pronto"
+RF22 O sistema deve marcar um pedido completo como "pronto a servir" e notificar o POS
+RF23 O sistema deve exibir o tempo decorrido desde que o pedido foi enviado, com alertas visuais para atrasos
 
 ## 📦 Gestão de Stocks e Fichas Técnicas
 
-RF23 O sistema deve permitir criar fichas técnicas de receitas associando ingredientes e quantidades
-RF24 O sistema deve realizar abate automático de stock quando um pedido é confirmado
-RF25 O sistema deve alertar quando um ingrediente atingir o stock mínimo definido
-RF26 O sistema deve permitir editar o stock manualmente
+RF24 O sistema deve permitir criar fichas técnicas de receitas associando ingredientes e quantidades
+RF25 O sistema deve realizar abate automático de stock quando um pedido é confirmado
+RF26 O sistema deve alertar quando um ingrediente atingir o stock mínimo definido
+RF27 O sistema deve permitir editar o stock manualmente
 
 ## 📊 Backoffice e Analytics
 
-RF27 O sistema deve gerar relatórios de vendas por período (dia, semana, mês)
-RF28 O sistema deve apresentar relatórios por produto, categoria, mesa e empregado
-RF29 O sistema deve mostrar o tempo médio de preparação por prato
-RF30 O sistema deve permitir exportar relatórios em PDF ou CSV
-RF31 O sistema deve permitir configurar remotamente preços e menus sem reiniciar o sistema
-RF32 O sistema deve mostrar um dashboard com KPIs (faturação do dia, mesas abertas, etc.)
+RF28 O sistema deve gerar relatórios de vendas por período selecionado
+RF29 O sistema deve apresentar relatórios por produto, categoria, mesa e empregado
+RF30 O sistema deve mostrar o tempo médio de preparação por prato
+RF31 O sistema deve permitir exportar relatórios em CSV
+RF32 O sistema deve permitir configurar remotamente preços e menus sem reiniciar o sistema
+RF33 O sistema deve mostrar um dashboard com KPIs (faturação do dia, mesas abertas, etc.)
 
 ## 👥 Gestão de Utilizadores e Acessos
 
-RF33 O sistema deve suportar diferentes perfis: Gestor, Empregado de Mesa, Cozinheiro
-RF34 O sistema deve autenticar utilizadores com PIN numérico rápido no POS ou email/password no backoffice
-RF35 O sistema deve restringir funcionalidades por perfil (ex: só o gestor pode aplicar descontos)
-RF36 O sistema deve registar logs de ações dos utilizadores (quem fez o quê e quando)
+RF34 O sistema deve suportar diferentes perfis: Gestor, Empregado de Mesa, Cozinheiro
+RF35 O sistema deve autenticar utilizadores com PIN numérico rápido no POS e KDS ou email/password no backoffice
+RF36 O sistema deve restringir funcionalidades por perfil (ex: só gestores podem aceder ao backoffice)
+RF37 O sistema deve registar logs de ações dos utilizadores (quem fez o quê e quando)
+RF38 O sistema deve poder fazer a gestão de funcionários
 
 ## 🖨️ Integrações e Periféricos
-RF37 O sistema deve funcionar em tablets e ecrãs touch screen
+RF39 O sistema deve funcionar em tablets e ecrãs touch screen
 
 
 # Requisitos Não-Funcionais

@@ -38,13 +38,15 @@ export async function GET(req: Request) {
   // Payments breakdown
   const { data: payments } = await supabaseAdmin
     .from("payments")
-    .select("method, amount")
+    .select("method, amount, tip")
     .gte("created_at", from)
     .lte("created_at", to);
 
   const paymentMethods: Record<string, number> = {};
+  let totalTips = 0;
   for (const p of payments ?? []) {
     paymentMethods[p.method] = (paymentMethods[p.method] ?? 0) + Number(p.amount);
+    totalTips += Number(p.tip ?? 0);
   }
 
   return Response.json({
@@ -56,6 +58,7 @@ export async function GET(req: Request) {
     avgTicket:      totalOrders > 0 ? Number((revenue / totalOrders).toFixed(2)) : 0,
     vat:            Object.entries(vatMap).map(([rate, amount]) => ({ rate: Number(rate), amount: Number(amount.toFixed(2)) })),
     paymentMethods,
+    totalTips:      Number(totalTips.toFixed(2)),
     period:         { from, to },
   });
 }

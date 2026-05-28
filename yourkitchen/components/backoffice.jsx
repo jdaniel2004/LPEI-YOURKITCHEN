@@ -395,6 +395,7 @@ function Analytics(){
           {label:"Itens / Pedido",value:String(summary?.avgItemsPerOrder??0),color:T.blue},
           {label:"Prep. Média",value:avgPrepMin?`${avgPrepMin} min`:"—",color:T.purple},
           {label:"Itens Anulados",value:String(summary?.cancelledItems??0),color:T.danger},
+          {label:"Gorjetas",value:summary?.totalTips!=null?fmtEur(summary.totalTips):"—",color:T.teal},
         ].map(k=>(
           <div key={k.label}className="kpi-card">
             <div className="kpi-label">{k.label}</div>
@@ -1623,14 +1624,20 @@ function OrderHistory(){
   const [dateFilter,setDateFilter]=useState("Todos");
   const [expanded,setExpanded]=useState(null);
   useEffect(()=>{
-    fetch("/api/orders?status=paid&limit=100").then(r=>r.json()).then(data=>{
+    Promise.all([
+      fetch("/api/orders?status=paid&limit=100").then(r=>r.json()),
+      fetch("/api/analytics/payments?from="+new Date(Date.now()-30*86400000).toISOString()).then(r=>r.json()).catch(()=>[]),
+    ]).then(([data])=>{
       if(!Array.isArray(data))return;
       setOrders(data.map(o=>{
         const lines=(o.lines||[]).filter(l=>!l.cancelled);
         const total=lines.reduce((s,l)=>s+(l.unit_price+l.extra_price)*l.qty,0);
         const items=lines.reduce((s,l)=>s+l.qty,0);
         const d=new Date(o.paid_at||o.created_at);
-        return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method:"—",
+        const pays=Array.isArray(o.payments)?o.payments:[];
+        const method=pays[0]?.method||"—";
+        const tip=pays.reduce((s,p)=>s+Number(p.tip||0),0);
+        return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method,tip,
           time:d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}),
           date:d.toLocaleDateString("pt-PT"),
           lines:lines.map(l=>`${l.qty}x ${l.name}`),
@@ -1656,7 +1663,7 @@ function OrderHistory(){
       </div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th></th><th>ID</th><th>Mesa</th><th>Funcionário</th><th>Itens</th><th>Total</th><th>Método</th><th>Data/Hora</th><th></th></tr></thead>
+          <thead><tr><th></th><th>ID</th><th>Mesa</th><th>Funcionário</th><th>Itens</th><th>Total</th><th>Gorjeta</th><th>Método</th><th>Data/Hora</th><th></th></tr></thead>
           <tbody>
             {filtered.map(o=>(
               <Fragment key={o.id}>
@@ -1667,13 +1674,14 @@ function OrderHistory(){
                   <td style={{color:T.textSec}}>{o.waiter}</td>
                   <td><span className="mono">{o.items}</span></td>
                   <td><span className="mono"style={{color:T.accent,fontWeight:700}}>{fmtEur(o.total)}</span></td>
+                  <td>{o.tip>0?<span className="mono"style={{color:T.teal,fontWeight:700}}>+{fmtEur(o.tip)}</span>:<span style={{color:T.textMuted}}>—</span>}</td>
                   <td><Badge color={T.textSec}bg={T.elevated}>{o.method}</Badge></td>
                   <td><span style={{color:T.textMuted,fontSize:11}}>{o.date}</span><span className="mono"style={{color:T.textSec,marginLeft:6}}>{o.time}</span></td>
                   <td><button className="btn btn-ghost btn-sm"onClick={()=>alert("🖨️ Pré-visualização de recibo — funcionalidade visual")}>Recibo</button></td>
                 </tr>
                 {expanded===o.id&&(
                   <tr>
-                    <td colSpan={9}style={{background:T.elevated,padding:"12px 20px"}}>
+                    <td colSpan={10}style={{background:T.elevated,padding:"12px 20px"}}>
                       <div style={{fontSize:12,color:T.textSec,display:"flex",flexWrap:"wrap",gap:8}}>
                         {o.lines.map((l,i)=><span key={i}style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 10px"}}>{l}</span>)}
                       </div>

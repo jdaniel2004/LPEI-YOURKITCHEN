@@ -74,6 +74,9 @@ function buildMenu(menuRes, modifierIngIds){
         ingredientMods:(item.ingredients||[])
           .filter(ii=>ii.ingredient?.id&&modifierIngIds.has(ii.ingredient.id))
           .map(ii=>({id:ii.ingredient.id,name:ii.ingredient.name,qty:Number(ii.qty)||0})),
+        recipeIngredients:(item.ingredients||[])
+          .filter(ii=>ii.ingredient?.id)
+          .map(ii=>({id:ii.ingredient_id||ii.ingredient.id,name:ii.ingredient.name,qty:Number(ii.qty)||0})),
       });
     });
   }
@@ -398,6 +401,13 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .notif-banner strong{font-weight:700;}
 .notif-close{margin-left:auto;background:none;border:none;color:${T.warning};cursor:pointer;font-size:16px;opacity:.7;}
 .notif-close:hover{opacity:1;}
+/* ─ RECEIPT ─ */
+.tip-quick-btn{padding:5px 10px;background:${T.card};border:1px solid ${T.border};border-radius:6px;color:${T.textSec};font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;transition:all .12s;}
+.tip-quick-btn:hover{border-color:${T.teal}55;color:${T.teal};background:${T.tealDim};}
+.tip-quick-btn.has-tip{border-color:${T.teal}55;color:${T.teal};background:${T.tealDim};}
+.receipt-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px;}
+.receipt-divider{border:none;border-top:1px dashed ${T.border};margin:10px 0;}
+@media print{body>*{visibility:hidden!important;}.receipt-print,.receipt-print *{visibility:visible!important;}.receipt-print{position:fixed;top:0;left:50%;transform:translateX(-50%);width:280px;padding:16px;background:#fff;color:#000;font-family:monospace;}}
 `;
 
 // ─── SMALL COMPONENTS ─────────────────────────────────────────────────────────
@@ -420,7 +430,7 @@ function Toasts({toasts}){
 }
 
 // ─── MODIFIER MODAL ───────────────────────────────────────────────────────────
-function ModifierModal({item,onConfirm,onClose}){
+function ModifierModal({item,ingredientStock,onConfirm,onClose}){
   // extras: Record<modId, Record<optId, bool>> — all options are optional (multi-select)
   const [extras,setExtras]=useState({});
   // ingState: Record<id, 'removed'|'extra'> — absent means neutral
@@ -449,8 +459,8 @@ function ModifierModal({item,onConfirm,onClose}){
       if(o.price)extraPrice+=o.price;
       if(o.ingredientId&&o.ingredientQty){
         const stored=o.ingredientStoredUnit||o.ingredientUnit;
-        modifierIngredients.push({ingredient_id:o.ingredientId,qty:convUnit(o.ingredientQty,o.ingredientUnit||stored,stored)});
-        baseSel.push({ingredient_id:o.ingredientId,storedUnit:stored});
+        modifierIngredients.push({ingredient_id:o.ingredientId,qty:convUnit(o.ingredientQty,o.ingredientUnit||stored,stored),name:o.ingredientName||""});
+        baseSel.push({ingredient_id:o.ingredientId,storedUnit:stored,name:o.ingredientName||""});
       }else if(o.ingredientQty>0){
         extraSel.push({qty:o.ingredientQty,unit:o.ingredientUnit||"g"});
       }
@@ -458,7 +468,7 @@ function ModifierModal({item,onConfirm,onClose}){
   });
   // "Extra" options (qty without ingredient) apply to the single chosen base ingredient
   if(baseSel.length===1&&extraSel.length>0){
-    extraSel.forEach(e=>modifierIngredients.push({ingredient_id:baseSel[0].ingredient_id,qty:convUnit(e.qty,e.unit,baseSel[0].storedUnit)}));
+    extraSel.forEach(e=>modifierIngredients.push({ingredient_id:baseSel[0].ingredient_id,qty:convUnit(e.qty,e.unit,baseSel[0].storedUnit),name:baseSel[0].name||""}));
   }
   // For "+ Extra" / "− Retirar" toggles, also emit stock deltas. The send route
   // already debits the base recipe via item_ingredients, so:
@@ -468,12 +478,13 @@ function ModifierModal({item,onConfirm,onClose}){
     const st=ingState[ing.id];
     if(st==="removed"){
       modsText.push(`sem ${ing.name}`);
-      if(ing.qty) modifierIngredients.push({ingredient_id:ing.id,qty:-ing.qty});
+      if(ing.qty) modifierIngredients.push({ingredient_id:ing.id,qty:-ing.qty,name:ing.name});
     } else if(st==="extra"){
       modsText.push(`+${ing.name}`);
-      if(ing.qty) modifierIngredients.push({ingredient_id:ing.id,qty:ing.qty});
+      if(ing.qty) modifierIngredients.push({ingredient_id:ing.id,qty:ing.qty,name:ing.name});
     }
   });
+  const ingBlocked=ingredientStock&&modifierIngredients.find(mi=>mi.qty>0&&ingredientStock[mi.ingredient_id]!==undefined&&ingredientStock[mi.ingredient_id]<mi.qty)||null;
 
   const ingMods=item.ingredientMods||[];
 
@@ -542,9 +553,11 @@ function ModifierModal({item,onConfirm,onClose}){
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
           <button
             className="btn btn-solid-accent"
+            disabled={!!ingBlocked}
+            title={ingBlocked?`Ingrediente esgotado — ${ingBlocked.name||"ingrediente"}`:""}
             onClick={()=>onConfirm({modsText,extraPrice,modifierIngredients})}
           >
-            Adicionar — {fmtEur(item.price+extraPrice)}
+            {ingBlocked?`Esgotado — ${ingBlocked.name||"ingrediente"}`:`Adicionar — ${fmtEur(item.price+extraPrice)}`}
           </button>
         </div>
       </div>
@@ -642,6 +655,7 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
   const [received,setReceived]=useState("");
   const [split,setSplit]=useState(1);
   const [sel,setSel]=useState({}); // lineId -> units selected to pay now
+  const [tip,setTip]=useState(0);
 
   // Lines still owing money: sent (so they exist in the DB and were actually
   // ordered), not cancelled, and with units left to pay. Unsent draft items have
@@ -696,13 +710,42 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
     setBusy(true);
     try{
       const discountPayload=discount?{discount_id:discount.id,discount_value:remainingDiscount}:{};
+      // Build receipt items + financials scoped to this specific transaction
+      let receiptItems, receiptSubtotal, receiptVatMap, receiptDiscount;
+      if(payMode==="itens"){
+        receiptItems=payableLines
+          .filter(i=>(sel[i.lineId]||0)>0)
+          .map(i=>({...i,qty:sel[i.lineId]}));
+        receiptSubtotal=0;
+        receiptVatMap={};
+        receiptItems.forEach(i=>{
+          const gross=unitOf(i)*i.qty;
+          const net=gross/(1+i.vat/100);
+          receiptSubtotal+=net;
+          receiptVatMap[i.vat]=(receiptVatMap[i.vat]||0)+(gross-net);
+        });
+        receiptDiscount=selectedDiscount;
+      }else{
+        receiptItems=payableLines;
+        receiptSubtotal=subtotal;
+        receiptVatMap=vatMap;
+        receiptDiscount=remainingDiscount;
+      }
+      const receiptData={
+        items:receiptItems,subtotal:receiptSubtotal,vatMap:receiptVatMap,
+        discountName:discount?.name,discountAmount:receiptDiscount,
+        total:payMode==="itens"?selectedTotal:remainingNet,
+        tip,method,
+        received:method==="numerario"&&!isNaN(rec)&&rec>0?rec:null,
+        change:method==="numerario"&&troco!=null&&troco>=0?troco:null,
+      };
       if(payMode==="itens"){
         const items=payableLines
           .filter(i=>(sel[i.lineId]||0)>0)
           .map(i=>({line_id:i.lineId,qty:sel[i.lineId]}));
-        await onConfirm({mode:"itens",method,amount:selectedTotal,items,...discountPayload});
+        await onConfirm({mode:"itens",method,amount:selectedTotal,items,tip,receiptData,...discountPayload});
       }else{
-        await onConfirm({mode:"pessoas",method,amount:remainingNet,split,...discountPayload});
+        await onConfirm({mode:"pessoas",method,amount:remainingNet,split,tip,receiptData,...discountPayload});
       }
     }finally{
       setBusy(false);
@@ -780,6 +823,16 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
                 <div className="split-per-person">A pagar: {fmtEur(selectedTotal)}</div>
               </>
             )}
+            <div style={{marginTop:12}}>
+              <div className="pay-label">Gorjeta</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+                {[0.5,1,2,5].map(v=>(
+                  <button key={v} className={`tip-quick-btn${tip>0?" has-tip":""}`} onClick={()=>setTip(t=>Number((t+v).toFixed(2)))}>+{fmtEur(v)}</button>
+                ))}
+                {tip>0&&<button onClick={()=>setTip(0)} style={{padding:"5px 10px",background:T.dangerDim,border:`1px solid ${T.danger}33`,borderRadius:6,color:T.danger,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+              </div>
+              {tip>0&&<div style={{fontSize:13,fontWeight:700,color:T.teal}}>+ {fmtEur(tip)} gorjeta</div>}
+            </div>
           </div>
 
           {/* Right: method + numpad */}
@@ -846,8 +899,63 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
   );
 }
 
+// ─── RECEIPT MODAL ────────────────────────────────────────────────────────────
+function ReceiptModal({receipt,onClose}){
+  const{appName,table,waiter,datetime,items,subtotal,vatMap,discountName,discountAmount,total,tip,method,received,change}=receipt;
+  const METHOD_LABELS={numerario:"Numerário",cartao:"Cartão",mbway:"MB Way",multibanco:"Multibanco"};
+  const dt=datetime instanceof Date?datetime:new Date(datetime);
+  const dateStr=dt.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const timeStr=dt.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  return(
+    <div className="overlay" style={{zIndex:300}} onClick={e=>e.stopPropagation()}>
+      <div className="modal" style={{width:320,maxHeight:"92vh",overflowY:"auto"}}>
+        <div className="modal-header">
+          <div className="modal-title">Recibo</div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>window.print()}>🖨 Imprimir</button>
+            <button className="modal-close" onClick={onClose}>✕</button>
+          </div>
+        </div>
+        <div className="receipt-print" style={{padding:"0 20px 20px",fontFamily:"'DM Mono',monospace"}}>
+          <div style={{textAlign:"center",padding:"16px 0 12px",borderBottom:`1px dashed ${T.border}`}}>
+            <div style={{fontSize:17,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text,letterSpacing:-.3}}>{appName}</div>
+            <div style={{fontSize:12,color:T.textSec,marginTop:4}}>{table?`Mesa ${table}`:"Take-Away"}</div>
+            <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{dateStr} · {timeStr}</div>
+            {waiter&&waiter!=="—"&&<div style={{fontSize:11,color:T.textMuted}}>Funcionário: {waiter}</div>}
+          </div>
+          <div style={{padding:"10px 0",borderBottom:`1px dashed ${T.border}`}}>
+            {items.map((item,i)=>(
+              <div key={i} className="receipt-row">
+                <span style={{color:T.textSec,flex:1,marginRight:8}}>{item.qty}× {item.name}</span>
+                <span style={{color:T.text,flexShrink:0}}>{fmtEur((item.price+(item.extraPrice||0))*item.qty)}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{padding:"10px 0",borderBottom:`1px dashed ${T.border}`}}>
+            <div className="receipt-row" style={{color:T.textMuted}}><span>Subtotal (s/IVA)</span><span>{fmtEur(subtotal)}</span></div>
+            {Object.entries(vatMap).map(([r,v])=>(
+              <div key={r} className="receipt-row" style={{color:T.textMuted,fontSize:11}}><span>IVA {r}%</span><span>{fmtEur(v)}</span></div>
+            ))}
+            {discountAmount>0&&(
+              <div className="receipt-row" style={{color:T.success}}><span>− {discountName||"Desconto"}</span><span>− {fmtEur(discountAmount)}</span></div>
+            )}
+            <div className="receipt-row" style={{fontSize:16,fontWeight:700,color:T.text,marginTop:6}}><span>TOTAL</span><span>{fmtEur(total)}</span></div>
+            {tip>0&&<div className="receipt-row" style={{color:T.teal,marginTop:2}}><span>Gorjeta</span><span>+ {fmtEur(tip)}</span></div>}
+          </div>
+          <div style={{padding:"10px 0"}}>
+            <div className="receipt-row" style={{color:T.textSec}}><span>Método</span><span style={{color:T.text}}>{METHOD_LABELS[method]||method}</span></div>
+            {received!=null&&<div className="receipt-row" style={{color:T.textSec}}><span>Recebido</span><span style={{color:T.text}}>{fmtEur(received)}</span></div>}
+            {change!=null&&change>=0&&<div className="receipt-row" style={{color:T.textSec}}><span>Troco</span><span style={{color:T.text}}>{fmtEur(change)}</span></div>}
+          </div>
+          <div style={{textAlign:"center",paddingTop:8,borderTop:`1px dashed ${T.border}`,fontSize:11,color:T.textMuted}}>Obrigado pela visita!</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ORDER SCREEN ─────────────────────────────────────────────────────────────
-function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,onSendKitchen,sending,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
+function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBack,onUpdateOrder,onSendKitchen,sending,kdsReady,onPayment,onCancelLine,onTransfer,addToast}){
   const [cat,setCat]=useState(0);
   const [modItem,setModItem]=useState(null);
   const [cancelTarget,setCancelTarget]=useState(null);
@@ -878,8 +986,47 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
     .reduce((s,i)=>s+i.qty,0);
   const canAddMore=(itemId,addQty=1)=>{
     const st=stockForItem(menuStock,itemId);
-    if(st===null) return true; // stock not tracked for this item
+    if(st===null) return true;
     return pendingQtyForItem(itemId)+addQty<=st;
+  };
+  // DB stock minus what pending (unsent) lines already consume — recomputed each render
+  const effectiveIngAvail=(()=>{
+    if(!ingredientStock) return {};
+    const avail={...ingredientStock};
+    const allMenuItems=menu.flatMap(c=>c.items);
+    for(const line of order.items.filter(i=>!i.sent&&!i.cancelled)){
+      const menuItem=allMenuItems.find(it=>it.id===line.itemId);
+      if(menuItem?.recipeIngredients){
+        for(const ri of menuItem.recipeIngredients){
+          if(avail[ri.id]!==undefined) avail[ri.id]-=ri.qty*line.qty;
+        }
+      }
+      for(const mod of (line.modifierIngredients||[])){
+        if(mod.qty>0&&avail[mod.ingredient_id]!==undefined)
+          avail[mod.ingredient_id]-=mod.qty*line.qty;
+      }
+    }
+    return avail;
+  })();
+  const blockedByIngredient=(item,addQty=1)=>{
+    if(!item.recipeIngredients) return null;
+    for(const ri of item.recipeIngredients){
+      const avail=effectiveIngAvail[ri.id];
+      if(avail===undefined) continue;
+      if(avail<ri.qty*addQty) return ri.name;
+    }
+    return null;
+  };
+  // Check a specific order line (recipe + its chosen modifier ingredients)
+  const blockedByLine=(line,addQty=1)=>{
+    const menuItem=menu.flatMap(c=>c.items).find(it=>it.id===line.itemId);
+    if(menuItem){const b=blockedByIngredient(menuItem,addQty);if(b) return b;}
+    for(const mod of (line.modifierIngredients||[])){
+      if(mod.qty<=0) continue;
+      const avail=effectiveIngAvail[mod.ingredient_id];
+      if(avail!==undefined&&avail<mod.qty*addQty) return mod.name||"ingrediente";
+    }
+    return null;
   };
 
   const handleAddItem=(item)=>{
@@ -888,6 +1035,8 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
     if(st!==null&&!canAddMore(item.id)){
       addToast(`Stock insuficiente — só restam ${st}`,T.warning);return;
     }
+    const blockedIng=blockedByIngredient(item);
+    if(blockedIng){addToast(`Ingrediente esgotado — ${blockedIng}`,T.danger);return;}
     if(item.mods.length>0||(item.ingredientMods&&item.ingredientMods.length>0)){setModItem(item);return;}
     const existing=pendingItems.find(l=>l.itemId===item.id&&l.mods.length===0);
     if(existing){
@@ -899,6 +1048,11 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
   };
 
   const handleModConfirm=({modsText,extraPrice,modifierIngredients})=>{
+    for(const mi of (modifierIngredients||[])){
+      if(mi.qty<=0) continue;
+      const avail=effectiveIngAvail[mi.ingredient_id];
+      if(avail!==undefined&&avail<mi.qty){addToast(`Ingrediente esgotado — ${mi.name||"ingrediente"}`,T.danger);return;}
+    }
     const item=modItem;
     const line={lineId:newLineId(),itemId:item.id,name:item.name,qty:1,price:item.price,vat:item.vat,mods:modsText,modifierIngredients:modifierIngredients||[],notes:"",sent:false,cancelled:false,extraPrice};
     onUpdateOrder(prev=>({...prev,items:[...prev.items,line]}));
@@ -911,6 +1065,10 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
       if(line&&line.itemId&&!canAddMore(line.itemId)){
         const st=stockForItem(menuStock,line.itemId);
         addToast(`Stock insuficiente — só restam ${st}`,T.warning);return;
+      }
+      if(line){
+        const blocked=blockedByLine(line);
+        if(blocked){addToast(`Ingrediente esgotado — ${blocked}`,T.danger);return;}
       }
     }
     onUpdateOrder(prev=>{
@@ -980,11 +1138,12 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
           {curMenu.items.map(item=>{
             const st=stockForItem(menuStock,item.id);
             const oos=st!==null&&st<=0;
-            const low=st!==null&&st>0&&st<=3;
+            const ingBlocked=!oos&&!!blockedByIngredient(item);
+            const low=!oos&&!ingBlocked&&st!==null&&st>0&&st<=3;
             return(
-              <div key={item.id} className={`menu-item-card${oos?" out-of-stock":""}`} onClick={()=>handleAddItem(item)}>
-                {oos && <div className="item-stock-badge">ESGOTADO</div>}
-                {low && !oos && <div className="item-low-badge">Ult. {st}</div>}
+              <div key={item.id} className={`menu-item-card${(oos||ingBlocked)?" out-of-stock":""}`} onClick={()=>handleAddItem(item)}>
+                {(oos||ingBlocked) && <div className="item-stock-badge">ESGOTADO</div>}
+                {low && <div className="item-low-badge">Ult. {st}</div>}
                 <div className="item-emoji">{item.emoji}</div>
                 <div className="item-name">{item.name}</div>
                 <div className="item-price">{fmtEur(item.price)}</div>
@@ -1135,7 +1294,7 @@ function OrderScreen({table,order,menu,staffList,menuStock,onBack,onUpdateOrder,
 
       {/* MODALS */}
       {modItem&&(
-        <ModifierModal item={modItem} onConfirm={handleModConfirm} onClose={()=>setModItem(null)}/>
+        <ModifierModal item={modItem} ingredientStock={effectiveIngAvail} onConfirm={handleModConfirm} onClose={()=>setModItem(null)}/>
       )}
       {cancelTarget&&(
         <CancelLineModal
@@ -1315,6 +1474,7 @@ export default function POS({session,appName="YourKitchen"}){
   const [menu,setMenu]=useState([]);
   const [staffList,setStaffList]=useState([]);
   const [menuStock,setMenuStock]=useState({});
+  const [ingredientStock,setIngredientStock]=useState({});
   const [turnos,setTurnos]=useState([]);
   const [activeTableId,setActiveTableId]=useState(null);
   const [toasts,setToasts]=useState([]);
@@ -1322,6 +1482,7 @@ export default function POS({session,appName="YourKitchen"}){
   const [readyOrders,setReadyOrders]=useState(()=>new Set());
   const [loading,setLoading]=useState(true);
   const [showEndShift,setShowEndShift]=useState(false);
+  const [receipt,setReceipt]=useState(null);
   const [endShiftTarget,setEndShiftTarget]=useState("");
 
   const currentStaff=session
@@ -1428,8 +1589,12 @@ export default function POS({session,appName="YourKitchen"}){
           initials:s.name.slice(0,2).toUpperCase(),
         })):[];
 
+        const ingStock={};
+        if(Array.isArray(ingsRes)) ingsRes.forEach(i=>{ingStock[i.id]=Number(i.stock_qty??0);});
+
         setMenu(mappedMenu);
         setMenuStock(stock);
+        setIngredientStock(ingStock);
         setOrders(allOrders);
         setTables(mappedTables);
         setStaffList(mappedStaff);
@@ -1531,6 +1696,11 @@ export default function POS({session,appName="YourKitchen"}){
           const freshStock={};
           menuRes.forEach(it=>{if(it.stock!==null)freshStock[it.id]=it.stock;});
           setMenuStock(freshStock);
+        }
+        if(Array.isArray(ingsRes)){
+          const ingStock={};
+          ingsRes.forEach(i=>{ingStock[i.id]=Number(i.stock_qty??0);});
+          setIngredientStock(ingStock);
         }
 
         const staleCutoff=Date.now()-24*60*60*1000;
@@ -1824,11 +1994,12 @@ export default function POS({session,appName="YourKitchen"}){
         const totalGross=payData.items.reduce((s,it)=>{const o=allTableOrders.find(x=>x.id===lineToOid[it.line_id]);const l=(o?.items||[]).find(i=>i.lineId===it.line_id);return s+(l?(l.price+(l.extraPrice||0))*it.qty:0);},0);
         let remDisc=payData.discount_value!=null?payData.discount_value:0;
         let overallFullyPaid=true;
+        let firstItem=true;
         for(const[oid,items] of Object.entries(byOrder)){
           const groupGross=items.reduce((s,it)=>{const o=allTableOrders.find(x=>x.id===oid);const l=(o?.items||[]).find(i=>i.lineId===it.line_id);return s+(l?(l.price+(l.extraPrice||0))*it.qty:0);},0);
           const ratio=totalGross>0?groupGross/totalGross:1/Object.keys(byOrder).length;
           const disc=Number((remDisc*ratio).toFixed(2));remDisc-=disc;
-          const body={method:payData.method,items};
+          const body={method:payData.method,items,tip:firstItem?(payData.tip||0):0};firstItem=false;
           if(payData.discount_id&&disc>0){body.discount_id=payData.discount_id;body.discount_value=disc;}
           const res=await fetch(`/api/orders/${oid}/pay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
           if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||"");}
@@ -1836,6 +2007,7 @@ export default function POS({session,appName="YourKitchen"}){
           if(data?.fullyPaid===false) overallFullyPaid=false;
         }
         const paidAmount=payData.amount||0;
+        if(payData.receiptData) setReceipt({...payData.receiptData,table:activeTable?.id||activeTableId,waiter:currentStaff?.name||"—",datetime:new Date(),appName});
         if(overallFullyPaid){
           addToast(`Pagamento — ${activeTableId} — ${fmtEur(paidAmount)}`,T.success);
           closeTable();
@@ -1851,17 +2023,19 @@ export default function POS({session,appName="YourKitchen"}){
         const paidAmount=payData.amount!=null?payData.amount:combinedPayable;
         let remDisc=payData.discount_value!=null?payData.discount_value:0;
         let allFullyPaid=true;
+        let firstOrder=true;
         for(const o of billableOrders){
           const ratio=combinedPayable>0?oPayable(o)/combinedPayable:1/billableOrders.length;
           const oAmount=Number((paidAmount*ratio).toFixed(2));
           const disc=Number((remDisc*ratio).toFixed(2));remDisc-=disc;
-          const body={method:payData.method,amount:oAmount,split_n:payData.split};
+          const body={method:payData.method,amount:oAmount,split_n:payData.split,tip:firstOrder?(payData.tip||0):0};firstOrder=false;
           if(payData.discount_id&&disc>0){body.discount_id=payData.discount_id;body.discount_value=disc;}
           const res=await fetch(`/api/orders/${o.id}/pay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
           if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||"");}
           const data=await res.json().catch(()=>({}));
           if(data?.fullyPaid===false) allFullyPaid=false;
         }
+        if(payData.receiptData) setReceipt({...payData.receiptData,table:activeTable?.id||activeTableId,waiter:currentStaff?.name||"—",datetime:new Date(),appName});
         if(allFullyPaid){
           addToast(`Pagamento — ${activeTableId} — ${fmtEur(paidAmount)}`,T.success);
           closeTable();
@@ -1976,6 +2150,7 @@ export default function POS({session,appName="YourKitchen"}){
             menu={menu}
             staffList={staffList}
             menuStock={menuStock}
+            ingredientStock={ingredientStock}
             onBack={()=>{setActiveTableId(null);setScreen("floor");}}
             onUpdateOrder={handleUpdateOrder}
             onSendKitchen={handleSendKitchen}
@@ -2028,6 +2203,7 @@ export default function POS({session,appName="YourKitchen"}){
       )}
 
       <Toasts toasts={toasts}/>
+      {receipt&&<ReceiptModal receipt={receipt} onClose={()=>setReceipt(null)}/>}
     </>
   );
 }
