@@ -4,6 +4,7 @@ import Login     from "@/components/login";
 import POS        from "@/components/pos";
 import KDS        from "@/components/kds";
 import Backoffice from "@/components/backoffice";
+import { fmtTime, setTimezone } from "@/lib/timezone";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -137,7 +138,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:${T.bg};color:${T.te
 function GClock() {
   const [t, setT] = useState(new Date());
   useEffect(() => { const i = setInterval(() => setT(new Date()), 1000); return () => clearInterval(i); }, []);
-  return <div className="g-clock">{t.toLocaleTimeString("pt-PT", { hour:"2-digit", minute:"2-digit" })}</div>;
+  return <div className="g-clock">{fmtTime(t, { hour:"2-digit", minute:"2-digit" })}</div>;
 }
 
 // ─── GLOBAL NAV ───────────────────────────────────────────────────────────────
@@ -206,8 +207,10 @@ export default function App() {
   useEffect(() => {
     if (!session) return;
     fetch("/api/settings").then(r => r.json()).then(flat => {
-      const n = flat && !flat.error ? flat["geral.name"] : null;
+      if (!flat || flat.error) return;
+      const n = flat["geral.name"];
       if (n) { setAppName(n); try { localStorage.setItem("ros_app_name", n); } catch {} }
+      if (flat["geral.timezone"]) setTimezone(flat["geral.timezone"]);
     }).catch(() => {});
   }, [session]);
 

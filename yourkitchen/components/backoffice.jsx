@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { fmtTime, fmtDate, setTimezone } from "@/lib/timezone";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -293,7 +294,7 @@ function Dashboard(){
                     <td><span style={{fontWeight:700}}>{o.table?.label||"—"}</span></td>
                     <td style={{color:T.textSec,fontSize:12}}>{o.waiter?.name||"—"}</td>
                     <td><span className="mono"style={{color:T.accent}}>{fmtEur(total)}</span></td>
-                    <td><Badge color={T.textSec}bg={T.elevated}>{t.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}</Badge></td>
+                    <td><Badge color={T.textSec}bg={T.elevated}>{fmtTime(t,{hour:"2-digit",minute:"2-digit"})}</Badge></td>
                   </tr>
                 );
               })}
@@ -1637,8 +1638,8 @@ function Campaigns(){
 function ReceiptModalBO({order,onClose}){
   const METHOD_LABELS={numerario:"Numerário",cartao:"Cartão",mbway:"MB Way",multibanco:"Multibanco"};
   const dt=new Date(order.datetime);
-  const dateStr=dt.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit",year:"numeric"});
-  const timeStr=dt.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  const dateStr=fmtDate(dt,{day:"2-digit",month:"2-digit",year:"numeric"});
+  const timeStr=fmtTime(dt,{hour:"2-digit",minute:"2-digit"});
   const vatRate=23;
   const vatAmt=order.total*vatRate/(100+vatRate);
   const subtotalNet=order.total-vatAmt;
@@ -1706,8 +1707,8 @@ function OrderHistory(){
         const method=pays[0]?.method||"—";
         const tip=pays.reduce((s,p)=>s+Number(p.tip||0),0);
         return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method,tip,
-          time:d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}),
-          date:d.toLocaleDateString("pt-PT"),
+          time:fmtTime(d,{hour:"2-digit",minute:"2-digit"}),
+          date:fmtDate(d),
           datetime:o.paid_at||o.created_at,
           discount:Number(o.discount_value||0),
           lines:lines.map(l=>`${l.qty}x ${l.name}`),
@@ -1716,8 +1717,8 @@ function OrderHistory(){
       }));
     }).catch(()=>{});
   },[]);
-  const todayStr=new Date().toLocaleDateString("pt-PT");
-  const yestStr=new Date(Date.now()-86400000).toLocaleDateString("pt-PT");
+  const todayStr=fmtDate(new Date());
+  const yestStr=fmtDate(new Date(Date.now()-86400000));
   const dates=["Todos","Hoje","Ontem"];
   const filtered=orders.filter(o=>{
     if(dateFilter==="Hoje"&&o.date!==todayStr)return false;
@@ -1779,7 +1780,7 @@ function LogsSection(){
   useEffect(()=>{
     fetch("/api/logs?limit=200").then(r=>r.json()).then(data=>{
       if(!Array.isArray(data))return;
-      setLogs(data.map(l=>{const d=new Date(l.created_at);return{id:l.id,level:l.level,module:l.module,date:d.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit",year:"2-digit"}),time:d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit",second:"2-digit"}),msg:l.message,comment:l.comment,who:l.staff?.name||null};}));
+      setLogs(data.map(l=>{const d=new Date(l.created_at);return{id:l.id,level:l.level,module:l.module,date:fmtDate(d,{day:"2-digit",month:"2-digit",year:"2-digit"}),time:fmtTime(d,{hour:"2-digit",minute:"2-digit",second:"2-digit"}),msg:l.message,comment:l.comment,who:l.staff?.name||null};}));
     }).catch(()=>{});
   },[]);
   const levels=["Todos","INFO","ACTION","WARN","ERROR","CANCEL"];
@@ -1858,6 +1859,7 @@ function SettingsSection({onAppNameChange}={}){
         caixa:{defaultFundo:flat["caixa.defaultFundo"]??prev.caixa.defaultFundo,maxTurno:flat["caixa.maxTurno"]??prev.caixa.maxTurno,confirmAbertura:flat["caixa.confirmAbertura"]??prev.caixa.confirmAbertura},
         horario:{turnos:Array.isArray(flat["horario.turnos"])?flat["horario.turnos"]:prev.horario.turnos},
       }));
+      if(flat["geral.timezone"]) setTimezone(flat["geral.timezone"]);
     }).catch(()=>{});
   },[]);
   const patchKey=async(key,value)=>fetch(`/api/settings/${encodeURIComponent(key)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({value})});
@@ -1865,9 +1867,10 @@ function SettingsSection({onAppNameChange}={}){
     setSaving(true);
     await Promise.all(keys.map(k=>patchKey(`${section}.${k}`,s[section][k]))).catch(()=>{});
     setSaving(false);
-    if(section==="geral"){ // propagate the name to the app branding immediately
+    if(section==="geral"){ // propagate the name + timezone to the whole app immediately
       onAppNameChange?.(s.geral.name||"RestaurantOS");
       try{localStorage.setItem("ros_app_name",s.geral.name||"RestaurantOS");}catch{}
+      if(s.geral.timezone) setTimezone(s.geral.timezone);
     }
   };
   const setG=(k,v)=>setS(p=>({...p,geral:{...p.geral,[k]:v}}));

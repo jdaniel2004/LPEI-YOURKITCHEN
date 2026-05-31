@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { fmtTime, fmtDate } from "@/lib/timezone";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -106,7 +107,7 @@ function fmtMins(ms){
   return `${Math.floor(m/60)}h${String(m%60).padStart(2,"0")}`;
 }
 function nowTime(){
-  return new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  return fmtTime(new Date(),{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 }
 function orderTotal(items){
   return items.filter(i=>!i.cancelled).reduce((s,i)=>s+(i.price+(i.extraPrice||0))*i.qty,0);
@@ -147,7 +148,10 @@ function inTurnoWindow(mins,start,end){
   return e>=s ? (mins>=s&&mins<=e) : (mins>=s||mins<=e);
 }
 function currentTurno(turnos,now=new Date()){
-  const mins=now.getHours()*60+now.getMinutes();
+  // Use the configured restaurant timezone (not the device's) so shift windows
+  // line up with the clock shown across the app.
+  const [h,m]=fmtTime(now,{hour:"2-digit",minute:"2-digit",hour12:false}).split(":").map(Number);
+  const mins=h*60+m;
   return (turnos||[]).find(t=>inTurnoWindow(mins,t.start,t.end))||null;
 }
 
@@ -448,7 +452,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 function Clock(){
   const [t,setT]=useState(new Date());
   useEffect(()=>{const i=setInterval(()=>setT(new Date()),1000);return()=>clearInterval(i);},[]);
-  return <div className="topbar-clock">{t.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}</div>;
+  return <div className="topbar-clock">{fmtTime(t,{hour:"2-digit",minute:"2-digit"})}</div>;
 }
 function Toasts({toasts}){
   return(
@@ -950,8 +954,8 @@ function ReceiptModal({receipt,onClose}){
   const{appName,table,waiter,datetime,items,subtotal,vatMap,discountName,discountAmount,total,tip,method,received,change}=receipt;
   const METHOD_LABELS={numerario:"Numerário",cartao:"Cartão",mbway:"MB Way",multibanco:"Multibanco"};
   const dt=datetime instanceof Date?datetime:new Date(datetime);
-  const dateStr=dt.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit",year:"numeric"});
-  const timeStr=dt.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  const dateStr=fmtDate(dt,{day:"2-digit",month:"2-digit",year:"numeric"});
+  const timeStr=fmtTime(dt,{hour:"2-digit",minute:"2-digit"});
   return(
     <div className="overlay" style={{zIndex:300}} onClick={e=>e.stopPropagation()}>
       <div className="modal" style={{width:320,maxHeight:"92vh",overflowY:"auto"}}>
@@ -1394,7 +1398,7 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
         </div>
         <div className="stat-item">
           <div className="stat-label">Turno Desde</div>
-          <div className="stat-value" style={{fontSize:14,color:T.textSec}}>{new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}</div>
+          <div className="stat-value" style={{fontSize:14,color:T.textSec}}>{fmtTime(new Date(),{hour:"2-digit",minute:"2-digit"})}</div>
         </div>
       </div>
 

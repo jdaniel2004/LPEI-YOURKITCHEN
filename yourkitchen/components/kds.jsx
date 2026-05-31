@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { fmtTime, fmtDate } from "@/lib/timezone";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const T = {
@@ -668,8 +669,8 @@ function Clock() {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-  const hm = now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const date = now.toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "short" });
+  const hm = fmtTime(now, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const date = fmtDate(now, { weekday: "short", day: "2-digit", month: "short" });
   return (
     <div style={{ textAlign: "right" }}>
       <div className="kds-clock">{hm}</div>
@@ -936,7 +937,7 @@ export default function KDS() {
   const toastIdRef = useRef(0);
 
   const addLog = useCallback((level, msg, comment = null) => {
-    const time = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const time = fmtTime(new Date(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     setLogs(prev => [...prev.slice(-199), { id: ++logIdRef.current, level, time, msg, comment }]);
   }, []);
 

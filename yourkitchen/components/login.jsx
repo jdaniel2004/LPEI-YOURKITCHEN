@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { fmtTime, fmtDate } from "@/lib/timezone";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -246,8 +247,8 @@ function Clock(){
   const [t,setT]=useState(null);
   useEffect(()=>{setT(new Date());const i=setInterval(()=>setT(new Date()),1000);return()=>clearInterval(i);},[]);
   if(!t) return null;
-  const d=t.toLocaleDateString("pt-PT",{weekday:"long",day:"numeric",month:"long"});
-  const h=t.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  const d=fmtDate(t,{weekday:"long",day:"numeric",month:"long"});
+  const h=fmtTime(t,{hour:"2-digit",minute:"2-digit"});
   return(
     <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",textAlign:"center",animation:"fadeIn .8s ease"}}>
       <div style={{fontFamily:"'DM Mono',monospace",fontSize:28,fontWeight:500,letterSpacing:2,color:T.textSec}}>{h}</div>
