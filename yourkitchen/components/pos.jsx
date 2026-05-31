@@ -1820,7 +1820,11 @@ export default function POS({session,appName="YourKitchen"}){
   const allTableOrders=activeTable
     ?Object.values(orders).filter(o=>{
         if(o.paid||o.draft) return false;
-        return activeTable.dbId?o.tableDbId===activeTable.dbId:o.tableId===activeTable.id;
+        if(activeTable.dbId) return o.tableDbId===activeTable.dbId;
+        // Take-away / counter cards have no physical table (dbId null) and map 1:1
+        // to a single order. Match by order id — robust after a reload/sync where
+        // mapOrder leaves tableId null — with the legacy label match as fallback.
+        return o.id===activeTable.orderId||o.tableId===activeTable.id;
       })
     :[];
   // Merge items from all table orders for display; new items go into activeOrder only
