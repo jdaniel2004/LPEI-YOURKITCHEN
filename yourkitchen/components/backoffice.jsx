@@ -1628,12 +1628,64 @@ function Campaigns(){
   );
 }
 
+// ─── RECEIPT MODAL (BACKOFFICE) ───────────────────────────────────────────────
+function ReceiptModalBO({order,onClose}){
+  const METHOD_LABELS={numerario:"Numerário",cartao:"Cartão",mbway:"MB Way",multibanco:"Multibanco"};
+  const dt=new Date(order.datetime);
+  const dateStr=dt.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const timeStr=dt.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  const vatRate=23;
+  const vatAmt=order.total*vatRate/(100+vatRate);
+  const subtotalNet=order.total-vatAmt;
+  return(
+    <div className="overlay"style={{zIndex:200}}onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal"style={{width:320,maxHeight:"92vh",overflowY:"auto"}}>
+        <div className="modal-hd">
+          <div><div className="modal-title">Recibo</div></div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <button className="btn btn-ghost btn-sm"onClick={()=>window.print()}>🖨 Imprimir</button>
+            <button className="modal-close"onClick={onClose}>✕</button>
+          </div>
+        </div>
+        <div style={{padding:"0 20px 20px",fontFamily:"'DM Mono',monospace"}}>
+          <div style={{textAlign:"center",padding:"16px 0 12px",borderBottom:`1px dashed ${T.border}`}}>
+            <div style={{fontSize:17,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text,letterSpacing:-.3}}>Yourkitchen</div>
+            <div style={{fontSize:12,color:T.textSec,marginTop:4}}>Mesa {order.table}</div>
+            <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{dateStr} · {timeStr}</div>
+            {order.waiter&&order.waiter!=="—"&&<div style={{fontSize:11,color:T.textMuted}}>Funcionário: {order.waiter}</div>}
+          </div>
+          <div style={{padding:"10px 0",borderBottom:`1px dashed ${T.border}`}}>
+            {order.rawLines.map((item,i)=>(
+              <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,marginBottom:4}}>
+                <span style={{color:T.textSec,flex:1,marginRight:8}}>{item.qty}× {item.name}</span>
+                <span style={{color:T.text,flexShrink:0}}>{fmtEur((item.unit_price+item.extra_price)*item.qty)}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{padding:"10px 0",borderBottom:`1px dashed ${T.border}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4,color:T.textMuted}}><span>Subtotal (s/IVA)</span><span>{fmtEur(subtotalNet)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4,color:T.textMuted}}><span>IVA {vatRate}%</span><span>{fmtEur(vatAmt)}</span></div>
+            {order.discount>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4,color:T.success}}><span>− Desconto</span><span>− {fmtEur(order.discount)}</span></div>}
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,color:T.text,marginTop:6}}><span>TOTAL</span><span>{fmtEur(order.total)}</span></div>
+            {order.tip>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:T.teal,marginTop:2}}><span>Gorjeta</span><span>+ {fmtEur(order.tip)}</span></div>}
+          </div>
+          <div style={{padding:"10px 0"}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:T.textSec}}><span>Método</span><span style={{color:T.text}}>{METHOD_LABELS[order.method]||order.method}</span></div>
+          </div>
+          <div style={{textAlign:"center",paddingTop:8,borderTop:`1px dashed ${T.border}`,fontSize:11,color:T.textMuted}}>Obrigado pela visita!</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ORDER HISTORY ────────────────────────────────────────────────────────────
 function OrderHistory(){
   const [orders,setOrders]=useState([]);
   const [search,setSearch]=useState("");
   const [dateFilter,setDateFilter]=useState("Todos");
   const [expanded,setExpanded]=useState(null);
+  const [viewReceipt,setViewReceipt]=useState(null);
   useEffect(()=>{
     Promise.all([
       fetch("/api/orders?status=paid&limit=100").then(r=>r.json()),
@@ -1642,7 +1694,7 @@ function OrderHistory(){
       if(!Array.isArray(data))return;
       setOrders(data.map(o=>{
         const lines=(o.lines||[]).filter(l=>!l.cancelled);
-        const total=lines.reduce((s,l)=>s+(l.unit_price+l.extra_price)*l.qty,0);
+        const total=lines.reduce((s,l)=>s+(Number(l.unit_price)+Number(l.extra_price||0))*l.qty,0);
         const items=lines.reduce((s,l)=>s+l.qty,0);
         const d=new Date(o.paid_at||o.created_at);
         const pays=Array.isArray(o.payments)?o.payments:[];
@@ -1651,7 +1703,10 @@ function OrderHistory(){
         return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method,tip,
           time:d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}),
           date:d.toLocaleDateString("pt-PT"),
+          datetime:o.paid_at||o.created_at,
+          discount:Number(o.discount_value||0),
           lines:lines.map(l=>`${l.qty}x ${l.name}`),
+          rawLines:lines.map(l=>({qty:l.qty,name:l.name,unit_price:Number(l.unit_price),extra_price:Number(l.extra_price||0)})),
         };
       }));
     }).catch(()=>{});
@@ -1688,7 +1743,7 @@ function OrderHistory(){
                   <td>{o.tip>0?<span className="mono"style={{color:T.teal,fontWeight:700}}>+{fmtEur(o.tip)}</span>:<span style={{color:T.textMuted}}>—</span>}</td>
                   <td><Badge color={T.textSec}bg={T.elevated}>{o.method}</Badge></td>
                   <td><span style={{color:T.textMuted,fontSize:11}}>{o.date}</span><span className="mono"style={{color:T.textSec,marginLeft:6}}>{o.time}</span></td>
-                  <td><button className="btn btn-ghost btn-sm"onClick={()=>alert("🖨️ Pré-visualização de recibo — funcionalidade visual")}>Recibo</button></td>
+                  <td><button className="btn btn-ghost btn-sm"onClick={()=>setViewReceipt(o)}>Recibo</button></td>
                 </tr>
                 {expanded===o.id&&(
                   <tr>
@@ -1705,6 +1760,7 @@ function OrderHistory(){
         </table>
         {filtered.length===0&&<div className="empty-state">Sem pedidos encontrados</div>}
       </div>
+      {viewReceipt&&<ReceiptModalBO order={viewReceipt}onClose={()=>setViewReceipt(null)}/>}
     </div>
   );
 }
