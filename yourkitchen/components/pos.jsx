@@ -416,6 +416,18 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
   .notes-input{height:34px;font-size:11px;padding:6px 8px;}
   .op-actions{padding:6px 10px;gap:5px;}
   .op-actions .btn{padding:7px 6px;font-size:11px;}
+  /* compact payment modal on tablet */
+  .pay-modal{max-width:96vw;}
+  .pay-modal .modal-header{padding:14px 18px 0;}
+  .pay-modal .modal-body{padding:14px 18px;gap:14px!important;}
+  .pay-modal .modal-footer{padding:0 18px 14px;}
+  .pay-modal .pay-left{flex:0 0 210px!important;}
+  .pay-method{padding:10px;}
+  .pay-method-icon{font-size:19px;margin-bottom:3px;}
+  .pay-method-name{font-size:12px;}
+  .pay-method-grid{gap:6px;margin-bottom:12px;}
+  .pay-section{margin-bottom:12px;}
+  .pay-amount-input{font-size:22px;padding:9px 12px;}
 }
 @media(max-width:700px){
   .order-screen{flex-direction:column;}
@@ -789,7 +801,7 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
         </div>
         <div className="modal-body" style={{display:"flex",gap:20}}>
           {/* Left: mode toggle + summary + split/items */}
-          <div style={{flex:"0 0 260px"}}>
+          <div className="pay-left" style={{flex:"0 0 260px"}}>
             <div className="pay-mode-toggle">
               <button className={`pay-mode-btn${payMode==="pessoas"?" active":""}`} onClick={()=>switchMode("pessoas")}>👥 Por Pessoas</button>
               <button className={`pay-mode-btn${payMode==="itens"?" active":""}`} onClick={()=>switchMode("itens")}>🍽️ Por Itens</button>
