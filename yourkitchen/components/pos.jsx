@@ -221,11 +221,6 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 
 /* ─ FLOOR ─ */
 .floor-screen{flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fadeIn .2s;}
-.floor-stats{display:flex;align-items:center;gap:0;border-bottom:1px solid ${T.border};background:${T.surface};flex-shrink:0;}
-.stat-item{flex:1;padding:10px 18px;border-right:1px solid ${T.border};}
-.stat-item:last-child{border-right:none;}
-.stat-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${T.textMuted};margin-bottom:3px;}
-.stat-value{font-size:17px;font-weight:700;font-family:'DM Mono',monospace;}
 .floor-zones{display:flex;gap:0;border-bottom:1px solid ${T.border};background:${T.surface};flex-shrink:0;}
 .zone-tab{flex:1;padding:11px 20px;text-align:center;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${T.textMuted};cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
 .zone-tab.active{color:${T.accent};border-color:${T.accent};}
@@ -1375,33 +1370,11 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
 function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast}){
   const [zone,setZone]=useState(zones[0]||"Interior");
   const zoneTables=tables.filter(t=>t.zone===zone);
-  const occupiedCount=tables.filter(t=>t.status==="occupied"||t.status==="bill").length;
   const turnoNow=currentTurno(turnos||[]);
-  const activeOrders=Object.values(orders).filter(o=>o.items.length>0&&!o.paid).length;
-  const turnoVendas=Object.values(orders).filter(o=>o.paid).reduce((s,o)=>s+orderTotal(o.items),0);
 
   return(
     <>
     <div className="floor-screen">
-      <div className="floor-stats">
-        <div className="stat-item">
-          <div className="stat-label">Mesas Ocupadas</div>
-          <div className="stat-value" style={{color:T.warning}}>{occupiedCount}<span style={{fontSize:11,color:T.textMuted,fontWeight:400,marginLeft:4}}>/{tables.length}</span></div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Pedidos Abertos</div>
-          <div className="stat-value" style={{color:T.accent}}>{activeOrders}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Vendas Turno</div>
-          <div className="stat-value" style={{color:T.success}}>{fmtEur(turnoVendas)}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Turno Desde</div>
-          <div className="stat-value" style={{fontSize:14,color:T.textSec}}>{fmtTime(new Date(),{hour:"2-digit",minute:"2-digit"})}</div>
-        </div>
-      </div>
-
       {turnos&&turnos.length>0&&(
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 16px",borderBottom:`1px solid ${T.border}`,background:T.surface,flexShrink:0,overflowX:"auto"}}>
           <span style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,flexShrink:0}}>Turnos</span>
