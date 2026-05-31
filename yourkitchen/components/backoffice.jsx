@@ -97,7 +97,7 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
 .bo-topbar{height:52px;border-bottom:1px solid ${T.border};display:flex;align-items:center;padding:0 20px;gap:12px;background:${T.surface};flex-shrink:0;}
 .bo-section-title{font-size:16px;font-weight:700;}
 .bo-topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
-.bo-content{flex:1;overflow-y:auto;padding:20px;animation:fadeIn .2s;}
+.bo-content{flex:1;overflow-y:auto;padding:20px 20px 60px;animation:fadeIn .2s;}
 
 /* CARDS */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
@@ -187,6 +187,17 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
 .tag-del{background:none;border:none;color:${T.textMuted};cursor:pointer;font-size:13px;padding:0 0 0 2px;line-height:1;transition:color .12s;}
 .tag-del:hover{color:${T.danger};}
 .mod-block{background:${T.card};border:1px solid ${T.border};border-radius:8px;padding:10px 12px;margin-bottom:6px;}
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .grid-2,.grid-3{grid-template-columns:1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .stab{padding:8px 12px;font-size:11px;}
+}
+@media(max-width:600px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .sidebar.expanded{width:56px;}
+  .sb-label,.sb-logo-text,.sb-logo-sub,.sb-ext span{display:none;}
+}
 `;
 
 // ─── SMALL SHARED ─────────────────────────────────────────────────────────────
@@ -1661,7 +1672,7 @@ function OrderHistory(){
         {dates.map(d=><button key={d}className={`filter-chip${dateFilter===d?" active":""}`}onClick={()=>setDateFilter(d)}>{d}</button>)}
         <button className="btn btn-ghost"style={{marginLeft:"auto"}}onClick={()=>{}}><Ic.Export/>Exportar</button>
       </div>
-      <div className="card">
+      <div className="card" style={{overflowX:"auto"}}>
         <table className="data-table">
           <thead><tr><th></th><th>ID</th><th>Mesa</th><th>Funcionário</th><th>Itens</th><th>Total</th><th>Gorjeta</th><th>Método</th><th>Data/Hora</th><th></th></tr></thead>
           <tbody>
@@ -1858,12 +1869,12 @@ function SettingsSection({onAppNameChange}={}){
           <div style={{fontSize:12,color:T.textSec,marginBottom:12}}>Os horários em que o restaurante opera. As reservas só ficam ativas no POS durante o turno correspondente, no dia da reserva.</div>
           {(s.horario.turnos||[]).length===0&&<div style={{fontSize:13,color:T.textMuted,padding:"8px 0"}}>Sem turnos. Adiciona pelo menos um.</div>}
           {(s.horario.turnos||[]).map(t=>(
-            <div key={t.id}style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
-              <input className="form-input"style={{flex:1}}placeholder="Nome do turno"value={t.name}onChange={e=>setTurno(t.id,"name",e.target.value)}/>
-              <input className="form-input"style={{width:110}}type="time"value={t.start}onChange={e=>setTurno(t.id,"start",e.target.value)}/>
-              <span style={{color:T.textMuted}}>–</span>
-              <input className="form-input"style={{width:110}}type="time"value={t.end}onChange={e=>setTurno(t.id,"end",e.target.value)}/>
-              <button className="btn btn-ghost"style={{padding:"6px 10px"}}onClick={()=>removeTurno(t.id)}>✕</button>
+            <div key={t.id}style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:8,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
+              <input className="form-input"style={{flex:"1 1 120px",minWidth:0}}placeholder="Nome do turno"value={t.name}onChange={e=>setTurno(t.id,"name",e.target.value)}/>
+              <input className="form-input"style={{width:90,flexShrink:0}}type="time"value={t.start}onChange={e=>setTurno(t.id,"start",e.target.value)}/>
+              <span style={{color:T.textMuted,flexShrink:0}}>–</span>
+              <input className="form-input"style={{width:90,flexShrink:0}}type="time"value={t.end}onChange={e=>setTurno(t.id,"end",e.target.value)}/>
+              <button className="btn btn-ghost"style={{padding:"6px 10px",flexShrink:0}}onClick={()=>removeTurno(t.id)}>✕</button>
             </div>
           ))}
           <button className="btn btn-ghost"style={{marginTop:4}}onClick={addTurno}>+ Adicionar turno</button>
