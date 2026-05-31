@@ -405,6 +405,9 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .tip-quick-btn{padding:5px 10px;background:${T.card};border:1px solid ${T.border};border-radius:6px;color:${T.textSec};font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;transition:all .12s;}
 .tip-quick-btn:hover{border-color:${T.teal}55;color:${T.teal};background:${T.tealDim};}
 .tip-quick-btn.has-tip{border-color:${T.teal}55;color:${T.teal};background:${T.tealDim};}
+.tip-custom-input{padding:5px 8px;background:${T.card};border:1px solid ${T.border};border-radius:6px;color:${T.text};font-size:12px;font-weight:600;font-family:'DM Mono',monospace;width:70px;outline:none;transition:border-color .12s;}
+.tip-custom-input:focus{border-color:${T.teal}55;}
+.tip-custom-input::placeholder{color:${T.textSec};opacity:.6;}
 .receipt-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px;}
 .receipt-divider{border:none;border-top:1px dashed ${T.border};margin:10px 0;}
 @media print{body>*{visibility:hidden!important;}.receipt-print,.receipt-print *{visibility:visible!important;}.receipt-print{position:fixed;top:0;left:50%;transform:translateX(-50%);width:280px;padding:16px;background:#fff;color:#000;font-family:monospace;}}
@@ -656,6 +659,7 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
   const [split,setSplit]=useState(1);
   const [sel,setSel]=useState({}); // lineId -> units selected to pay now
   const [tip,setTip]=useState(0);
+  const [tipInput,setTipInput]=useState("");
 
   // Lines still owing money: sent (so they exist in the DB and were actually
   // ordered), not cancelled, and with units left to pay. Unsent draft items have
@@ -825,11 +829,22 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
             )}
             <div style={{marginTop:12}}>
               <div className="pay-label">Gorjeta</div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6,alignItems:"center"}}>
                 {[0.5,1,2,5].map(v=>(
                   <button key={v} className={`tip-quick-btn${tip>0?" has-tip":""}`} onClick={()=>setTip(t=>Number((t+v).toFixed(2)))}>+{fmtEur(v)}</button>
                 ))}
-                {tip>0&&<button onClick={()=>setTip(0)} style={{padding:"5px 10px",background:T.dangerDim,border:`1px solid ${T.danger}33`,borderRadius:6,color:T.danger,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="outro"
+                  className="tip-custom-input"
+                  value={tipInput}
+                  onChange={e=>setTipInput(e.target.value)}
+                  onBlur={()=>{const v=parseFloat(tipInput);if(!isNaN(v)&&v>=0){setTip(Number(v.toFixed(2)));}setTipInput("");}}
+                  onKeyDown={e=>{if(e.key==="Enter"){const v=parseFloat(tipInput);if(!isNaN(v)&&v>=0){setTip(Number(v.toFixed(2)));}setTipInput("");}}}
+                />
+                {tip>0&&<button onClick={()=>{setTip(0);setTipInput("");}} style={{padding:"5px 10px",background:T.dangerDim,border:`1px solid ${T.danger}33`,borderRadius:6,color:T.danger,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
               </div>
               {tip>0&&<div style={{fontSize:13,fontWeight:700,color:T.teal}}>+ {fmtEur(tip)} gorjeta</div>}
             </div>
