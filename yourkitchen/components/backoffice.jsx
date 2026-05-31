@@ -1826,7 +1826,7 @@ function LogsSection(){
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 const SETTINGS_DEFAULTS={
-  geral:{name:"YourKitchen",address:"",phone:"",email:""},
+  geral:{name:"YourKitchen",address:"",phone:"",email:"",timezone:"Europe/Lisbon"},
   fiscal:{nif:"",regime:"normal",rates:[
     {id:"r6",label:"Taxa Reduzida",value:6,active:true},
     {id:"r13",label:"Taxa Intermédia",value:13,active:true},
@@ -1847,7 +1847,7 @@ function SettingsSection({onAppNameChange}={}){
     fetch("/api/settings").then(r=>r.json()).then(flat=>{
       if(!flat||flat.error)return;
       setS(prev=>({
-        geral:{name:flat["geral.name"]??prev.geral.name,address:flat["geral.address"]??prev.geral.address,phone:flat["geral.phone"]??prev.geral.phone,email:flat["geral.email"]??prev.geral.email},
+        geral:{name:flat["geral.name"]??prev.geral.name,address:flat["geral.address"]??prev.geral.address,phone:flat["geral.phone"]??prev.geral.phone,email:flat["geral.email"]??prev.geral.email,timezone:flat["geral.timezone"]??prev.geral.timezone},
         fiscal:{nif:flat["fiscal.nif"]??prev.fiscal.nif,regime:flat["fiscal.regime"]??prev.fiscal.regime,rates:flat["fiscal.rates"]??prev.fiscal.rates},
         kds:{alertYellow:flat["kds.alertYellow"]??prev.kds.alertYellow,alertRed:flat["kds.alertRed"]??prev.kds.alertRed,autoRefresh:flat["kds.autoRefresh"]??prev.kds.autoRefresh},
         caixa:{defaultFundo:flat["caixa.defaultFundo"]??prev.caixa.defaultFundo,maxTurno:flat["caixa.maxTurno"]??prev.caixa.maxTurno,confirmAbertura:flat["caixa.confirmAbertura"]??prev.caixa.confirmAbertura},
@@ -1879,13 +1879,27 @@ function SettingsSection({onAppNameChange}={}){
   const removeTurno=(id)=>setS(p=>({...p,horario:{turnos:p.horario.turnos.filter(t=>t.id!==id)}}));
   return(
     <div>
-      <div className="stab-row">{["geral","fiscal","kds","caixa","horario"].map(t=><div key={t}className={`stab${tab===t?" active":""}`}onClick={()=>setTab(t)}style={{textTransform:"capitalize"}}>{t==="fiscal"?"Fiscal & IVA":t==="kds"?"KDS":t==="caixa"?"Caixa":t==="horario"?"Horário":t.charAt(0).toUpperCase()+t.slice(1)}</div>)}</div>
+      <div className="stab-row">{["geral","fiscal","kds"].map(t=><div key={t}className={`stab${tab===t?" active":""}`}onClick={()=>setTab(t)}>{t==="fiscal"?"Fiscal & IVA":t==="kds"?"KDS":"Geral"}</div>)}</div>
       <div style={{maxWidth:520}}>
         {tab==="geral"&&<div className="card"><div className="card-body">
           <Inp label="Nome do Restaurante"value={s.geral.name}onChange={e=>setG("name",e.target.value)}/>
           <Inp label="Morada"value={s.geral.address}onChange={e=>setG("address",e.target.value)}/>
           <div className="form-row"><Inp label="Telefone"value={s.geral.phone}onChange={e=>setG("phone",e.target.value)}/><Inp label="Email"value={s.geral.email}onChange={e=>setG("email",e.target.value)}/></div>
-          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["name","address","phone","email"],"geral")}>{saving?"A guardar...":"Guardar"}</button>
+          <Sel label="Fuso Horário"value={s.geral.timezone}onChange={e=>setG("timezone",e.target.value)}>
+            <option value="UTC">UTC</option>
+            <option value="Europe/Lisbon">Europe/Lisbon (WET/WEST)</option>
+            <option value="Europe/London">Europe/London (GMT/BST)</option>
+            <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+            <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+            <option value="America/New_York">America/New_York (EST/EDT)</option>
+            <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+            <option value="America/Denver">America/Denver (MST/MDT)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+            <option value="America/Sao_Paulo">America/Sao_Paulo (BRT)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+            <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+          </Sel>
+          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["name","address","phone","email","timezone"],"geral")}>{saving?"A guardar...":"Guardar"}</button>
         </div></div>}
         {tab==="fiscal"&&<div className="card"><div className="card-body">
           <Inp label="NIF do Restaurante"value={s.fiscal.nif}onChange={e=>setF("nif",e.target.value)}/>
@@ -1913,28 +1927,6 @@ function SettingsSection({onAppNameChange}={}){
             Ticket ficará <span style={{color:T.warning,fontWeight:700}}>amarelo</span> após <strong>{s.kds.alertYellow} min</strong> e <span style={{color:T.danger,fontWeight:700}}>vermelho</span> após <strong>{s.kds.alertRed} min</strong>.
           </div>
           <button className="btn btn-solid"style={{marginTop:14}}disabled={saving}onClick={()=>saveSection(["alertYellow","alertRed","autoRefresh"],"kds")}>{saving?"A guardar...":"Guardar"}</button>
-        </div></div>}
-        {tab==="caixa"&&<div className="card"><div className="card-body">
-          <Inp label="Fundo de Maneio Padrão (€)"type="number"value={s.caixa.defaultFundo}onChange={e=>setC("defaultFundo",parseFloat(e.target.value)||0)}/>
-          <Inp label="Duração Máxima de Turno (horas)"type="number"value={s.caixa.maxTurno}onChange={e=>setC("maxTurno",parseInt(e.target.value)||8)}/>
-          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0"}}><Toggle on={s.caixa.confirmAbertura}onChange={v=>setC("confirmAbertura",v)}/><span style={{fontSize:13,color:T.textSec}}>Exigir confirmação na abertura de turno</span></div>
-          <button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["defaultFundo","maxTurno","confirmAbertura"],"caixa")}>{saving?"A guardar...":"Guardar"}</button>
-        </div></div>}
-        {tab==="horario"&&<div className="card"><div className="card-body">
-          <label className="form-label">Turnos de Operação</label>
-          <div style={{fontSize:12,color:T.textSec,marginBottom:12}}>Os horários em que o restaurante opera. As reservas só ficam ativas no POS durante o turno correspondente, no dia da reserva.</div>
-          {(s.horario.turnos||[]).length===0&&<div style={{fontSize:13,color:T.textMuted,padding:"8px 0"}}>Sem turnos. Adiciona pelo menos um.</div>}
-          {(s.horario.turnos||[]).map(t=>(
-            <div key={t.id}style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:8,padding:"10px 12px",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,marginBottom:6}}>
-              <input className="form-input"style={{flex:"1 1 120px",minWidth:0}}placeholder="Nome do turno"value={t.name}onChange={e=>setTurno(t.id,"name",e.target.value)}/>
-              <input className="form-input"style={{width:90,flexShrink:0}}type="time"value={t.start}onChange={e=>setTurno(t.id,"start",e.target.value)}/>
-              <span style={{color:T.textMuted,flexShrink:0}}>–</span>
-              <input className="form-input"style={{width:90,flexShrink:0}}type="time"value={t.end}onChange={e=>setTurno(t.id,"end",e.target.value)}/>
-              <button className="btn btn-ghost"style={{padding:"6px 10px",flexShrink:0}}onClick={()=>removeTurno(t.id)}>✕</button>
-            </div>
-          ))}
-          <button className="btn btn-ghost"style={{marginTop:4}}onClick={addTurno}>+ Adicionar turno</button>
-          <div style={{marginTop:14}}><button className="btn btn-solid"disabled={saving}onClick={()=>saveSection(["turnos"],"horario")}>{saving?"A guardar...":"Guardar"}</button></div>
         </div></div>}
       </div>
     </div>

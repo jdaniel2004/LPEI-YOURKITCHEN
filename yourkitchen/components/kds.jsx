@@ -650,6 +650,15 @@ const css = `
     animation: pulse-red 2s infinite;
   }
   .live-dot-wrap { display: flex; align-items: center; gap: 6px; font-size: 11px; color: ${T.textMuted}; font-family: 'DM Mono', monospace; }
+
+  @media(max-width:900px){
+    .item-qty { font-size: 12px; min-width: 18px; }
+    .item-name { font-size: 12px; }
+    .item-notes { font-size: 11px; }
+    .ticket-footer { flex-wrap: wrap; padding: 8px 10px; gap: 6px; }
+    .ticket-action-btn { font-size: 12px; padding: 9px 8px; min-height: 36px; }
+    .btn-cancel-order { flex: 1 1 100%; }
+  }
 `;
 
 // ─── CLOCK ─────────────────────────────────────────────────────────────────────
@@ -755,7 +764,6 @@ function KDSTicket({ ticket, onAdvance, onCancelOrder }) {
             <div className="ticket-type-badge" style={{ color, background: bg }}>
               {label}
             </div>
-            <div className="ticket-id">#{ticket.id}</div>
           </div>
           <TimerBadge startedAt={ticket.startedAt ?? ticket.createdAt} endedAt={ticket.readyAt} done={isDone} />
         </div>
