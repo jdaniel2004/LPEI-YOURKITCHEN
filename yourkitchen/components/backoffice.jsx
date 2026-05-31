@@ -198,6 +198,11 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
   .sidebar.expanded{width:56px;}
   .sb-label,.sb-logo-text,.sb-logo-sub,.sb-ext span{display:none;}
 }
+@media print{
+  body>*{visibility:hidden!important;}
+  .receipt-print,.receipt-print *{visibility:visible!important;color:#000!important;border-color:#999!important;}
+  .receipt-print{position:fixed;top:0;left:50%;transform:translateX(-50%);width:280px;padding:16px;background:#fff;color:#000;font-family:monospace;}
+}
 `;
 
 // ─── SMALL SHARED ─────────────────────────────────────────────────────────────
@@ -1647,7 +1652,7 @@ function ReceiptModalBO({order,onClose}){
             <button className="modal-close"onClick={onClose}>✕</button>
           </div>
         </div>
-        <div style={{padding:"0 20px 20px",fontFamily:"'DM Mono',monospace"}}>
+        <div className="receipt-print"style={{padding:"0 20px 20px",fontFamily:"'DM Mono',monospace"}}>
           <div style={{textAlign:"center",padding:"16px 0 12px",borderBottom:`1px dashed ${T.border}`}}>
             <div style={{fontSize:17,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text,letterSpacing:-.3}}>Yourkitchen</div>
             <div style={{fontSize:12,color:T.textSec,marginTop:4}}>Mesa {order.table}</div>
