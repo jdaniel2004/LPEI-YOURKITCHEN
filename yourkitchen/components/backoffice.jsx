@@ -812,28 +812,6 @@ function MenuStock(){
                 </div>
               </div>
               <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                  <span className="form-label"style={{margin:0}}>Personalizados (só este item)</span>
-                  <button className="btn btn-ghost btn-sm"onClick={openNewMod}><Ic.Plus/>Adicionar</button>
-                </div>
-                {mods.length===0&&<div style={{fontSize:12,color:T.textMuted,padding:"4px 0 8px"}}>Sem modificadores específicos deste item.</div>}
-                {mods.map(m=>(
-                  <div key={m.id}className="mod-block">
-                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
-                      <div>
-                        <span style={{fontWeight:700,fontSize:13}}>{m.name}</span>
-                        {m.required&&<Badge color={T.danger}bg={T.dangerDim}style={{marginLeft:6}}>Obrigatório</Badge>}
-                        <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>{(m.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}</div>
-                      </div>
-                      <div style={{display:"flex",gap:4,flexShrink:0,marginLeft:8}}>
-                        <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>openEditMod(m)}><Ic.Edit/></button>
-                        <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteMod(m.id)}><Ic.Trash/></button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{marginTop:16,borderTop:`1px solid ${T.border}`,paddingTop:14}}>
                 <span className="form-label"style={{display:"block",marginBottom:8}}>Ingredientes</span>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
                   {linkedIngredients.map(li=>(
@@ -1342,10 +1320,6 @@ function ItemModifiersLib(){
                 </div>
               ))}
               <button className="btn btn-ghost btn-sm"onClick={addOpt}><Ic.Plus/>Adicionar opção</button>
-              <div style={{fontSize:11,color:T.textMuted,marginTop:8,lineHeight:1.5}}>
-                • <strong>Com ingrediente + qtd</strong>: ao escolher no POS desconta essa quantidade do stock (ex: "Espiral" → 200g de Massa Espiral).<br/>
-                • <strong>Sem ingrediente mas com qtd</strong> (extra, ex: "+200g"): desconta essa quantidade do <strong>ingrediente escolhido na base</strong>. A unidade é convertida automaticamente.
-              </div>
             </div>
             <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEdit(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name.trim()||saving}>Guardar</button></div>
           </div>
