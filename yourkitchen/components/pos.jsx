@@ -1363,9 +1363,12 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
 
 
 // ─── FLOOR SCREEN ─────────────────────────────────────────────────────────────
-function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast,notifs,onCloseNotif,onCloseAllNotifs}){
-  const [zone,setZone]=useState(zones[0]||"Interior");
-  const zoneTables=tables.filter(t=>t.zone===zone);
+function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast,zone,setZone,notifs,onCloseNotif,onCloseAllNotifs}){
+  // Zone selection lives in the parent (POS) so it survives leaving/returning to
+  // the floor. Fall back to the first zone until one is picked or if the stored
+  // one no longer exists.
+  const activeZone=(zone&&zones.includes(zone))?zone:(zones[0]||"Interior");
+  const zoneTables=tables.filter(t=>t.zone===activeZone);
   const turnoNow=currentTurno(turnos||[]);
 
   return(
@@ -1389,7 +1392,7 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
 
       <div className="floor-zones">
         {zones.map(z=>(
-          <div key={z} className={`zone-tab${zone===z?" active":""}`} onClick={()=>setZone(z)}>
+          <div key={z} className={`zone-tab${activeZone===z?" active":""}`} onClick={()=>setZone(z)}>
             {z}
             <span style={{marginLeft:6,fontSize:11,opacity:.6}}>({tables.filter(t=>t.zone===z).length})</span>
           </div>
@@ -1507,6 +1510,7 @@ export default function POS({session,appName="YourKitchen"}){
   const [ingredientStock,setIngredientStock]=useState({});
   const [turnos,setTurnos]=useState([]);
   const [activeTableId,setActiveTableId]=useState(null);
+  const [floorZone,setFloorZone]=useState(null); // selected zone tab — kept here so it survives entering/leaving an order
   const [toasts,setToasts]=useState([]);
   const [kdsNotifs,setKdsNotifs]=useState([]);
   const [readyOrders,setReadyOrders]=useState(()=>new Set());
@@ -2194,6 +2198,7 @@ export default function POS({session,appName="YourKitchen"}){
 
         {screen==="floor"&&(
           <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} turnos={turnos} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}
+            zone={floorZone} setZone={setFloorZone}
             notifs={kdsNotifs}
             onCloseNotif={id=>{kdsDismissedRef.current.add(id);setKdsNotifs(p=>p.filter(n=>n.id!==id));}}
             onCloseAllNotifs={()=>{kdsNotifs.forEach(n=>kdsDismissedRef.current.add(n.id));setKdsNotifs([]);}}
