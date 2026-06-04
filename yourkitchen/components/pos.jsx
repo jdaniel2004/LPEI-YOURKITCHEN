@@ -395,10 +395,17 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .toast{background:${T.elevated};border:1px solid ${T.borderBright};border-radius:10px;padding:10px 14px;font-size:13px;color:${T.text};box-shadow:0 8px 32px rgba(0,0,0,.5);animation:toastIn .25s ease;display:flex;align-items:center;gap:10px;min-width:240px;}
 .toast-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 
-/* ─ NOTIF BANNER ─ */
-.notif-banner{position:fixed;top:52px;left:0;right:0;z-index:30;background:#1a1a0a;border-bottom:2px solid ${T.warning};padding:8px 20px;display:flex;align-items:center;gap:12px;animation:fadeIn .2s;font-size:13px;color:${T.warning};}
-.notif-banner strong{font-weight:700;}
-.notif-close{margin-left:auto;background:none;border:none;color:${T.warning};cursor:pointer;font-size:16px;opacity:.7;}
+/* ─ NOTIF BUTTON + POPOVER ─ */
+.notif-fab{position:relative;}
+.notif-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:${T.danger};color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px ${T.bg};}
+.notif-pop{position:absolute;bottom:calc(100% + 8px);right:0;width:320px;max-height:50vh;background:#1a1a0a;border:1px solid ${T.warning};border-radius:12px;display:flex;flex-direction:column;overflow:hidden;animation:fadeIn .15s;font-size:13px;color:${T.warning};box-shadow:0 12px 24px rgba(0,0,0,.4);}
+.notif-pop strong{font-weight:700;}
+.notif-pop-head{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.3px;border-bottom:1px solid ${T.warning}33;flex-shrink:0;}
+.notif-list{overflow-y:auto;flex:1;min-height:0;}
+.notif-item{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid ${T.warning}1a;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item-label{flex:1;}
+.notif-close{background:none;border:none;color:${T.warning};cursor:pointer;font-size:14px;font-weight:700;opacity:.7;white-space:nowrap;font-family:inherit;}
 .notif-close:hover{opacity:1;}
 /* ─ RECEIPT ─ */
 .tip-quick-btn{padding:5px 10px;background:${T.card};border:1px solid ${T.border};border-radius:6px;color:${T.textSec};font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;transition:all .12s;}
@@ -1193,11 +1200,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
 
       {/* ORDER PANEL */}
       <div className="order-panel">
-        <div className="op-header">
-          <div className="op-table-badge">{tableLabel}</div>
-          <div className="op-waiter">{waiter.name}</div>
-        </div>
-
         <div className="op-items">
           {/* Pending */}
           {pendingItems.length>0&&(
@@ -1367,7 +1369,7 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
 
 
 // ─── FLOOR SCREEN ─────────────────────────────────────────────────────────────
-function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast}){
+function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast,notifs,onCloseNotif,onCloseAllNotifs}){
   const [zone,setZone]=useState(zones[0]||"Interior");
   const zoneTables=tables.filter(t=>t.zone===zone);
   const turnoNow=currentTurno(turnos||[]);
@@ -1449,6 +1451,7 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
       </div>
 
       <div className="fab-row">
+        <KDSNotifButton notifs={notifs} onClose={onCloseNotif} onCloseAll={onCloseAllNotifs}/>
         <button className="btn btn-teal btn-lg" onClick={()=>onQuickOrder("take-away")}>
           🥡 Take-Away
         </button>
@@ -1458,14 +1461,39 @@ function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickO
   );
 }
 
-// ─── KDS NOTIFICATION BANNER ──────────────────────────────────────────────────
-function KDSNotifBanner({notif,onClose}){
-  if(!notif) return null;
+// ─── KDS NOTIFICATION BUTTON ──────────────────────────────────────────────────
+// A bell button (with an unread badge) that opens a popover listing every order
+// ready to serve. Lives in the floor FAB row so it never overlays the POS — the
+// rest of the screen stays interactive even with a large backlog.
+function KDSNotifButton({notifs,onClose,onCloseAll}){
+  const [open,setOpen]=useState(false);
+  const count=notifs?.length||0;
+  // The popover only renders while there's something to show (count>0 guard
+  // below), so an empty list collapses it without needing to track extra state.
   return(
-    <div className="notif-banner">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-      <span>KDS — <strong>{notif.label}</strong> pronto para servir!</span>
-      <button className="notif-close" onClick={onClose}>✕</button>
+    <div className="notif-fab">
+      <button className="btn btn-ghost btn-lg" onClick={()=>setOpen(o=>!o)} style={{position:"relative"}}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Notificações
+        {count>0&&<span className="notif-badge">{count}</span>}
+      </button>
+      {open&&count>0&&(
+        <div className="notif-pop">
+          <div className="notif-pop-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>{count} {count===1?"pedido pronto":"pedidos prontos"} para servir</span>
+            <button className="notif-close" onClick={onCloseAll} style={{marginLeft:"auto"}}>Limpar todos ✕</button>
+          </div>
+          <div className="notif-list">
+            {notifs.map(n=>(
+              <div key={n.id} className="notif-item">
+                <span className="notif-item-label">KDS — <strong>{n.label}</strong> pronto para servir!</span>
+                <button className="notif-close" onClick={()=>onClose(n.id)}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1486,7 +1514,7 @@ export default function POS({session,appName="YourKitchen"}){
   const [turnos,setTurnos]=useState([]);
   const [activeTableId,setActiveTableId]=useState(null);
   const [toasts,setToasts]=useState([]);
-  const [kdsNotif,setKdsNotif]=useState(null);
+  const [kdsNotifs,setKdsNotifs]=useState([]);
   const [readyOrders,setReadyOrders]=useState(()=>new Set());
   const [loading,setLoading]=useState(true);
   const [showEndShift,setShowEndShift]=useState(false);
@@ -1504,6 +1532,7 @@ export default function POS({session,appName="YourKitchen"}){
   },[]);
 
   const readyOrdersRef = useRef(new Set());
+  const kdsDismissedRef = useRef(new Set()); // banner notifs manually dismissed by the waiter
   const sendingRef = useRef(false); // re-entrancy guard for handleSendKitchen
   const seenOrderIdsRef = useRef(new Set()); // order IDs ever observed on the server
   const [sending,setSending]=useState(false);
@@ -1563,6 +1592,10 @@ export default function POS({session,appName="YourKitchen"}){
           const initialReady=new Set(billRes.map(o=>o.id));
           setReadyOrders(initialReady);
           readyOrdersRef.current=initialReady;
+          // Pre-existing "bill" orders were already ready before this waiter logged
+          // in — don't surface them in the banner on startup. Seed them as
+          // already-dismissed so only orders that become ready *after* login show.
+          billRes.forEach(o=>kdsDismissedRef.current.add(o.id));
         }
 
         // Build table → order map: process bill→sent→open so "open" wins on conflict
@@ -1663,13 +1696,25 @@ export default function POS({session,appName="YourKitchen"}){
           newlyReady.forEach(o=>{
             const label=o.table?.label;
             if(label){
-              setKdsNotif({label});
               addToast(`KDS — Mesa ${label} pronta para servir`,T.success);
             } else if(o.type==="takeaway"){
               addToast(`KDS — Take-Away pronto para servir`,T.teal);
             }
           });
         }
+        // Rebuild the banner list every tick from the current "bill" orders: drops
+        // ones paid/served (here or elsewhere) and shows all that are still ready,
+        // honouring notifs the waiter has manually dismissed.
+        const billIds=new Set(data.map(o=>o.id));
+        for(const id of kdsDismissedRef.current) if(!billIds.has(id)) kdsDismissedRef.current.delete(id);
+        const entries=data.map(o=>({
+          id:o.id,
+          label:o.table?.label?`Mesa ${o.table.label}`:o.type==="takeaway"?"Take-Away":null,
+        })).filter(e=>e.label&&!kdsDismissedRef.current.has(e.id));
+        setKdsNotifs(prev=>{
+          if(prev.length===entries.length&&prev.every((p,i)=>p.id===entries[i].id)) return prev;
+          return entries;
+        });
       }catch{}
     };
     const id=setInterval(tick,4000);
@@ -2153,10 +2198,12 @@ export default function POS({session,appName="YourKitchen"}){
             </div>
           </header>
 
-        <KDSNotifBanner notif={kdsNotif} onClose={()=>setKdsNotif(null)}/>
-
         {screen==="floor"&&(
-          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} turnos={turnos} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}/>
+          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} turnos={turnos} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}
+            notifs={kdsNotifs}
+            onCloseNotif={id=>{kdsDismissedRef.current.add(id);setKdsNotifs(p=>p.filter(n=>n.id!==id));}}
+            onCloseAllNotifs={()=>{kdsNotifs.forEach(n=>kdsDismissedRef.current.add(n.id));setKdsNotifs([]);}}
+          />
         )}
         {screen==="order"&&activeTable&&activeOrder&&(
           <OrderScreen
