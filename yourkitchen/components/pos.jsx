@@ -69,7 +69,7 @@ function buildMenu(menuRes, modifierIngIds){
           options:(t.options||[]).map(mapOpt),
         }));
       catMap[cat.id].items.push({
-        id:item.id,name:item.name,emoji:item.emoji||"🍽️",
+        id:item.id,name:item.name,emoji:item.emoji||"🍽️",image:item.image_url||null,
         price:item.price,vat:item.vat_rate,stock:item.stock,
         mods:[...customMods,...linkedMods],
         ingredientMods:(item.ingredients||[])
@@ -226,8 +226,8 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .zone-tab.active{color:${T.accent};border-color:${T.accent};}
 .zone-tab:hover:not(.active){color:${T.textSec};}
 .floor-body{flex:1;overflow-y:auto;padding:16px;}
-.tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
-.table-card{border:1px solid ${T.border};border-radius:10px;padding:12px;cursor:pointer;transition:all .18s;background:${T.card};min-height:100px;display:flex;flex-direction:column;gap:6px;position:relative;}
+.tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+.table-card{border:1px solid ${T.border};border-radius:12px;padding:16px;cursor:pointer;transition:all .18s;background:${T.card};min-height:128px;display:flex;flex-direction:column;gap:8px;position:relative;}
 .table-card:hover{border-color:${T.borderBright};transform:translateY(-1px);}
 .table-card:active{transform:scale(.98);}
 .table-card.status-free{border-color:${T.success}33;}
@@ -260,6 +260,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .menu-item-card:active{transform:scale(.96);}
 .menu-item-card.out-of-stock{opacity:.45;cursor:not-allowed;pointer-events:none;}
 .item-emoji{font-size:22px;line-height:1;}
+.item-img{width:100%;height:72px;object-fit:cover;border-radius:8px;background:${T.elevated};display:block;}
 .item-name{font-size:12px;font-weight:600;color:${T.text};line-height:1.3;min-height:30px;}
 .item-price{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:${T.accent};}
 .item-stock-badge{position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;background:${T.dangerDim};color:${T.danger};border:1px solid ${T.danger}33;padding:2px 5px;border-radius:3px;}
@@ -440,11 +441,11 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
   .menu-panel{flex:0 0 auto;height:55%;border-right:none;border-bottom:1px solid ${T.border};}
   .order-panel{flex:1;min-height:0;}
   .menu-items{grid-template-columns:repeat(2,1fr);}
-  .tables-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+  .tables-grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr));}
 }
 @media(max-width:480px){
   .menu-items{grid-template-columns:repeat(2,1fr);}
-  .tables-grid{grid-template-columns:repeat(auto-fill,minmax(95px,1fr));}
+  .tables-grid{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));}
   .table-id{font-size:13px;}
 }
 @media print{body>*{visibility:hidden!important;}.receipt-print,.receipt-print *{visibility:visible!important;}.receipt-print{position:fixed;top:0;left:50%;transform:translateX(-50%);width:280px;padding:16px;background:#fff;color:#000;font-family:monospace;}}
@@ -1189,7 +1190,9 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
               <div key={item.id} className={`menu-item-card${(oos||ingBlocked)?" out-of-stock":""}`} onClick={()=>handleAddItem(item)}>
                 {(oos||ingBlocked) && <div className="item-stock-badge">ESGOTADO</div>}
                 {low && <div className="item-low-badge">Ult. {st}</div>}
-                <div className="item-emoji">{item.emoji}</div>
+                {item.image
+                  ? <img className="item-img" src={item.image} alt="" loading="lazy"/>
+                  : <div className="item-emoji">{item.emoji}</div>}
                 <div className="item-name">{item.name}</div>
                 <div className="item-price">{fmtEur(item.price)}</div>
               </div>
