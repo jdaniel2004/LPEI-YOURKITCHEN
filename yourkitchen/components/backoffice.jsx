@@ -1759,6 +1759,8 @@ function OrderHistory(){
   const [orders,setOrders]=useState([]);
   const [search,setSearch]=useState("");
   const [dateFilter,setDateFilter]=useState("Todos");
+  const [fromDt,setFromDt]=useState(""); // datetime-local: limite inferior
+  const [toDt,setToDt]=useState("");     // datetime-local: limite superior
   const [expanded,setExpanded]=useState(null);
   const [viewReceipt,setViewReceipt]=useState(null);
   useEffect(()=>{
@@ -1798,9 +1800,19 @@ function OrderHistory(){
   const todayStr=fmtDate(new Date());
   const yestStr=fmtDate(new Date(Date.now()-86400000));
   const dates=["Todos","Hoje","Ontem"];
+  const rangeActive=!!(fromDt||toDt);
+  const fromMs=fromDt?new Date(fromDt).getTime():null;
+  const toMs=toDt?new Date(toDt).getTime():null;
   const filtered=orders.filter(o=>{
-    if(dateFilter==="Hoje"&&o.date!==todayStr)return false;
-    if(dateFilter==="Ontem"&&o.date!==yestStr)return false;
+    // Custom date/time range takes precedence over the quick chips.
+    if(rangeActive){
+      const t=new Date(o.datetime).getTime();
+      if(fromMs!=null&&t<fromMs)return false;
+      if(toMs!=null&&t>toMs)return false;
+    }else{
+      if(dateFilter==="Hoje"&&o.date!==todayStr)return false;
+      if(dateFilter==="Ontem"&&o.date!==yestStr)return false;
+    }
     if(search&&!o.table.toLowerCase().includes(search.toLowerCase())&&!o.waiter.toLowerCase().includes(search.toLowerCase()))return false;
     return true;
   });
@@ -1808,7 +1820,14 @@ function OrderHistory(){
     <div>
       <div className="filters-row">
         <input className="filter-input"placeholder="Pesquisar mesa, funcionário..."value={search}onChange={e=>setSearch(e.target.value)}style={{width:240}}/>
-        {dates.map(d=><button key={d}className={`filter-chip${dateFilter===d?" active":""}`}onClick={()=>setDateFilter(d)}>{d}</button>)}
+        {dates.map(d=><button key={d}className={`filter-chip${!rangeActive&&dateFilter===d?" active":""}`}onClick={()=>{setFromDt("");setToDt("");setDateFilter(d);}}>{d}</button>)}
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:11,color:T.textMuted}}>De</span>
+          <input type="datetime-local"className="filter-input"value={fromDt}onChange={e=>setFromDt(e.target.value)}style={{width:185,colorScheme:"dark"}}/>
+          <span style={{fontSize:11,color:T.textMuted}}>Até</span>
+          <input type="datetime-local"className="filter-input"value={toDt}onChange={e=>setToDt(e.target.value)}style={{width:185,colorScheme:"dark"}}/>
+          {rangeActive&&<button className="filter-chip"onClick={()=>{setFromDt("");setToDt("");}}title="Limpar intervalo">✕</button>}
+        </div>
         <button className="btn btn-ghost"style={{marginLeft:"auto"}}onClick={()=>{}}><Ic.Export/>Exportar</button>
       </div>
       <div className="card" style={{overflowX:"auto"}}>
@@ -1879,7 +1898,7 @@ function LogsSection(){
       setLogs(data.map(l=>{const d=new Date(l.created_at);return{id:l.id,level:l.level,module:l.module,date:fmtDate(d,{day:"2-digit",month:"2-digit",year:"2-digit"}),time:fmtTime(d,{hour:"2-digit",minute:"2-digit",second:"2-digit"}),msg:l.message,comment:l.comment,who:l.staff?.name||null};}));
     }).catch(()=>{});
   },[]);
-  const levels=["Todos","INFO","ACTION","WARN","ERROR","CANCEL"];
+  const levels=["Todos","ACTION","CANCEL"];
   const modules=["Todos","POS","KDS","BACKOFFICE"];
   const filtered=logs.filter(l=>{
     if(level!=="Todos"&&l.level!==level)return false;
