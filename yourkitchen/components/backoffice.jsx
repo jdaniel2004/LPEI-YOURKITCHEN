@@ -1509,13 +1509,6 @@ function IngredientsMgmt(){
                 <input className="form-input"type="number"step="0.001"min="0"value={form.stock_qty===undefined?"":form.stock_qty}onChange={e=>setForm(p=>({...p,stock_qty:e.target.value}))}/>
                 {(()=>{const cv=getConversions(form.unit,parseFloat(form.stock_qty)||0);return cv.length>0?<div style={{fontSize:11,color:T.textMuted,marginTop:5}}>{fmtQty(parseFloat(form.stock_qty)||0)} {form.unit} = {cv.map(c=>`${fmtQty(c.val)} ${c.unit}`).join(" = ")}</div>:null;})()}
               </div>
-              <div className="form-group">
-                <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-                  <input type="checkbox"checked={!!form.is_modifier}onChange={e=>setForm(p=>({...p,is_modifier:e.target.checked}))}/>
-                  <span className="form-label"style={{margin:0}}>Modificador de pedido (visível no POS)</span>
-                </label>
-                <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>O POS permite retirar ou adicionar extra deste ingrediente em cada item.</div>
-              </div>
             </div>
             <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditIng(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
           </div>
