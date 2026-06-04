@@ -253,12 +253,13 @@ function Dashboard(){
     Promise.all([
       fetch("/api/analytics/summary").then(r=>r.json()),
       fetch("/api/tables").then(r=>r.json()),
-      fetch("/api/orders?status=paid&limit=4").then(r=>r.json()),
+      fetch("/api/orders?status=paid&limit=16").then(r=>r.json()),
       fetch("/api/staff").then(r=>r.json()),
     ]).then(([sum,tbls,ords,staff])=>{
       if(sum&&!sum.error)setSummary(sum);
       setTables(Array.isArray(tbls)?tbls:[]);
-      setRecent(Array.isArray(ords)?ords.slice(0,4):[]);
+      // Drop phantom €0.00 orders (empty follow-ups) before taking the latest 4.
+      setRecent(Array.isArray(ords)?ords.filter(o=>(o.lines||[]).some(l=>!l.cancelled)).slice(0,4):[]);
       setOnShift(Array.isArray(staff)?staff.filter(s=>s.active):[]);
     }).catch(()=>{});
   },[]);
@@ -1765,7 +1766,11 @@ function OrderHistory(){
       fetch("/api/analytics/payments?from="+new Date(Date.now()-30*86400000).toISOString()).then(r=>r.json()).catch(()=>[]),
     ]).then(([data])=>{
       if(!Array.isArray(data))return;
-      setOrders(data.map(o=>{
+      setOrders(data
+        // Skip phantom orders with no real (non-cancelled) lines — empty
+        // follow-up orders auto-created on "send" that were never used.
+        .filter(o=>(o.lines||[]).some(l=>!l.cancelled))
+        .map(o=>{
         const lines=(o.lines||[]).filter(l=>!l.cancelled);
         const total=lines.reduce((s,l)=>s+(Number(l.unit_price)+Number(l.extra_price||0))*l.qty,0);
         const items=lines.reduce((s,l)=>s+l.qty,0);

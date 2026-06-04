@@ -1984,9 +1984,12 @@ export default function POS({session,appName="YourKitchen"}){
     const billableOrders=allTableOrders.filter(o=>!o.paid&&!o.draft&&o.id&&oPayable(o)>0);
     if(billableOrders.length===0) return {fullyPaid:false};
     const cleanupEmptyFollowUp=()=>{
-      // Patch the empty follow-up order to "paid" so it doesn't reattach on sync
+      // Void the empty follow-up order (no lines were ever ordered) so it doesn't
+      // reattach on sync. Mark it "cancelled" rather than "paid" — it represents
+      // no sale, so marking it paid would surface a phantom €0.00 order in the
+      // backoffice payments listing.
       if(activeOrder&&activeOrder.id&&!activeOrder.draft&&(activeOrder.items||[]).length===0){
-        fetch(`/api/orders/${activeOrder.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"paid"})}).catch(()=>{});
+        fetch(`/api/orders/${activeOrder.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"cancelled"})}).catch(()=>{});
         setOrders(p=>{const{[activeOrder.id]:_,...rest}=p;return rest;});
       }
     };
