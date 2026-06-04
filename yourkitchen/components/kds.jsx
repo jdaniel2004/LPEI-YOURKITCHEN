@@ -77,7 +77,9 @@ function mapTicket(o) {
 function elapsed(createdAt) {
   return Math.floor((Date.now() - createdAt) / 1000);
 }
-function fmtTime(secs) {
+// Elapsed-time formatter for ticket timers (seconds → "m:ss"). Named distinctly
+// from the imported fmtTime(date, opts) clock formatter to avoid a name clash.
+function fmtTimer(secs) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
@@ -710,7 +712,7 @@ function TimerBadge({ startedAt, endedAt, done }) {
       style={{ color, background: bg, border: `1px solid ${color}44` }}
       title={frozen ? "Tempo de preparação" : "A preparar"}
     >
-      {frozen ? `✓ ${fmtTime(secs)}` : fmtTime(secs)}
+      {frozen ? `✓ ${fmtTimer(secs)}` : fmtTimer(secs)}
     </div>
   );
 }
