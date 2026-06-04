@@ -3,12 +3,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { name, required, options } = body;
+  const { name, required, single, options } = body;
   if (!name) return Response.json({ error: "name obrigatório" }, { status: 400 });
 
   const { data: mod, error: modErr } = await supabaseAdmin
     .from("item_modifiers")
-    .insert({ item_id: id, name, required: required ?? false, position: 0 })
+    .insert({ item_id: id, name, required: required ?? false, single: single ?? false, position: 0 })
     .select()
     .single();
   if (modErr) return Response.json({ error: modErr.message }, { status: 500 });

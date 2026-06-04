@@ -58,14 +58,14 @@ function buildMenu(menuRes, modifierIngIds){
       const mapOpt=o=>({id:o.id,label:o.label,price:o.extra_price||0,ingredientId:o.ingredient_id||null,ingredientQty:o.ingredient_qty!=null?Number(o.ingredient_qty):null,ingredientUnit:o.ingredient_unit||null,ingredientStoredUnit:o.ingredient?.unit||null,ingredientName:o.ingredient?.name||null});
       // Per-item custom modifiers
       const customMods=(item.modifiers||[]).map(m=>({
-        id:m.id,name:m.name,
+        id:m.id,name:m.name,single:!!m.single,
         options:(m.options||[]).map(mapOpt),
       }));
       // Linked library modifiers (synchronised templates)
       const linkedMods=(item.templateLinks||[])
         .map(tl=>tl.template).filter(Boolean)
         .map(t=>({
-          id:t.id,name:t.name,
+          id:t.id,name:t.name,single:!!t.single,
           options:(t.options||[]).map(mapOpt),
         }));
       catMap[cat.id].items.push({
@@ -320,6 +320,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .mod-radio{width:16px;height:16px;border-radius:50%;border:2px solid ${T.border};transition:all .12s;flex-shrink:0;}
 .mod-option.selected .mod-radio{border-color:${T.accent};background:${T.accent};}
 .mod-check{width:16px;height:16px;border-radius:4px;border:2px solid ${T.border};transition:all .12s;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.mod-option-single .mod-check{border-radius:50%;}
 .mod-option.selected .mod-check{border-color:${T.accent};background:${T.accent};}
 
 /* ─ INGREDIENT MODIFIER ROWS ─ */
@@ -477,8 +478,11 @@ function ModifierModal({item,ingredientStock,onConfirm,onClose}){
   // ingState: Record<id, 'removed'|'extra'> — absent means neutral
   const [ingState,setIngState]=useState({});
 
-  const toggleOptional=(modId,optId)=>setExtras(p=>{
+  const toggleOptional=(modId,optId,single)=>setExtras(p=>{
     const cur=p[modId]||{};
+    // Single-select groups behave like radios: picking an option replaces the
+    // group's choice; clicking the chosen one again clears it.
+    if(single) return {...p,[modId]: cur[optId] ? {} : {[optId]:true}};
     return {...p,[modId]:{...cur,[optId]:!cur[optId]}};
   });
   const toggleIng=(ingId,action)=>setIngState(p=>{
@@ -542,15 +546,15 @@ function ModifierModal({item,ingredientStock,onConfirm,onClose}){
         <div className="modal-body">
           {item.mods.map(mod=>(
             <div key={mod.id} className="mod-group">
-              <div className="mod-group-title">{mod.name}</div>
+              <div className="mod-group-title">{mod.name}{mod.single&&<span style={{fontSize:10,color:T.textMuted,marginLeft:6,fontWeight:500,textTransform:"none",letterSpacing:0}}>· escolhe só uma</span>}</div>
               <div className="mod-options">
                 {mod.options.map(opt=>{
                   const isSelected=!!(extras[mod.id]||{})[opt.id];
                   return(
                     <div
                       key={opt.id}
-                      className={`mod-option${isSelected?" selected":""}`}
-                      onClick={()=>toggleOptional(mod.id,opt.id)}
+                      className={`mod-option${isSelected?" selected":""}${mod.single?" mod-option-single":""}`}
+                      onClick={()=>toggleOptional(mod.id,opt.id,mod.single)}
                     >
                       <div className="mod-check">{isSelected&&<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2 6 5 9 10 3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}</div>
                       <div className="mod-option-label">

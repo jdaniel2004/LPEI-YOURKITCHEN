@@ -507,7 +507,7 @@ function MenuStock(){
   const [errMsg,setErrMsg]=useState("");
   const [mods,setMods]=useState([]);
   const [editMod,setEditMod]=useState(null);
-  const [modForm,setModForm]=useState({name:"",required:false,options:[{label:"",price:""}]});
+  const [modForm,setModForm]=useState({name:"",required:false,single:false,options:[{label:"",price:""}]});
   const [allIngredients,setAllIngredients]=useState([]);
   const [linkedIngredients,setLinkedIngredients]=useState([]);
   const [selIngredient,setSelIngredient]=useState("");
@@ -610,7 +610,7 @@ function MenuStock(){
       if(data.error){setErrMsg(data.error);return;}
       if(mods.length>0){
         await Promise.all(mods.map(m=>
-          fetch(`/api/menu/items/${data.id}/modifiers`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:m.name,required:m.required,options:m.options})}).catch(()=>{})
+          fetch(`/api/menu/items/${data.id}/modifiers`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:m.name,required:m.required,single:m.single,options:m.options})}).catch(()=>{})
         ));
       }
       if(linkedIngredients.length>0){
@@ -652,16 +652,16 @@ function MenuStock(){
     });
   };
 
-  const openNewMod=()=>{setModForm({name:"",required:false,options:[{label:"",price:""}]});setEditMod("new");};
-  const openEditMod=(m)=>{setModForm({name:m.name,required:m.required,options:(m.options||[]).map(o=>({label:o.label,price:o.extra_price||0}))});setEditMod(m.id);};
+  const openNewMod=()=>{setModForm({name:"",required:false,single:false,options:[{label:"",price:""}]});setEditMod("new");};
+  const openEditMod=(m)=>{setModForm({name:m.name,required:m.required,single:!!m.single,options:(m.options||[]).map(o=>({label:o.label,price:o.extra_price||0}))});setEditMod(m.id);};
   const saveMod=async()=>{
-    const body={name:modForm.name,required:modForm.required,options:modForm.options.filter(o=>o.label.trim()).map(o=>({label:o.label,extra_price:parseFloat(o.price)||0}))};
+    const body={name:modForm.name,required:modForm.required,single:!!modForm.single,options:modForm.options.filter(o=>o.label.trim()).map(o=>({label:o.label,extra_price:parseFloat(o.price)||0}))};
     if(editItem==="new"){
       // Local-only: will be posted after item creation in saveItem
       if(editMod==="new"){
-        setMods(p=>[...p,{id:`local_${Date.now()}`,name:body.name,required:body.required,options:body.options}]);
+        setMods(p=>[...p,{id:`local_${Date.now()}`,name:body.name,required:body.required,single:body.single,options:body.options}]);
       } else {
-        setMods(p=>p.map(m=>m.id===editMod?{...m,name:body.name,required:body.required,options:body.options}:m));
+        setMods(p=>p.map(m=>m.id===editMod?{...m,name:body.name,required:body.required,single:body.single,options:body.options}:m));
       }
       setEditMod(null);return;
     }
@@ -880,6 +880,9 @@ function MenuStock(){
                 <div className="form-group"style={{display:"flex",alignItems:"center",gap:10,paddingTop:22}}>
                   <Toggle on={modForm.required}onChange={v=>setModForm(p=>({...p,required:v}))}/><span style={{fontSize:13,color:T.textSec}}>Obrigatório</span>
                 </div>
+              </div>
+              <div className="form-group"style={{display:"flex",alignItems:"center",gap:10,marginTop:4}}>
+                <Toggle on={modForm.single}onChange={v=>setModForm(p=>({...p,single:v}))}/><span style={{fontSize:13,color:T.textSec}}>Apenas escolher uma opção</span>
               </div>
               <div className="form-label"style={{marginBottom:8}}>Opções</div>
               {modForm.options.map((opt,i)=>(
@@ -1201,7 +1204,7 @@ function ItemModifiersLib(){
   const [templates,setTemplates]=useState([]);
   const [allIngredients,setAllIngredients]=useState([]);
   const [edit,setEdit]=useState(null); // "new" | id | null
-  const [form,setForm]=useState({name:"",options:[{label:"",price:"",ingredientId:"",ingredientQty:""}]});
+  const [form,setForm]=useState({name:"",single:false,options:[{label:"",price:"",ingredientId:"",ingredientQty:""}]});
   const [saving,setSaving]=useState(false);
 
   useEffect(()=>{
@@ -1215,10 +1218,10 @@ function ItemModifiersLib(){
   },[]);
 
   const blankOpt={label:"",price:"",ingredientId:"",ingredientQty:"",ingredientUnit:""};
-  const openNew=()=>{setForm({name:"",options:[{...blankOpt}]});setEdit("new");};
+  const openNew=()=>{setForm({name:"",single:false,options:[{...blankOpt}]});setEdit("new");};
   const openEdit=(t)=>{
     const opts=(t.options||[]).map(o=>({label:o.label,price:o.extra_price||0,ingredientId:o.ingredient_id||"",ingredientQty:o.ingredient_qty!=null?o.ingredient_qty:"",ingredientUnit:o.ingredient_unit||(o.ingredient_id?ingUnit(o.ingredient_id):"g")}));
-    setForm({name:t.name,options:opts.length?opts:[{...blankOpt}]});
+    setForm({name:t.name,single:!!t.single,options:opts.length?opts:[{...blankOpt}]});
     setEdit(t.id);
   };
   const setOpt=(i,k,v)=>setForm(p=>({...p,options:p.options.map((o,j)=>{
@@ -1242,6 +1245,7 @@ function ItemModifiersLib(){
     setSaving(true);
     const body={
       name:form.name.trim(),
+      single:!!form.single,
       options:form.options.filter(o=>o.label.trim()).map(o=>{
         const hasQty=o.ingredientQty!==""&&o.ingredientQty!=null;
         return {
@@ -1315,6 +1319,9 @@ function ItemModifiersLib(){
             <div className="modal-hd"><div className="modal-title">{edit==="new"?"Novo Modificador":"Editar Modificador"}</div><CloseBtn onClick={()=>setEdit(null)}/></div>
             <div className="modal-body">
               <Inp label="Nome do Grupo (ex: Tipo de massa)"value={form.name}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
+                <Toggle on={!!form.single}onChange={v=>setForm(p=>({...p,single:v}))}/><span style={{fontSize:13,color:T.textSec}}>Apenas escolher uma opção (no POS)</span>
+              </div>
               <div className="form-label"style={{marginBottom:8,marginTop:6}}>Opções</div>
               <div style={{display:"flex",fontSize:10,color:T.textMuted,gap:10,padding:"0 4px 4px"}}>
                 <span style={{flex:2}}>Etiqueta</span><span style={{width:90}}>Preço (+€)</span><span style={{flex:2}}>Ingrediente</span><span style={{width:80}}>Qtd</span><span style={{width:90}}>Unidade</span><span style={{width:32}}/>

@@ -9,6 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const patch: Record<string, unknown> = {};
   if ("name" in body) patch.name = body.name;
   if ("required" in body) patch.required = body.required;
+  if ("single" in body) patch.single = body.single;
 
   if (Object.keys(patch).length > 0) {
     const { error } = await supabaseAdmin

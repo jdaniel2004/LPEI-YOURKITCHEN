@@ -3,11 +3,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string; modId: string }> }) {
   const { modId } = await params;
   const body = await req.json();
-  const { name, required, options } = body;
+  const { name, required, single, options } = body;
 
   const patch: Record<string, unknown> = {};
   if (name !== undefined) patch.name = name;
   if (required !== undefined) patch.required = required;
+  if (single !== undefined) patch.single = single;
 
   if (Object.keys(patch).length > 0) {
     const { error } = await supabaseAdmin

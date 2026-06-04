@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     const ids = (data as unknown as Array<{ id: string }>).map((i) => i.id);
     const { data: links } = await supabaseAdmin
       .from("item_modifier_templates")
-      .select("item_id, template:modifier_templates(id,name,required,options:modifier_template_options(*, ingredient:ingredients(id,name,unit)))")
+      .select("item_id, template:modifier_templates(id,name,required,single,options:modifier_template_options(*, ingredient:ingredients(id,name,unit)))")
       .in("item_id", ids);
     if (Array.isArray(links)) {
       const byItem: Record<string, { template: unknown }[]> = {};
