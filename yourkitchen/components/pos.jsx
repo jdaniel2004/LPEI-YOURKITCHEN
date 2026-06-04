@@ -260,7 +260,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .menu-item-card:active{transform:scale(.96);}
 .menu-item-card.out-of-stock{opacity:.45;cursor:not-allowed;pointer-events:none;}
 .item-emoji{font-size:22px;line-height:1;}
-.item-img{width:100%;height:72px;object-fit:cover;border-radius:8px;background:${T.elevated};display:block;}
+.item-img{width:100%;height:96px;object-fit:contain;border-radius:8px;background:${T.elevated};display:block;padding:4px;}
 .item-name{font-size:12px;font-weight:600;color:${T.text};line-height:1.3;min-height:30px;}
 .item-price{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:${T.accent};}
 .item-stock-badge{position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;background:${T.dangerDim};color:${T.danger};border:1px solid ${T.danger}33;padding:2px 5px;border-radius:3px;}
