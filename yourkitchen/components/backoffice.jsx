@@ -20,6 +20,7 @@ const T = {
 function fmtEur(v){return `€${Number(v).toFixed(2)}`;}
 function fmtElapsed(iso){const m=Math.floor((Date.now()-new Date(iso))/60000);return m<60?`${m}m`:`${Math.floor(m/60)}h${m%60<10?"0":""}${m%60}m`;}
 const DAYS_PT=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const PAY_METHOD_LABEL={numerario:"Numerário",cartao:"Cartão",mbway:"MB Way",multibanco:"Multibanco"};
 
 // ─── UNIT SYSTEM ─────────────────────────────────────────────────────────────
 const UNIT_DEFS=[
@@ -1704,7 +1705,7 @@ function Campaigns(){
 
 // ─── RECEIPT MODAL (BACKOFFICE) ───────────────────────────────────────────────
 function ReceiptModalBO({order,onClose}){
-  const METHOD_LABELS={numerario:"Numerário",cartao:"Cartão",mbway:"MB Way",multibanco:"Multibanco"};
+  const METHOD_LABELS=PAY_METHOD_LABEL;
   const dt=new Date(order.datetime);
   const dateStr=fmtDate(dt,{day:"2-digit",month:"2-digit",year:"numeric"});
   const timeStr=fmtTime(dt,{hour:"2-digit",minute:"2-digit"});
@@ -1775,10 +1776,15 @@ function OrderHistory(){
         const total=lines.reduce((s,l)=>s+(Number(l.unit_price)+Number(l.extra_price||0))*l.qty,0);
         const items=lines.reduce((s,l)=>s+l.qty,0);
         const d=new Date(o.paid_at||o.created_at);
-        const pays=Array.isArray(o.payments)?o.payments:[];
-        const method=pays[0]?.method||"—";
-        const tip=pays.reduce((s,p)=>s+Number(p.tip||0),0);
-        return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method,tip,
+        const pays=(Array.isArray(o.payments)?o.payments:[]).map(p=>({
+          method:p.method,amount:Number(p.amount||0),tip:Number(p.tip||0),
+          items:Array.isArray(p.items)?p.items:null,
+        }));
+        // Distinct payment methods used (an item-split bill can mix methods).
+        const methods=[...new Set(pays.map(p=>p.method))];
+        const method=methods.length?methods.map(m=>PAY_METHOD_LABEL[m]||m).join(", "):"—";
+        const tip=pays.reduce((s,p)=>s+p.tip,0);
+        return{id:o.id,table:o.table?.label||"—",waiter:o.waiter?.name||"—",items,total,method,tip,payments:pays,
           time:fmtTime(d,{hour:"2-digit",minute:"2-digit"}),
           date:fmtDate(d),
           datetime:o.paid_at||o.created_at,
@@ -1826,9 +1832,27 @@ function OrderHistory(){
                 {expanded===o.id&&(
                   <tr>
                     <td colSpan={10}style={{background:T.elevated,padding:"12px 20px"}}>
-                      <div style={{fontSize:12,color:T.textSec,display:"flex",flexWrap:"wrap",gap:8}}>
+                      <div style={{fontSize:11,color:T.textMuted,fontWeight:700,letterSpacing:.5,marginBottom:6}}>ITENS DO PEDIDO</div>
+                      <div style={{fontSize:12,color:T.textSec,display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
                         {o.lines.map((l,i)=><span key={i}style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 10px"}}>{l}</span>)}
                       </div>
+                      <div style={{fontSize:11,color:T.textMuted,fontWeight:700,letterSpacing:.5,marginBottom:6}}>
+                        PAGAMENTOS{o.payments.length>1?` · ${o.payments.length} transações`:""}
+                      </div>
+                      {o.payments.length===0
+                        ?<div style={{fontSize:12,color:T.textMuted}}>Sem registo de pagamento</div>
+                        :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          {o.payments.map((p,i)=>(
+                            <div key={i}style={{display:"flex",alignItems:"baseline",flexWrap:"wrap",gap:10,fontSize:12}}>
+                              <Badge color={T.textSec}bg={T.card}>{PAY_METHOD_LABEL[p.method]||p.method}</Badge>
+                              <span className="mono"style={{color:T.accent,fontWeight:700}}>{fmtEur(p.amount)}</span>
+                              {p.tip>0&&<span className="mono"style={{color:T.teal}}>+{fmtEur(p.tip)} gorjeta</span>}
+                              {p.items
+                                ?<span style={{color:T.textSec}}>· {p.items.map(it=>`${it.qty}x ${it.name}`).join(", ")}</span>
+                                :<span style={{color:T.textMuted}}>· pedido completo</span>}
+                            </div>
+                          ))}
+                        </div>}
                     </td>
                   </tr>
                 )}

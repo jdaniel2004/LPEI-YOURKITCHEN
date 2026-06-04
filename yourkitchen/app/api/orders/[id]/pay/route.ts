@@ -44,6 +44,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const isItemPayment = Array.isArray(items) && items.length > 0;
   let payAmount = 0;
   let paidUnits = 0;
+  // Per-item breakdown of what THIS transaction settled (item payments only), so
+  // the backoffice can show exactly which units each payment covered.
+  const paidItems: Array<{ name: string; qty: number; unit_price: number; extra_price: number }> = [];
 
   if (isItemPayment) {
     // ── Partial payment: settle specific units of specific lines ───────────────
@@ -60,6 +63,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       paidUnits += payQty;
       finalPaid.set(line.id, already + payQty);
       updates.push({ id: line.id, paid_qty: already + payQty });
+      paidItems.push({
+        name: line.name,
+        qty: payQty,
+        unit_price: Number(line.unit_price),
+        extra_price: Number(line.extra_price || 0),
+      });
     }
     if (updates.length === 0)
       return Response.json({ error: "Nada para pagar nos itens selecionados" }, { status: 400 });
@@ -88,13 +97,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  // Record the payment (one row per transaction, partial or full).
+  // Record the payment (one row per transaction, partial or full). For item
+  // payments, store the per-item breakdown; full/by-people payments leave it null.
   const { error: payErr } = await supabaseAdmin.from("payments").insert({
     order_id: id,
     method,
     amount: payAmount,
     split_n: split_n ?? 1,
     tip: Number(tip ?? 0),
+    items: isItemPayment ? paidItems : null,
   });
   if (payErr) return Response.json({ error: payErr.message }, { status: 500 });
 

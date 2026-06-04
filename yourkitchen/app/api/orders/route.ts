@@ -8,7 +8,7 @@ export async function GET(req: Request) {
 
   let query = supabaseAdmin
     .from("orders")
-    .select("*, table:tables(id,label), waiter:staff(id,name), lines:order_lines(*), payments:payments(method,amount,tip)")
+    .select("*, table:tables(id,label), waiter:staff(id,name), lines:order_lines(*), payments:payments(method,amount,tip,items)")
     .order("created_at", { ascending: false })
     .limit(limit);
 
