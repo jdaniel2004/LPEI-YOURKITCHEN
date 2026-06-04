@@ -1285,15 +1285,6 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
           )}
         </div>
 
-        <div className="op-notes">
-          <textarea
-            className="notes-input"
-            placeholder="Notas gerais da mesa..."
-            value={order.notes}
-            onChange={e=>onUpdateOrder(p=>({...p,notes:e.target.value}))}
-          />
-        </div>
-
         <div className="op-totals">
           {Object.keys(vatMap).length>0&&Object.entries(vatMap).map(([rate,val])=>(
             <div key={rate} className="vat-row"><span>IVA {rate}%</span><span>{fmtEur(val)}</span></div>
