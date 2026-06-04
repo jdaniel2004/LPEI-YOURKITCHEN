@@ -11,7 +11,7 @@ RF3 O sistema deve permitir adicionar, editar e remover itens de um pedido via i
 RF4 O sistema deve suportar modificadores de itens (ex: "extra molho", "bem passado")
 RF5 O sistema deve permitir enviar pedidos parciais para a cozinha sem fechar a mesa
 RF6 O sistema deve suportar múltiplos pedidos por mesa ao longo do tempo
-RF7 O sistema deve permitir cancelar ou editar um pedido no POS e no KDS
+RF7 O sistema deve permitir cancelar ou editar um pedido no KDS
 RF8 O sistema deve suportar pedidos Take-away
 
 ### Gestão de Pagamentos

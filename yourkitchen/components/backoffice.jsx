@@ -514,6 +514,7 @@ function MenuStock(){
   const [allTemplates,setAllTemplates]=useState([]);
   const [linkedTemplateIds,setLinkedTemplateIds]=useState([]);
   const [vatRates,setVatRates]=useState([6,13,23]);
+  const [uploadingImg,setUploadingImg]=useState(false);
 
   useEffect(()=>{
     Promise.all([
@@ -536,7 +537,7 @@ function MenuStock(){
         setItems(its.map(i=>({
           id:i.id,catId:i.category_id,cat:i.category?.name||"",
           name:i.name,price:i.price,vat:i.vat_rate,
-          stock:i.stock,active:i.active,
+          stock:i.stock,active:i.active,image:i.image_url||"",
         })));
       }
     }).catch(()=>{});
@@ -546,8 +547,8 @@ function MenuStock(){
   const filtered=activeCat==="Todas"?items:items.filter(i=>i.cat===activeCat);
 
   const openEdit=async(item)=>{
-    setForm({...item,stock:item.stock===null||item.stock===undefined?"":item.stock});
-    setMods([]);setLinkedIngredients([]);setLinkedTemplateIds([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");setEditItem(item.id);
+    setForm({...item,image_url:item.image||"",stock:item.stock===null||item.stock===undefined?"":item.stock});
+    setMods([]);setLinkedIngredients([]);setLinkedTemplateIds([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");setUploadingImg(false);setEditItem(item.id);
     try{
       const [detail,ings,links]=await Promise.all([
         fetch(`/api/menu/items/${item.id}`).then(r=>r.json()),
@@ -562,9 +563,22 @@ function MenuStock(){
 
   const openNew=()=>{
     const first=categories[0];
-    setForm({catId:first?.id||"",cat:first?.name||"",name:"",price:"",vat:23,stock:"",active:true});
-    setMods([]);setLinkedIngredients([]);setLinkedTemplateIds([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");
+    setForm({catId:first?.id||"",cat:first?.name||"",name:"",price:"",vat:23,stock:"",active:true,image_url:""});
+    setMods([]);setLinkedIngredients([]);setLinkedTemplateIds([]);setErrMsg("");setSelIngQty("1");setSelIngUnit("un");setUploadingImg(false);
     setEditItem("new");
+  };
+
+  const uploadImage=async(file)=>{
+    if(!file)return;
+    setUploadingImg(true);setErrMsg("");
+    try{
+      const fd=new FormData();fd.append("file",file);
+      const r=await fetch("/api/menu/upload",{method:"POST",body:fd});
+      const data=await r.json();
+      if(data.error){setErrMsg(data.error);return;}
+      setForm(p=>({...p,image_url:data.url}));
+    }catch{setErrMsg("Erro ao carregar imagem");}
+    finally{setUploadingImg(false);}
   };
 
   const toggleTemplate=async(tplId)=>{
@@ -583,6 +597,7 @@ function MenuStock(){
     if(!form.catId){setErrMsg("Selecciona uma categoria. Cria primeiro em Menu → Categorias.");return;}
     const body={
       category_id:form.catId,name:form.name,emoji:form.emoji,
+      image_url:form.image_url||null,
       price:parseFloat(form.price)||0,vat_rate:parseInt(form.vat)||23,
       stock:form.stock===""||form.stock===undefined?null:parseInt(form.stock)||0,
       active:form.active,
@@ -606,12 +621,12 @@ function MenuStock(){
           fetch(`/api/menu/items/${data.id}/modifier-links`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({template_id:tid})}).catch(()=>{})
         ));
       }
-      setItems(p=>[...p,{id:data.id,catId:data.category_id,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active}]);
+      setItems(p=>[...p,{id:data.id,catId:data.category_id,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active,image:data.image_url||""}]);
     } else {
       const r=await fetch(`/api/menu/items/${editItem}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
       if(data.error){setErrMsg(data.error);return;}
-      setItems(p=>p.map(i=>i.id===editItem?{...i,catId:form.catId,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active}:i));
+      setItems(p=>p.map(i=>i.id===editItem?{...i,catId:form.catId,cat:form.cat,name:data.name,price:data.price,vat:data.vat_rate,stock:data.stock,active:data.active,image:data.image_url||""}:i));
     }
     setEditItem(null);
   };
@@ -715,7 +730,14 @@ function MenuStock(){
           <tbody>
             {filtered.map(item=>(
               <tr key={item.id}>
-                <td><span style={{fontWeight:600}}>{item.name}</span></td>
+                <td>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:34,height:34,borderRadius:7,border:`1px solid ${T.border}`,background:T.card,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {item.image?<img src={item.image}alt=""style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:14,opacity:.4}}>🍽️</span>}
+                    </div>
+                    <span style={{fontWeight:600}}>{item.name}</span>
+                  </div>
+                </td>
                 <td><Badge color={T.textSec}bg={T.elevated}>{item.cat}</Badge></td>
                 <td><span className="mono"style={{color:T.accent}}>{fmtEur(item.price)}</span></td>
                 <td><span className="mono"style={{color:T.textMuted}}>{item.vat}%</span></td>
@@ -741,6 +763,23 @@ function MenuStock(){
             <div className="modal-hd"><div><div className="modal-title">{editItem==="new"?"Novo Item":"Editar Item"}</div></div><CloseBtn onClick={()=>setEditItem(null)}/></div>
             <div className="modal-body">
               <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginTop:12}}>
+                <div style={{width:64,height:64,borderRadius:10,border:`1px solid ${T.border}`,background:T.card,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  {form.image_url
+                    ?<img src={form.image_url}alt=""style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    :<span style={{fontSize:22,opacity:.4}}>🖼️</span>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  <span className="form-label"style={{margin:0}}>Imagem do produto</span>
+                  <div style={{display:"flex",gap:6}}>
+                    <label className={`btn btn-ghost btn-sm${uploadingImg?" disabled":""}`}style={{cursor:uploadingImg?"default":"pointer"}}>
+                      {uploadingImg?"A carregar...":form.image_url?"Trocar imagem":"Carregar imagem"}
+                      <input type="file"accept="image/*"style={{display:"none"}}disabled={uploadingImg}onChange={e=>uploadImage(e.target.files?.[0])}/>
+                    </label>
+                    {form.image_url&&<button className="btn btn-danger btn-sm"onClick={()=>setForm(p=>({...p,image_url:""}))}>Remover</button>}
+                  </div>
+                </div>
+              </div>
               <div className="form-row">
                 <Sel label="Categoria"value={form.catId||""}onChange={e=>{const c=categories.find(x=>x.id===e.target.value);setForm(p=>({...p,catId:e.target.value,cat:c?.name||""}));}}>{categories.map(c=><option key={c.id}value={c.id}>{c.name}</option>)}</Sel>
                 <Sel label="IVA"value={form.vat??23}onChange={e=>setForm(p=>({...p,vat:e.target.value}))}>
@@ -1062,23 +1101,40 @@ function CategoriesMgmt(){
   const [cats,setCats]=useState([]);
   const [editCat,setEditCat]=useState(null);
   const [form,setForm]=useState({});
+  const [dragIndex,setDragIndex]=useState(null);
   useEffect(()=>{
     fetch("/api/menu/categories").then(r=>r.json()).then(data=>{
-      if(Array.isArray(data))setCats(data.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",position:c.position||0})));
+      if(Array.isArray(data))setCats(data.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",position:c.position||0})).sort((a,b)=>a.position-b.position));
     }).catch(()=>{});
   },[]);
   const save=async()=>{
-    const body={name:form.name,emoji:form.emoji,position:parseInt(form.position)||0};
     if(editCat==="new"){
+      const body={name:form.name,emoji:form.emoji,position:cats.length};
       const r=await fetch("/api/menu/categories",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
       if(!data.error)setCats(p=>[...p,{id:data.id,name:data.name,emoji:data.emoji||"",position:data.position}]);
     } else {
+      const body={name:form.name,emoji:form.emoji};
       const r=await fetch(`/api/menu/categories/${editCat}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
-      if(!data.error)setCats(p=>p.map(c=>c.id===editCat?{...c,name:data.name,emoji:data.emoji||"",position:data.position}:c));
+      if(!data.error)setCats(p=>p.map(c=>c.id===editCat?{...c,name:data.name,emoji:data.emoji||""}:c));
     }
     setEditCat(null);
+  };
+  // Reorder the list locally while dragging, persisting new positions on drop.
+  const handleDragOver=(e,overIndex)=>{
+    e.preventDefault();
+    if(dragIndex===null||dragIndex===overIndex)return;
+    setCats(p=>{const next=[...p];const[moved]=next.splice(dragIndex,1);next.splice(overIndex,0,moved);return next;});
+    setDragIndex(overIndex);
+  };
+  const handleDrop=async()=>{
+    setDragIndex(null);
+    const ordered=cats;
+    setCats(ordered.map((c,i)=>({...c,position:i})));
+    await Promise.all(ordered.map((c,i)=>c.position===i?null:
+      fetch(`/api/menu/categories/${c.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({position:i})}).catch(()=>{})
+    ));
   };
   const deleteCat=async(id)=>{
     const r=await fetch(`/api/menu/categories/${id}`,{method:"DELETE"});
@@ -1095,10 +1151,22 @@ function CategoriesMgmt(){
         <div className="section-h">{cats.length} categorias</div>
         <button className="btn btn-solid"onClick={()=>{setForm({name:"",emoji:"",position:cats.length});setEditCat("new");}}><Ic.Plus/>Nova Categoria</button>
       </div>
+      {cats.length>0&&<div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>Arrasta as categorias para alterar a ordem no menu.</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-        {[...cats].sort((a,b)=>a.position-b.position).map(c=>(
-          <div key={c.id}className="card"style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div><div style={{fontWeight:700,fontSize:13}}>{c.name}</div><div style={{fontSize:11,color:T.textMuted}}>pos. {c.position}</div></div>
+        {cats.map((c,i)=>(
+          <div
+            key={c.id}
+            className="card"
+            draggable
+            onDragStart={()=>setDragIndex(i)}
+            onDragOver={e=>handleDragOver(e,i)}
+            onDragEnd={handleDrop}
+            style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"grab",opacity:dragIndex===i?0.4:1}}
+          >
+            <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+              <span style={{color:T.textMuted,fontSize:16,lineHeight:1,flexShrink:0}}>⠿</span>
+              <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{c.emoji?`${c.emoji} `:""}{c.name}</div><div style={{fontSize:11,color:T.textMuted}}>{i+1}ª no menu</div></div>
+            </div>
             <div style={{display:"flex",gap:4}}>
               <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({...c});setEditCat(c.id);}}><Ic.Edit/></button>
               <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteCat(c.id)}><Ic.Trash/></button>
@@ -1113,7 +1181,6 @@ function CategoriesMgmt(){
             <div className="modal-hd"><div className="modal-title">{editCat==="new"?"Nova Categoria":"Editar Categoria"}</div><CloseBtn onClick={()=>setEditCat(null)}/></div>
             <div className="modal-body">
               <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
-              <Inp label="Posição (ordem no menu)"type="number"value={form.position===undefined?"":form.position}onChange={e=>setForm(p=>({...p,position:e.target.value}))}/>
             </div>
             <div className="modal-foot"><button className="btn btn-ghost"onClick={()=>setEditCat(null)}>Cancelar</button><button className="btn btn-solid"onClick={save}disabled={!form.name}>Guardar</button></div>
           </div>

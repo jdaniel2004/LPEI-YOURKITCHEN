@@ -40,13 +40,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { category_id, name, emoji, price, vat_rate, stock } = body;
+  const { category_id, name, emoji, image_url, price, vat_rate, stock } = body;
   if (!category_id || !name || price == null)
     return Response.json({ error: "category_id, name e price obrigatórios" }, { status: 400 });
 
   const { data, error } = await supabaseAdmin
     .from("menu_items")
-    .insert({ category_id, name, emoji, price, vat_rate: vat_rate ?? 23, stock: stock ?? null })
+    .insert({ category_id, name, emoji, image_url: image_url ?? null, price, vat_rate: vat_rate ?? 23, stock: stock ?? null })
     .select()
     .single();
 
