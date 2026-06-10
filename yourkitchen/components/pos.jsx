@@ -438,12 +438,13 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
   .notes-input{height:34px;font-size:11px;padding:6px 8px;}
   .op-actions{padding:6px 10px;gap:5px;}
   .op-actions .btn{padding:7px 6px;font-size:11px;}
-  /* compact payment modal on tablet */
-  .pay-modal{max-width:96vw;}
+  /* payment modal on tablet: stack into a single, narrower column */
+  .pay-modal{width:min(460px,94vw)!important;max-width:94vw;}
   .pay-modal .modal-header{padding:14px 18px 0;}
-  .pay-modal .modal-body{padding:14px 18px;gap:14px!important;}
+  .pay-modal .modal-body{padding:14px 18px;gap:14px!important;flex-direction:column;align-items:stretch;}
   .pay-modal .modal-footer{padding:0 18px 14px;}
-  .pay-modal .pay-left{flex:0 0 210px!important;}
+  .pay-modal .pay-left,.pay-modal .pay-right{flex:0 0 auto!important;width:100%;min-width:0;}
+  .pay-modal .pay-items-list{max-height:30vh;}
   .pay-method{padding:10px;}
   .pay-method-icon{font-size:19px;margin-bottom:3px;}
   .pay-method-name{font-size:12px;}
@@ -917,7 +918,7 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
           </div>
 
           {/* Right: method + numpad */}
-          <div style={{flex:1}}>
+          <div className="pay-right" style={{flex:1}}>
             <div className="pay-label">Método</div>
             <div className="pay-method-grid">
               {METHODS.map(m=>(
