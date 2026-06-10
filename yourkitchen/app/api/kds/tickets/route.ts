@@ -32,12 +32,12 @@ export async function GET() {
 
   if (error || !data) return Response.json({ error: error?.message ?? "Erro" }, { status: 500 });
 
+  // Dynamic select string loses row-type inference, so `data` is loosely typed.
+  type TicketRow = { lines: Array<{ sent: boolean; cancelled: boolean }> };
+  const rows = data as unknown as TicketRow[];
+
   // Filter to orders that have at least one sent, non-cancelled line
-  const tickets = data.filter((o) =>
-    (o.lines as Array<{ sent: boolean; cancelled: boolean }>).some(
-      (l) => l.sent && !l.cancelled
-    )
-  );
+  const tickets = rows.filter((o) => o.lines.some((l) => l.sent && !l.cancelled));
 
   return Response.json(tickets);
 }
