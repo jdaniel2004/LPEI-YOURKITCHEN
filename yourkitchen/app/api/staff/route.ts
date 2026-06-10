@@ -6,6 +6,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 // routes degrade gracefully instead of hard-failing.
 const nickMissing = (error: { message?: string } | null) => !!error && /nick/i.test(error.message || "");
 
+// Which Supabase project the app is actually talking to (host only — the URL is
+// already public via NEXT_PUBLIC). Helps diagnose "migrated the wrong project".
+const projectHost = (() => {
+  try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").host; } catch { return ""; }
+})();
+
 export async function GET() {
   const run = (cols: string) => supabaseAdmin.from("staff").select(cols).order("name");
   let { data, error } = await run("id, name, nick, role, active, created_at");
@@ -65,8 +71,10 @@ export async function POST(req: Request) {
   // tell the client so it can warn that the nick wasn't saved (login by nick
   // won't work until the add_staff_nick.sql migration is run).
   let nickColumnMissing = false;
+  let nickError = "";
   if (nickMissing(error)) {
     nickColumnMissing = true;
+    nickError = error?.message ?? "";
     delete row.nick;
     ({ data, error } = await insert(row, "id, name, role, active, created_at"));
   }
@@ -82,5 +90,5 @@ export async function POST(req: Request) {
     }
     return Response.json({ error: error.message }, { status: 500 });
   }
-  return Response.json({ ...(data as object), nickColumnMissing }, { status: 201 });
+  return Response.json({ ...(data as object), nickColumnMissing, nickError, project: projectHost }, { status: 201 });
 }
