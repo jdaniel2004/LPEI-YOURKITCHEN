@@ -68,6 +68,24 @@ create table if not exists modifier_options (
   extra_price numeric(6,2) default 0
 );
 
+-- INGREDIENTS (stock de ingredientes / matérias-primas)
+create table if not exists ingredients (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  unit        text default 'un',
+  stock_qty   numeric(12,3) default 0,
+  is_modifier boolean not null default false,
+  created_at  timestamptz default now()
+);
+
+-- ITEM ↔ INGREDIENTS (receita base de cada produto)
+create table if not exists item_ingredients (
+  item_id       uuid references menu_items(id) on delete cascade,
+  ingredient_id uuid references ingredients(id) on delete cascade,
+  qty           numeric(12,3) not null default 1,
+  primary key (item_id, ingredient_id)
+);
+
 -- RESERVATIONS
 create table if not exists reservations (
   id         uuid primary key default gen_random_uuid(),
@@ -137,6 +155,8 @@ create table if not exists payments (
   method     text not null check (method in ('numerario','cartao','mbway','multibanco')),
   amount     numeric(8,2) not null,
   split_n    int default 1,
+  tip        numeric(8,2) default 0,
+  items      jsonb,
   created_at timestamptz default now()
 );
 
@@ -188,15 +208,28 @@ alter table payments        enable row level security;
 alter table shifts          enable row level security;
 
 -- Anon pode ler orders/order_lines/tables para Realtime no cliente
+drop policy if exists "anon read orders"      on orders;
+drop policy if exists "anon read order_lines" on order_lines;
+drop policy if exists "anon read tables"      on tables;
 create policy "anon read orders"      on orders      for select using (true);
 create policy "anon read order_lines" on order_lines for select using (true);
 create policy "anon read tables"      on tables      for select using (true);
 
 -- Realtime (WebSocket): publica o caminho crítico POS↔KDS para sincronização em
--- <1s (RNF1) em vez de polling HTTP. Em bases já existentes correr enable_realtime.sql.
-alter publication supabase_realtime add table orders;
-alter publication supabase_realtime add table order_lines;
-alter publication supabase_realtime add table tables;
+-- <1s (RNF1) em vez de polling HTTP. Idempotente — não falha se já estiver publicado
+-- (deixa o schema.sql seguro para re-executar). Ver também enable_realtime.sql.
+do $$
+declare t text;
+begin
+  foreach t in array array['orders', 'order_lines', 'tables'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
 
 -- ─── FUNÇÃO: decrement_stock ──────────────────────────────────────────────────
 create or replace function decrement_stock(p_item_id uuid, p_qty int)
@@ -316,6 +349,17 @@ alter table order_lines add column if not exists modifier_ingredients jsonb;
 -- bill be paid item-by-item (per unit) across several partial payments. A line is
 -- fully paid when paid_qty >= qty; the order closes once every line is fully paid.
 alter table order_lines add column if not exists paid_qty int not null default 0;
+
+-- Single-choice modifier groups (comportamento radio no POS). Ver add_modifier_single.sql
+alter table item_modifiers     add column if not exists single boolean default false;
+alter table modifier_templates add column if not exists single boolean default false;
+
+-- Reservas multi-mesa. Ver add_reservation_table_ids.sql
+alter table reservations add column if not exists table_ids uuid[] not null default '{}';
+
+-- URL da imagem do produto. O upload precisa do bucket de Storage criado em
+-- add_menu_item_images.sql (esse passo é à parte, pois mexe no schema "storage").
+alter table menu_items add column if not exists image_url text;
 
 -- ─── DROP COMBOS / MENUS (opcional) ───────────────────────────────────────────
 -- A funcionalidade de "Menus" (combos) foi removida. Correr este bloco no
