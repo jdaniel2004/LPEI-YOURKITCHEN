@@ -344,13 +344,25 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .staff-item.self{opacity:.35;cursor:not-allowed;pointer-events:none;}
 
 /* ─ PAYMENT MODAL ─ */
-.pay-modal{width:auto;max-width:92vw;max-height:92vh;overflow-y:auto;}
-.pay-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;}
-.pay-method{padding:16px;border:1px solid ${T.border};border-radius:10px;cursor:pointer;transition:all .15s;background:${T.card};text-align:center;}
+.pay-modal{width:auto;max-width:92vw;max-height:94vh;overflow-y:auto;}
+.pay-method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.pay-method{padding:10px 8px;border:1px solid ${T.border};border-radius:10px;cursor:pointer;transition:all .15s;background:${T.card};text-align:center;}
 .pay-method:hover{border-color:${T.borderBright};background:${T.elevated};}
 .pay-method.selected{border-color:${T.accent}55;background:${T.accentDim};}
-.pay-method-icon{font-size:24px;margin-bottom:6px;}
+.pay-method-icon{font-size:24px;margin-bottom:6px;height:36px;display:flex;align-items:center;justify-content:center;}
+.pay-method-logo{height:22px;width:auto;max-width:100%;object-fit:contain;display:block;background:#fff;padding:5px 9px;border-radius:6px;box-sizing:content-box;}
 .pay-method-name{font-size:13px;font-weight:700;}
+/* compact so the whole modal fits the viewport without scrolling */
+.pay-modal .modal-header{padding:14px 20px 0;}
+.pay-modal .modal-body{padding:14px 20px;gap:16px!important;}
+.pay-modal .modal-footer{padding:0 20px 14px;}
+.pay-modal .pay-summary{margin-bottom:10px;}
+.pay-modal .pay-sum-row{padding:7px 14px;}
+.pay-modal .pay-mode-toggle{margin-bottom:10px;}
+.pay-modal .pay-amount-input{font-size:22px;padding:9px 12px;}
+.pay-modal .pay-stepper{margin-bottom:8px;}
+.pay-modal .split-per-person{margin-bottom:10px;padding:8px 14px;font-size:18px;}
+.pay-modal .pay-items-list{max-height:170px;}
 .pay-section{margin-bottom:16px;}
 .pay-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${T.textMuted};margin-bottom:8px;}
 .pay-amount-input{width:100%;background:${T.card};border:1px solid ${T.border};border-radius:8px;color:${T.text};font-family:'DM Mono',monospace;font-size:28px;font-weight:500;padding:12px 14px;outline:none;transition:border-color .15s;text-align:right;}
@@ -438,9 +450,17 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
   .pay-section{margin-bottom:12px;}
   .pay-amount-input{font-size:22px;padding:9px 12px;}
 }
+@media(max-width:760px){
+  /* the global nav already shows user + clock — drop the duplicates here */
+  .topbar{padding:0 10px;gap:8px;}
+  .topbar-staff,.topbar-sep,.topbar-clock{display:none;}
+}
+@media(max-height:520px){
+  .topbar{height:46px;}
+}
 @media(max-width:700px){
   .order-screen{flex-direction:column;}
-  .menu-panel{flex:0 0 auto;height:55%;border-right:none;border-bottom:1px solid ${T.border};}
+  .menu-panel{flex:0 0 auto;height:50%;border-right:none;border-bottom:1px solid ${T.border};}
   .order-panel{flex:1;min-height:0;}
   .menu-items{grid-template-columns:repeat(2,1fr);}
   .tables-grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr));}
@@ -692,9 +712,8 @@ function TransferModal({currentWaiterId,staffList,onConfirm,onClose}){
 function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
   const METHODS=[
     {id:"numerario",label:"Numerário",icon:"💶"},
-    {id:"cartao",label:"Cartão",icon:"💳"},
-    {id:"mbway",label:"MB Way",icon:"📱"},
-    {id:"multibanco",label:"Multibanco",icon:"🏧"},
+    {id:"mbway",label:"MB Way",img:"/mbway.png"},
+    {id:"multibanco",label:"Multibanco",img:"/multibanco.png"},
   ];
   const [payMode,setPayMode]=useState("pessoas"); // "pessoas" | "itens"
   const [method,setMethod]=useState("numerario");
@@ -899,7 +918,7 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
             <div className="pay-method-grid">
               {METHODS.map(m=>(
                 <div key={m.id} className={`pay-method${method===m.id?" selected":""}`} onClick={()=>setMethod(m.id)}>
-                  <div className="pay-method-icon">{m.icon}</div>
+                  <div className="pay-method-icon">{m.img?<img src={m.img} alt={m.label} className="pay-method-logo"/>:m.icon}</div>
                   <div className="pay-method-name">{m.label}</div>
                 </div>
               ))}
@@ -919,7 +938,7 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
                   {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(d=>(
                     <button key={d} onClick={()=>handleNum(d)} style={{
                       background:T.card,border:`1px solid ${T.border}`,color:d==="⌫"?T.textSec:T.text,
-                      fontFamily:"'DM Mono',monospace",fontSize:18,padding:"12px",borderRadius:6,
+                      fontFamily:"'DM Mono',monospace",fontSize:16,padding:"9px",borderRadius:6,
                       cursor:"pointer",transition:"all .1s"
                     }}>{d}</button>
                   ))}
@@ -939,7 +958,9 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
             )}
             {method!=="numerario"&&(
               <div style={{background:T.successDim,border:`1px solid ${T.success}33`,borderRadius:10,padding:"24px 20px",textAlign:"center",marginTop:8}}>
-                <div style={{fontSize:28,marginBottom:8}}>{METHODS.find(m2=>m2.id===method)?.icon}</div>
+                {(()=>{const m=METHODS.find(m2=>m2.id===method);return m?.img
+                  ?<img src={m.img} alt={m.label} style={{height:34,marginBottom:10,display:"inline-block",background:"#fff",padding:"8px 14px",borderRadius:8}}/>
+                  :<div style={{fontSize:28,marginBottom:8}}>{m?.icon}</div>;})()}
                 <div style={{fontSize:13,color:T.success,fontWeight:600}}>Confirma o pagamento no terminal</div>
                 <div style={{fontFamily:"'DM Mono',monospace",fontSize:22,fontWeight:700,color:T.text,marginTop:8}}>{fmtEur(amountDue)}</div>
               </div>
@@ -1175,13 +1196,13 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
             Mesas
           </button>
           <div style={{fontSize:13,color:T.textMuted}}>
-            <strong style={{color:T.text}}>{tableLabel}</strong> · {waiter.name}
+            <strong style={{color:T.text}}>{tableLabel}</strong>{waiter.name!=="?"?` · ${waiter.name}`:""}
           </div>
         </div>
         <div className="menu-cats">
           {menu.map((c,i)=>(
             <div key={c.id} className={`cat-tab${cat===i?" active":""}`} onClick={()=>setCat(i)}>
-              {c.emoji} {c.name}
+              {c.name}
             </div>
           ))}
         </div>
@@ -2199,9 +2220,6 @@ export default function POS({session,appName="YourKitchen"}){
               <button className="btn btn-ghost btn-sm" onClick={()=>{if(screen==="order"){if(activeOrder?.draft&&activeOrderId){setOrders(p=>{const{[activeOrderId]:_,...rest}=p;return rest;});setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:null,waiter:null,since:null}:t));}setActiveTableId(null);setScreen("floor");}}} style={{display:screen==="order"?"flex":"none"}}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                 Mesas
-              </button>
-              <button className="btn btn-ghost btn-sm" style={{color:T.danger,borderColor:`${T.danger}33`,display:screen==="floor"?"flex":"none"}} onClick={()=>setShowEndShift(true)}>
-                Fechar Turno
               </button>
               <Clock/>
             </div>
