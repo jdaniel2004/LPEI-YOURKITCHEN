@@ -192,6 +192,12 @@ create policy "anon read orders"      on orders      for select using (true);
 create policy "anon read order_lines" on order_lines for select using (true);
 create policy "anon read tables"      on tables      for select using (true);
 
+-- Realtime (WebSocket): publica o caminho crítico POS↔KDS para sincronização em
+-- <1s (RNF1) em vez de polling HTTP. Em bases já existentes correr enable_realtime.sql.
+alter publication supabase_realtime add table orders;
+alter publication supabase_realtime add table order_lines;
+alter publication supabase_realtime add table tables;
+
 -- ─── FUNÇÃO: decrement_stock ──────────────────────────────────────────────────
 create or replace function decrement_stock(p_item_id uuid, p_qty int)
 returns void language plpgsql as $$

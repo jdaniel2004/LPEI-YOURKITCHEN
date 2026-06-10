@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { fmtTime, fmtDate } from "@/lib/timezone";
+import { subscribeRealtime } from "@/lib/realtime";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const T = {
@@ -952,7 +953,7 @@ export default function KDS() {
   const archivedRef = useRef(new Set());
   const inFlightRef = useRef(new Set());
 
-  // Load archived IDs from localStorage on mount, then start polling
+  // Load archived IDs from localStorage on mount, then sync via Realtime
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("kds_archived") || "[]");
@@ -985,9 +986,10 @@ export default function KDS() {
         .catch(() => {});
     };
 
-    load();
-    const interval = setInterval(load, 8000);
-    return () => clearInterval(interval);
+    load(); // first paint; subscribeRealtime also re-syncs on SUBSCRIBED/reconnect
+    // Live POS→KDS updates over Supabase Realtime (WebSocket) instead of the old
+    // 8s HTTP poll — new/changed tickets surface in <1s (RNF1).
+    return subscribeRealtime(["orders", "order_lines"], load, { name: "kds-tickets" });
   }, []);
 
   const handleAdvance = useCallback(async (ticketId, next) => {

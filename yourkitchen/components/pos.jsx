@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { fmtTime, fmtDate } from "@/lib/timezone";
+import { subscribeRealtime } from "@/lib/realtime";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -1652,7 +1653,7 @@ export default function POS({session,appName="YourKitchen"}){
     load();
   },[]);
 
-  // Poll for KDS "Marcar Pronto" → orders that become "bill" unlock payment
+  // Watch for KDS "Marcar Pronto" → orders that become "bill" unlock payment
   useEffect(()=>{readyOrdersRef.current=readyOrders;},[readyOrders]);
 
   useEffect(()=>{
@@ -1719,12 +1720,14 @@ export default function POS({session,appName="YourKitchen"}){
         });
       }catch{}
     };
-    const id=setInterval(tick,4000);
-    return()=>clearInterval(id);
+    // KDS marca "Pronto" → o pedido passa a "bill". Em vez de sondar a cada 4s,
+    // ouvimos as alterações por Realtime (WebSocket): a notificação "pronto para
+    // servir" dispara em <1s. SUBSCRIBED também faz o seeding inicial.
+    return subscribeRealtime(["orders","order_lines"],tick,{name:"pos-bill-notifs"});
   },[loading,addToast]);
 
-  // Live sync: poll tables + orders every 5s so changes made by other
-  // users (other waiters / manager) appear without re-entering a table.
+  // Live sync via Realtime (WebSocket): changes made by other users (other
+  // waiters / manager) to tables + orders appear without re-entering a table.
   useEffect(()=>{
     if(loading) return;
     const sync=async()=>{
@@ -1843,8 +1846,12 @@ export default function POS({session,appName="YourKitchen"}){
         }
       }catch{}
     };
-    const id=setInterval(sync,5000);
-    return()=>clearInterval(id);
+    // Live sync por Realtime (WebSocket) em vez do poll de 5s: alterações de
+    // mesas/pedidos feitas por outros utilizadores (empregados/gestor) aparecem em
+    // <1s (RNF1). SUBSCRIBED dispara a sincronização inicial e re-sincroniza após
+    // uma reconexão do socket. (O refresh de menu/stock/settings do Backoffice
+    // viaja na mesma sync — atualiza a cada evento de pedido/mesa e na reconexão.)
+    return subscribeRealtime(["orders","order_lines","tables"],sync,{name:"pos-live-sync"});
   },[loading]);
 
   const zones=[...new Set(tables.map(t=>t.zone))];
