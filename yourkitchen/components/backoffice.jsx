@@ -1713,9 +1713,14 @@ function ReceiptModalBO({order,onClose}){
           </div>
           <div style={{padding:"10px 0",borderBottom:`1px dashed ${T.border}`}}>
             {order.rawLines.map((item,i)=>(
-              <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,marginBottom:4}}>
-                <span style={{color:T.textSec,flex:1,marginRight:8}}>{item.qty}× {item.name}</span>
-                <span style={{color:T.text,flexShrink:0}}>{fmtEur((item.unit_price+item.extra_price)*item.qty)}</span>
+              <div key={i}style={{marginBottom:4}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12}}>
+                  <span style={{color:T.textSec,flex:1,marginRight:8}}>{item.qty}× {item.name}</span>
+                  <span style={{color:T.text,flexShrink:0}}>{fmtEur((item.unit_price+item.extra_price)*item.qty)}</span>
+                </div>
+                {item.mods&&item.mods.length>0&&(
+                  <div style={{color:T.textMuted,fontSize:11,paddingLeft:14}}>+ {item.mods.join(", ")}</div>
+                )}
               </div>
             ))}
           </div>
@@ -1773,8 +1778,8 @@ function OrderHistory(){
           date:fmtDate(d),
           datetime:o.paid_at||o.created_at,
           discount:Number(o.discount_value||0),
-          lines:lines.map(l=>`${l.qty}x ${l.name}`),
-          rawLines:lines.map(l=>({qty:l.qty,name:l.name,unit_price:Number(l.unit_price),extra_price:Number(l.extra_price||0)})),
+          lines:lines.map(l=>({qty:l.qty,name:l.name,mods:Array.isArray(l.modifiers)?l.modifiers:[]})),
+          rawLines:lines.map(l=>({qty:l.qty,name:l.name,mods:Array.isArray(l.modifiers)?l.modifiers:[],unit_price:Number(l.unit_price),extra_price:Number(l.extra_price||0)})),
         };
       }));
     }).catch(()=>{});
@@ -1835,7 +1840,12 @@ function OrderHistory(){
                     <td colSpan={10}style={{background:T.elevated,padding:"12px 20px"}}>
                       <div style={{fontSize:11,color:T.textMuted,fontWeight:700,letterSpacing:.5,marginBottom:6}}>ITENS DO PEDIDO</div>
                       <div style={{fontSize:12,color:T.textSec,display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
-                        {o.lines.map((l,i)=><span key={i}style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 10px"}}>{l}</span>)}
+                        {o.lines.map((l,i)=>(
+                          <span key={i}style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:5,padding:"3px 10px"}}>
+                            {l.qty}x {l.name}
+                            {l.mods.length>0&&<span style={{color:T.accent,marginLeft:6}}>({l.mods.join(", ")})</span>}
+                          </span>
+                        ))}
                       </div>
                       <div style={{fontSize:11,color:T.textMuted,fontWeight:700,letterSpacing:.5,marginBottom:6}}>
                         PAGAMENTOS{o.payments.length>1?` · ${o.payments.length} transações`:""}
