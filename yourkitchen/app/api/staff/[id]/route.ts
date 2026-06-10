@@ -5,7 +5,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const { data, error } = await supabaseAdmin
     .from("staff")
-    .select("id, name, role, active, created_at")
+    .select("id, name, nick, role, active, created_at")
     .eq("id", id)
     .single();
 
@@ -19,6 +19,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const patch: Record<string, unknown> = {};
 
   if (body.name)   patch.name   = body.name;
+  if (body.nick !== undefined) patch.nick = String(body.nick).trim() || null;
   if (body.role)   patch.role   = body.role;
   if (body.active !== undefined) patch.active = body.active;
   if (body.pin) {
@@ -31,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .from("staff")
     .update(patch)
     .eq("id", id)
-    .select("id, name, role, active, created_at")
+    .select("id, name, nick, role, active, created_at")
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });

@@ -7,6 +7,7 @@
 create table if not exists staff (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
+  nick        text,                    -- nome de login (distinto do nome), usado com o PIN
   role        text not null check (role in ('manager','waiter','kitchen')),
   email       text unique,             -- só gestores têm email (Supabase Auth)
   pin_hash    text not null,
@@ -360,6 +361,12 @@ alter table reservations add column if not exists table_ids uuid[] not null defa
 -- URL da imagem do produto. O upload precisa do bucket de Storage criado em
 -- add_menu_item_images.sql (esse passo é à parte, pois mexe no schema "storage").
 alter table menu_items add column if not exists image_url text;
+
+-- Nick de login do funcionário (distinto do nome, configurável no Backoffice).
+-- O login do POS/Cozinha passa a usar nick + PIN. Backfill: usa o nome como nick
+-- inicial para os registos existentes continuarem a poder autenticar-se.
+alter table staff add column if not exists nick text;
+update staff set nick = name where nick is null;
 
 -- ─── DROP COMBOS / MENUS (opcional) ───────────────────────────────────────────
 -- A funcionalidade de "Menus" (combos) foi removida. Correr este bloco no

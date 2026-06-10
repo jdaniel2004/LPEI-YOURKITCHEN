@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("staff")
-    .select("id, name, role, active, created_at")
+    .select("id, name, nick, role, active, created_at")
     .order("name");
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { name, role, pin, email, password } = body;
+  const { name, nick, role, pin, email, password } = body;
 
   if (!name || !role)
     return Response.json({ error: "name e role obrigatórios" }, { status: 400 });
@@ -25,6 +25,12 @@ export async function POST(req: Request) {
     return Response.json({ error: "PIN obrigatório" }, { status: 400 });
   if (role !== "manager" && String(pin).length !== 4)
     return Response.json({ error: "PIN deve ter 4 dígitos" }, { status: 400 });
+
+  // Login nick (distinct from the display name). Required for PIN-based roles;
+  // managers log in with email so it's optional. Defaults to the name if blank.
+  const nickValue = (nick && String(nick).trim()) || name;
+  if (role !== "manager" && !nickValue)
+    return Response.json({ error: "Nick obrigatório" }, { status: 400 });
 
   // Managers authenticate via email+password; store an unusable random hash
   // so the column is never null without exposing a real PIN.
@@ -44,13 +50,13 @@ export async function POST(req: Request) {
     if (authErr) return Response.json({ error: `Erro ao criar conta: ${authErr.message}` }, { status: 500 });
   }
 
-  const row: Record<string, unknown> = { name, role, pin_hash };
+  const row: Record<string, unknown> = { name, nick: nickValue, role, pin_hash };
   if (role === "manager") row.email = email;
 
   const { data, error } = await supabaseAdmin
     .from("staff")
     .insert(row)
-    .select("id, name, role, active, created_at")
+    .select("id, name, nick, role, active, created_at")
     .single();
 
   if (error) {

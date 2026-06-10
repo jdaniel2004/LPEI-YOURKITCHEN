@@ -34,9 +34,13 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 /* ─ ROOT ─ */
 .login-root {
   width:100vw; height:100vh; height:100dvh;
-  display:flex; align-items:center; justify-content:center;
-  position:relative; overflow:hidden;
+  display:flex;
+  position:relative; overflow-y:auto; overflow-x:hidden;
+  padding:72px 20px 88px;
 }
+/* Centra o conteúdo quando cabe e permite scroll (sem cortar o topo) quando não
+   cabe — em vez de align/justify center, que cortava o topo em ecrãs baixos. */
+.selector-wrap, .manager-wrap, .staff-wrap, .pin-wrap, .success-wrap { margin:auto; }
 
 /* ─ BACKGROUND ─ */
 .bg-layer {
@@ -70,7 +74,7 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 /* ─ SELECTOR ─ */
 .selector-wrap  { display:flex; flex-direction:column; align-items:center; gap:32px; animation:slideUp .5s ease; }
 .selector-title { font-size:13px; font-weight:600; letter-spacing:3px; text-transform:uppercase; color:${T.textMuted}; }
-.selector-cards { display:flex; gap:16px; }
+.selector-cards { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
 
 .sel-card {
   width:220px; padding:36px 24px 32px;
@@ -122,7 +126,7 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 
 /* ─ MANAGER LOGIN ─ */
 .manager-wrap {
-  width:400px; animation:slideLeft .35s ease;
+  width:min(400px,100%); animation:slideLeft .35s ease;
 }
 .login-card {
   background:${T.surface}; border:1px solid ${T.border};
@@ -192,13 +196,13 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 .st-role { font-size:11px; color:${T.textMuted}; margin-top:2px; font-weight:500; }
 
 /* ─ PIN PAD ─ */
-.pin-wrap   { width:340px; animation:slideLeft .3s ease; display:flex; flex-direction:column; align-items:center; gap:0; }
+.pin-wrap   { width:min(340px,100%); animation:slideLeft .3s ease; display:flex; flex-direction:column; align-items:center; gap:0; }
 .pin-staff  { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
 .pin-av     { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:800; }
 .pin-name   { font-size:20px; font-weight:800; }
 .pin-role   { font-size:12px; color:${T.textMuted}; margin-top:2px; }
 
-.pin-dots   { display:flex; gap:14px; margin-bottom:28px; height:20px; align-items:center; }
+.pin-dots   { display:flex; gap:14px; margin-bottom:16px; height:20px; align-items:center; }
 .pin-dot    {
   width:16px; height:16px; border-radius:50%; border:2px solid ${T.border};
   transition:all .2s; background:transparent;
@@ -209,7 +213,7 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 .pin-pad    { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; }
 .pin-pad.shake { animation:shake .35s ease; }
 .pn-btn {
-  aspect-ratio:1; background:${T.card}; border:1px solid ${T.border};
+  height:clamp(46px,7.5vh,62px); background:${T.card}; border:1px solid ${T.border};
   color:${T.text}; font-family:'DM Mono',monospace; font-size:22px; font-weight:500;
   border-radius:12px; cursor:pointer; transition:all .12s;
   display:flex; align-items:center; justify-content:center;
@@ -220,7 +224,7 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 .pn-btn.empty  { pointer-events:none; background:transparent; border-color:transparent; }
 
 .pin-timeout {
-  display:flex; align-items:center; gap:8px; margin-top:20px;
+  display:flex; align-items:center; gap:8px; margin-top:14px;
   font-size:11px; color:${T.textMuted}; font-family:'DM Mono',monospace;
 }
 .timeout-ring { position:relative; width:20px; height:20px; flex-shrink:0; }
@@ -421,7 +425,7 @@ function StaffLogin({onSuccess,onBack}){
         Voltar
       </button>
 
-      <div className="login-card-head" style={{border:"none",padding:"8px 0 18px",gap:14}}>
+      <div className="login-card-head" style={{border:"none",padding:"0 0 12px",gap:14}}>
         <div className="login-icon" style={{background:T.tealDim,border:`1px solid ${T.teal}33`}}>👤</div>
         <div>
           <div className="login-card-title">Funcionário</div>
@@ -429,7 +433,7 @@ function StaffLogin({onSuccess,onBack}){
         </div>
       </div>
 
-      <div className="field-wrap" style={{width:"100%",marginBottom:24}}>
+      <div className="field-wrap" style={{width:"100%",marginBottom:16}}>
         <div className="field-label">Nick</div>
         <input
           className={`field-input${error&&!nick.trim()?" error":""}`}

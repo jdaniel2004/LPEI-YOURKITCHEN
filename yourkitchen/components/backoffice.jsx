@@ -1510,27 +1510,28 @@ function StaffMgmt(){
   useEffect(()=>{
     fetch("/api/staff").then(r=>r.json()).then(data=>{
       if(!Array.isArray(data))return;
-      setStaff(data.map(s=>({id:s.id,name:s.name,role:s.role,active:s.active,since:new Date(s.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})})));
+      setStaff(data.map(s=>({id:s.id,name:s.name,nick:s.nick,role:s.role,active:s.active,since:new Date(s.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})})));
     }).catch(()=>{});
   },[]);
   const openEdit=(s)=>{setForm({...s,pin:""});setEditStaff(s.id);};
-  const openNew=()=>{setForm({name:"",role:"waiter",pin:"",email:"",password:"",active:true});setEditStaff("new");};
+  const openNew=()=>{setForm({name:"",nick:"",role:"waiter",pin:"",email:"",password:"",active:true});setEditStaff("new");};
   const save=async()=>{
     setStaffErr("");
     if(editStaff==="new"){
       const payload={name:form.name,role:form.role};
       if(form.role==="manager"){payload.email=form.email;payload.password=form.password;}
-      else{payload.pin=form.pin;}
+      else{payload.pin=form.pin;payload.nick=form.nick;}
       const r=await fetch("/api/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const data=await r.json();
       if(data.error){setStaffErr(data.error);return;}
-      setStaff(p=>[...p,{id:data.id,name:data.name,role:data.role,active:data.active,since:new Date(data.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})}]);
+      setStaff(p=>[...p,{id:data.id,name:data.name,nick:data.nick,role:data.role,active:data.active,since:new Date(data.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})}]);
     } else {
       const body={name:form.name,role:form.role,active:form.active};
+      if(form.role!=="manager")body.nick=form.nick;
       if(form.pin)body.pin=form.pin;
       const r=await fetch(`/api/staff/${editStaff}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
-      if(!data.error)setStaff(p=>p.map(s=>s.id===editStaff?{...s,name:data.name,role:data.role,active:data.active}:s));
+      if(!data.error)setStaff(p=>p.map(s=>s.id===editStaff?{...s,name:data.name,nick:data.nick,role:data.role,active:data.active}:s));
     }
     setEditStaff(null);
   };
@@ -1549,7 +1550,7 @@ function StaffMgmt(){
       <div className="section-head"><div className="section-h">{staff.length} funcionários</div><button className="btn btn-solid"onClick={openNew}><Ic.Plus/>Novo Funcionário</button></div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th>Nome</th><th>Função</th><th>PIN</th><th>Desde</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Nick</th><th>Função</th><th>PIN</th><th>Desde</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             {staff.map(s=>(
               <tr key={s.id}>
@@ -1557,6 +1558,7 @@ function StaffMgmt(){
                   <div style={{width:32,height:32,borderRadius:"50%",background:T.accentDim,border:`1px solid ${T.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.accent}}>{s.name.slice(0,2).toUpperCase()}</div>
                   <span style={{fontWeight:600}}>{s.name}</span>
                 </div></td>
+                <td>{s.role==="manager"?<span style={{color:T.textMuted}}>—</span>:<span className="mono"style={{color:T.textSec}}>{s.nick||"—"}</span>}</td>
                 <td><Badge color={s.role==="kitchen"?T.warning:T.teal}bg={s.role==="kitchen"?T.warningDim:T.tealDim}>{s.role}</Badge></td>
                 <td><span className="mono"style={{letterSpacing:4,color:T.textMuted}}>••••</span></td>
                 <td style={{color:T.textSec,fontSize:12}}>{s.since}</td>
@@ -1574,10 +1576,14 @@ function StaffMgmt(){
             <div className="modal-body">
               <Inp label="Nome"value={form.name||""}onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
               {form.role!=="manager"?(
-                <div className="form-row">
-                  <Sel label="Função"value={form.role||"waiter"}onChange={e=>setForm(p=>({...p,role:e.target.value}))}><option value="waiter">Waiter</option><option value="kitchen">Cozinha</option><option value="manager">Gestor</option></Sel>
-                  <Inp label={editStaff==="new"?"PIN (4 dígitos)":"Novo PIN (vazio = manter)"}type="password"maxLength={4}value={form.pin||""}onChange={e=>setForm(p=>({...p,pin:e.target.value}))}/>
-                </div>
+                <>
+                  <Inp label="Nick (login do funcionário)"value={form.nick||""}onChange={e=>setForm(p=>({...p,nick:e.target.value}))}/>
+                  <div style={{fontSize:11,color:T.textMuted,marginTop:-4,marginBottom:8,lineHeight:1.5}}>É o nome que o funcionário escreve para entrar (com o PIN). Deve ser único.</div>
+                  <div className="form-row">
+                    <Sel label="Função"value={form.role||"waiter"}onChange={e=>setForm(p=>({...p,role:e.target.value}))}><option value="waiter">Waiter</option><option value="kitchen">Cozinha</option><option value="manager">Gestor</option></Sel>
+                    <Inp label={editStaff==="new"?"PIN (4 dígitos)":"Novo PIN (vazio = manter)"}type="password"maxLength={4}value={form.pin||""}onChange={e=>setForm(p=>({...p,pin:e.target.value}))}/>
+                  </div>
+                </>
               ):(
                 <Sel label="Função"value={form.role||"waiter"}onChange={e=>setForm(p=>({...p,role:e.target.value}))}><option value="waiter">Waiter</option><option value="kitchen">Cozinha</option><option value="manager">Gestor</option></Sel>
               )}

@@ -8,13 +8,13 @@ export async function POST(req: Request) {
   if ((!staffId && !nick) || !pin)
     return Response.json({ error: "nick e pin obrigatórios" }, { status: 400 });
 
-  // Identify the staff member by their unique nick (name) — entered manually so
-  // the login screen never lists every user — falling back to id for callers
-  // that still pass it.
+  // Identify the staff member by their login nick (distinct from the display
+  // name, configured in the Backoffice) — entered manually so the login screen
+  // never lists every user — falling back to id for callers that still pass it.
   const base = supabaseAdmin.from("staff").select("id, name, role, pin_hash, active");
   const query = staffId
     ? base.eq("id", staffId)
-    : base.ilike("name", String(nick).trim());
+    : base.ilike("nick", String(nick).trim());
 
   const { data: staff, error } = await query.maybeSingle();
 
