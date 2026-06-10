@@ -71,7 +71,7 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-.bo-root{display:flex;width:100vw;height:100vh;overflow:hidden;}
+.bo-root{display:flex;width:100vw;height:100vh;height:100dvh;overflow:hidden;}
 
 /* SIDEBAR */
 .sidebar{display:flex;flex-direction:column;background:${T.surface};border-right:1px solid ${T.border};transition:width .25s cubic-bezier(.4,0,.2,1);overflow:hidden;flex-shrink:0;z-index:20;}

@@ -38,7 +38,7 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 
 /* ─ ROOT ─ */
 .login-root {
-  width:100vw; height:100vh;
+  width:100vw; height:100vh; height:100dvh;
   display:flex; align-items:center; justify-content:center;
   position:relative; overflow:hidden;
 }

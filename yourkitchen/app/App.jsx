@@ -83,7 +83,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:${T.bg};color:${T.te
 @keyframes glow   {0%,100%{box-shadow:0 0 16px var(--c)44}50%{box-shadow:0 0 32px var(--c)88}}
 
 /* ─ SHELL ─ */
-.app-shell{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.app-shell{width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
 
 /* ─ GLOBAL NAV ─ */
 .g-nav{
@@ -132,6 +132,29 @@ html,body{width:100%;height:100%;overflow:hidden;background:${T.bg};color:${T.te
 .module-area{flex:1;overflow:hidden;position:relative;}
 .module-frame{width:100%;height:100%;animation:fadeIn .2s ease;}
 
+/* ─ RESPONSIVE ─ */
+@media(max-width:760px){
+  .g-nav{padding:0 10px;gap:8px;}
+  .g-logo{font-size:0;gap:0;}
+  .g-logo-dot{width:9px;height:9px;}
+  .g-sep{display:none;}
+  .g-tabs{gap:3px;}
+  .g-tab{padding:7px 11px;gap:0;}
+  .g-tab-label{display:none;}
+  .g-tab-icon{font-size:16px;}
+  .g-right{gap:6px;}
+  .g-clock{font-size:12px;}
+  .g-user{padding:4px 7px;gap:6px;}
+  .g-user-name{display:none;}
+  .g-logout{padding:7px 9px;font-size:0;gap:0;}
+}
+@media(max-width:420px){
+  .g-clock{display:none;}
+}
+@media(max-height:520px){
+  .g-nav{height:46px;}
+}
+
 `;
 
 // ─── CLOCK ────────────────────────────────────────────────────────────────────
@@ -168,7 +191,7 @@ function GlobalNav({ session, navigate, logout, canAccess, appName }) {
               title={meta.label}
             >
               <span className="g-tab-icon">{meta.icon}</span>
-              {meta.label}
+              <span className="g-tab-label">{meta.label}</span>
             </div>
           );
         })}
