@@ -32,14 +32,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     supabaseAdmin.from("staff").update(p).eq("id", id).select(cols).single();
 
   let { data, error } = await update(patch, "id, name, nick, role, active, created_at");
-  // Graceful fallback: nick column not migrated yet → update without it.
+  // Graceful fallback: nick column not migrated yet → update without it, and
+  // flag it so the client can warn that the nick wasn't saved.
+  let nickColumnMissing = false;
   if (error && /nick/i.test(error.message || "")) {
+    nickColumnMissing = true;
     delete patch.nick;
     ({ data, error } = await update(patch, "id, name, role, active, created_at"));
   }
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json(data);
+  return Response.json({ ...(data as object), nickColumnMissing });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {

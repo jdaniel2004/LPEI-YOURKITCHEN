@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { fmtTime, fmtDate } from "@/lib/timezone";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -240,21 +239,6 @@ input{font-family:'Syne',sans-serif;color:${T.text};}
 .success-sub  { font-size:13px; color:${T.textSec}; }
 .success-pill { background:${T.accentDim}; border:1px solid ${T.accent}44; color:${T.accent}; border-radius:20px; padding:6px 16px; font-size:12px; font-weight:700; margin-top:4px; }
 `;
-
-// ─── CLOCK ────────────────────────────────────────────────────────────────────
-function Clock(){
-  const [t,setT]=useState(null);
-  useEffect(()=>{setT(new Date());const i=setInterval(()=>setT(new Date()),1000);return()=>clearInterval(i);},[]);
-  if(!t) return null;
-  const d=fmtDate(t,{weekday:"long",day:"numeric",month:"long"});
-  const h=fmtTime(t,{hour:"2-digit",minute:"2-digit"});
-  return(
-    <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",textAlign:"center",animation:"fadeIn .8s ease"}}>
-      <div style={{fontFamily:"'DM Mono',monospace",fontSize:28,fontWeight:500,letterSpacing:2,color:T.textSec}}>{h}</div>
-      <div style={{fontSize:12,color:T.textMuted,marginTop:4,textTransform:"capitalize"}}>{d}</div>
-    </div>
-  );
-}
 
 // ─── SELECTOR ────────────────────────────────────────────────────────────────
 function Selector({onSelect}){
@@ -554,8 +538,6 @@ export default function Login({ onSuccess }){
           />
         )}
         {screen==="success"&&loggedUser&&<SuccessScreen user={loggedUser}/>}
-
-        <Clock/>
       </div>
     </>
   );

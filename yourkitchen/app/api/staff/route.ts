@@ -61,8 +61,12 @@ export async function POST(req: Request) {
     supabaseAdmin.from("staff").insert(r).select(cols).single();
 
   let { data, error } = await insert(row, "id, name, nick, role, active, created_at");
-  // Graceful fallback: nick column not migrated yet → insert without it.
+  // Graceful fallback: nick column not migrated yet → insert without it, but
+  // tell the client so it can warn that the nick wasn't saved (login by nick
+  // won't work until the add_staff_nick.sql migration is run).
+  let nickColumnMissing = false;
   if (nickMissing(error)) {
+    nickColumnMissing = true;
     delete row.nick;
     ({ data, error } = await insert(row, "id, name, role, active, created_at"));
   }
@@ -78,5 +82,5 @@ export async function POST(req: Request) {
     }
     return Response.json({ error: error.message }, { status: 500 });
   }
-  return Response.json(data, { status: 201 });
+  return Response.json({ ...(data as object), nickColumnMissing }, { status: 201 });
 }

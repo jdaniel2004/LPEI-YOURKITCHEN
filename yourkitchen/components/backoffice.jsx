@@ -1517,12 +1517,13 @@ function StaffMgmt(){
   const openNew=()=>{setForm({name:"",nick:"",role:"waiter",pin:"",email:"",password:"",active:true});setEditStaff("new");};
   const save=async()=>{
     setStaffErr("");
+    let data;
     if(editStaff==="new"){
       const payload={name:form.name,role:form.role};
       if(form.role==="manager"){payload.email=form.email;payload.password=form.password;}
       else{payload.pin=form.pin;payload.nick=form.nick;}
       const r=await fetch("/api/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-      const data=await r.json();
+      data=await r.json();
       if(data.error){setStaffErr(data.error);return;}
       setStaff(p=>[...p,{id:data.id,name:data.name,nick:data.nick,role:data.role,active:data.active,since:new Date(data.created_at).toLocaleDateString("pt-PT",{month:"short",year:"numeric"})}]);
     } else {
@@ -1530,8 +1531,15 @@ function StaffMgmt(){
       if(form.role!=="manager")body.nick=form.nick;
       if(form.pin)body.pin=form.pin;
       const r=await fetch(`/api/staff/${editStaff}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const data=await r.json();
-      if(!data.error)setStaff(p=>p.map(s=>s.id===editStaff?{...s,name:data.name,nick:data.nick,role:data.role,active:data.active}:s));
+      data=await r.json();
+      if(data.error){setStaffErr(data.error);return;}
+      setStaff(p=>p.map(s=>s.id===editStaff?{...s,name:data.name,nick:data.nick,role:data.role,active:data.active}:s));
+    }
+    // A coluna 'nick' ainda não existe na BD: mantém o modal aberto com um aviso
+    // acionável, para o gestor perceber porque é que o login por nick não funciona.
+    if(data&&data.nickColumnMissing&&form.role!=="manager"){
+      setStaffErr("Funcionário guardado, mas o NICK não foi gravado: a coluna 'nick' não existe na base de dados. Corre a migração supabase/add_staff_nick.sql no Supabase (e recarrega o schema) para o login por nick funcionar.");
+      return;
     }
     setEditStaff(null);
   };
