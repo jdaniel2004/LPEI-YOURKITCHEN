@@ -1,6 +1,12 @@
 import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+// Which Supabase project the app is talking to (host only — already public via
+// NEXT_PUBLIC). Computed per-request so the runtime env value is used.
+function getProjectHost(): string {
+  try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").host; } catch { return ""; }
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const run = (cols: string) => supabaseAdmin.from("staff").select(cols).eq("id", id).single();
@@ -33,16 +39,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   let { data, error } = await update(patch, "id, name, nick, role, active, created_at");
   // Graceful fallback: nick column not migrated yet → update without it, and
-  // flag it so the client can warn that the nick wasn't saved.
+  // flag it (with the real error + project) so the client can warn clearly.
   let nickColumnMissing = false;
+  let nickError = "";
   if (error && /nick/i.test(error.message || "")) {
     nickColumnMissing = true;
+    nickError = error?.message ?? "";
     delete patch.nick;
     ({ data, error } = await update(patch, "id, name, role, active, created_at"));
   }
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ ...(data as object), nickColumnMissing });
+  return Response.json({ ...(data as object), nickColumnMissing, nickError, project: getProjectHost() });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {

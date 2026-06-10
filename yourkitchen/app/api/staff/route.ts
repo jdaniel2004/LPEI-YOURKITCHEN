@@ -8,9 +8,10 @@ const nickMissing = (error: { message?: string } | null) => !!error && /nick/i.t
 
 // Which Supabase project the app is actually talking to (host only — the URL is
 // already public via NEXT_PUBLIC). Helps diagnose "migrated the wrong project".
-const projectHost = (() => {
+// Computed per-request so the runtime env value is used (not a build-time blank).
+function getProjectHost(): string {
   try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").host; } catch { return ""; }
-})();
+}
 
 export async function GET() {
   const run = (cols: string) => supabaseAdmin.from("staff").select(cols).order("name");
@@ -90,5 +91,5 @@ export async function POST(req: Request) {
     }
     return Response.json({ error: error.message }, { status: 500 });
   }
-  return Response.json({ ...(data as object), nickColumnMissing, nickError, project: projectHost }, { status: 201 });
+  return Response.json({ ...(data as object), nickColumnMissing, nickError, project: getProjectHost() }, { status: 201 });
 }
