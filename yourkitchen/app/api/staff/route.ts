@@ -1,11 +1,15 @@
 import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+// True when an error is about the nick column not existing yet (migration
+// add_staff_nick.sql not run / stale PostgREST schema cache). Lets the staff
+// routes degrade gracefully instead of hard-failing.
+const nickMissing = (error: { message?: string } | null) => !!error && /nick/i.test(error.message || "");
+
 export async function GET() {
-  const { data, error } = await supabaseAdmin
-    .from("staff")
-    .select("id, name, nick, role, active, created_at")
-    .order("name");
+  const run = (cols: string) => supabaseAdmin.from("staff").select(cols).order("name");
+  let { data, error } = await run("id, name, nick, role, active, created_at");
+  if (nickMissing(error)) ({ data, error } = await run("id, name, role, active, created_at"));
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json(data);
@@ -53,11 +57,15 @@ export async function POST(req: Request) {
   const row: Record<string, unknown> = { name, nick: nickValue, role, pin_hash };
   if (role === "manager") row.email = email;
 
-  const { data, error } = await supabaseAdmin
-    .from("staff")
-    .insert(row)
-    .select("id, name, nick, role, active, created_at")
-    .single();
+  const insert = (r: Record<string, unknown>, cols: string) =>
+    supabaseAdmin.from("staff").insert(r).select(cols).single();
+
+  let { data, error } = await insert(row, "id, name, nick, role, active, created_at");
+  // Graceful fallback: nick column not migrated yet → insert without it.
+  if (nickMissing(error)) {
+    delete row.nick;
+    ({ data, error } = await insert(row, "id, name, role, active, created_at"));
+  }
 
   if (error) {
     // Best-effort: clean up the auth user we just created so we don't orphan it

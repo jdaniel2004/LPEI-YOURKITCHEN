@@ -11,12 +11,18 @@ export async function POST(req: Request) {
   // Identify the staff member by their login nick (distinct from the display
   // name, configured in the Backoffice) — entered manually so the login screen
   // never lists every user — falling back to id for callers that still pass it.
-  const base = supabaseAdmin.from("staff").select("id, name, role, pin_hash, active");
-  const query = staffId
-    ? base.eq("id", staffId)
-    : base.ilike("nick", String(nick).trim());
+  const select = () => supabaseAdmin.from("staff").select("id, name, role, pin_hash, active");
+  const findStaff = async () => {
+    if (staffId) return select().eq("id", String(staffId)).maybeSingle();
+    const byNick = await select().ilike("nick", String(nick).trim()).maybeSingle();
+    // Graceful fallback when the nick column hasn't been migrated yet: the
+    // backfill sets nick = name, so matching by name keeps logins working.
+    if (byNick.error && /nick/i.test(byNick.error.message || ""))
+      return select().ilike("name", String(nick).trim()).maybeSingle();
+    return byNick;
+  };
 
-  const { data: staff, error } = await query.maybeSingle();
+  const { data: staff, error } = await findStaff();
 
   if (error || !staff)
     return Response.json({ error: "Funcionário não encontrado" }, { status: 404 });
