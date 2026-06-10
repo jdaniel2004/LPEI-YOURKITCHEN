@@ -26,52 +26,59 @@ const T = {
 };
 
 // ─── API HELPERS ──────────────────────────────────────────────────────────────
-const DB_TO_KDS = { open: "pendente", sent: "em_preparacao", bill: "pronto" };
+const toItem = l => ({
+  id: l.id,
+  name: l.name,
+  qty: l.qty,
+  notes: Array.isArray(l.modifiers) && l.modifiers.length
+    ? l.modifiers.join(", ")
+    : (l.notes || ""),
+  sent: l.sent,
+  cancelled: l.cancelled,
+});
 
-function mapTicket(o) {
+// One KDS ticket per send-batch (order_lines.sent_batch): every "Enviar" from the
+// POS is its own ticket and never merges into the one the kitchen is already
+// working on. Status is derived per batch from the lines' own timestamps —
+// prep_started_at (Em Preparação) and ready_at (Pronto) — not the shared order
+// status, so batches advance independently.
+function orderToTickets(o) {
   const sentLines = (o.lines || []).filter(l => l.sent && !l.cancelled);
-  const maxBatch = sentLines.reduce((m, l) => Math.max(m, l.sent_batch ?? 0), 0);
-  const toItem = l => ({
-    id: l.id,
-    name: l.name,
-    qty: l.qty,
-    notes: Array.isArray(l.modifiers) && l.modifiers.length
-      ? l.modifiers.join(", ")
-      : (l.notes || ""),
-    sent: l.sent,
-    cancelled: l.cancelled,
-  });
-  // What the kitchen is working on now: every sent batch not yet delivered.
-  // `delivered` is only set when a batch is marked "Pronto", so two consecutive
-  // sends to the same table (e.g. Francesinha then Cola) stay visible together
-  // instead of replacing each other. Once a batch is "Pronto" but still awaiting
-  // serving (and no newer batch exists), fall back to the latest batch so the
-  // "Pronto" column isn't left empty.
-  const pending = sentLines.filter(l => !l.delivered);
-  const currentBatch = pending.length > 0
-    ? pending
-    : sentLines.filter(l => (l.sent_batch ?? 0) === maxBatch);
-  // Timer starts when the oldest visible item reached the kitchen, and freezes
-  // at the moment it was marked ready (ready_at), so it stops counting on "Pronto".
-  const startedAt = currentBatch.length
-    ? Math.min(...currentBatch.map(l => new Date(l.created_at).getTime()))
-    : new Date(o.created_at).getTime();
-  const readyTimes = currentBatch.map(l => l.ready_at).filter(Boolean).map(t => new Date(t).getTime());
-  const readyAt = readyTimes.length === currentBatch.length && readyTimes.length > 0
-    ? Math.max(...readyTimes) : null;
-  return {
-    id: o.id,
-    type: o.table ? "mesa" : (o.notes?.includes("take") ? "take-away" : "balcao"),
-    table: o.table?.label || null,
-    waiter: o.waiter?.name || "—",
-    notes: o.notes || null,
-    createdAt: new Date(o.created_at).getTime(),
-    startedAt,
-    readyAt,
-    status: DB_TO_KDS[o.status] || "pendente",
-    // Items in play now (undelivered batches); delivered ones don't reappear
-    items: currentBatch.map(toItem),
-  };
+  if (sentLines.length === 0) return [];
+
+  const byBatch = new Map();
+  for (const l of sentLines) {
+    const b = l.sent_batch ?? 0;
+    if (!byBatch.has(b)) byBatch.set(b, []);
+    byBatch.get(b).push(l);
+  }
+
+  const type = o.table ? "mesa" : (o.notes?.includes("take") ? "take-away" : "balcao");
+  const tickets = [];
+  for (const [batch, lines] of byBatch) {
+    const allReady = lines.every(l => l.ready_at);
+    const anyStarted = lines.some(l => l.prep_started_at);
+    const status = allReady ? "pronto" : anyStarted ? "em_preparacao" : "pendente";
+    // Timer runs from when this batch reached the kitchen and freezes at ready_at.
+    const startedAt = Math.min(...lines.map(l => new Date(l.created_at).getTime()));
+    const readyTimes = lines.map(l => l.ready_at).filter(Boolean).map(t => new Date(t).getTime());
+    const readyAt = allReady && readyTimes.length ? Math.max(...readyTimes) : null;
+    tickets.push({
+      id: `${o.id}::${batch}`,
+      orderId: o.id,
+      batch,
+      type,
+      table: o.table?.label || null,
+      waiter: o.waiter?.name || "—",
+      notes: o.notes || null,
+      createdAt: new Date(o.created_at).getTime(),
+      startedAt,
+      readyAt,
+      status,
+      items: lines.map(toItem),
+    });
+  }
+  return tickets;
 }
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
@@ -803,7 +810,7 @@ function KDSTicket({ ticket, onAdvance, onCancelOrder }) {
           {next && (
             <button
               className={`ticket-action-btn ${next === "em_preparacao" ? "btn-iniciar" : "btn-pronto"}`}
-              onClick={() => onAdvance(ticket.id, next)}
+              onClick={() => onAdvance(ticket, next)}
             >
               {next === "em_preparacao" ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -816,7 +823,7 @@ function KDSTicket({ ticket, onAdvance, onCancelOrder }) {
           {isDone && (
             <button
               className="ticket-action-btn btn-servido"
-              onClick={() => onAdvance(ticket.id, "servido")}
+              onClick={() => onAdvance(ticket, "servido")}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
               Servido — Arquivar
@@ -834,12 +841,12 @@ function KDSTicket({ ticket, onAdvance, onCancelOrder }) {
 
       {cancelOrderOpen && (
         <CancelModal
-          title="Cancelar Pedido Completo"
-          subtitle={<>Todos os itens de <strong>{label}</strong> serão anulados — Ticket #{ticket.id}</>}
-          confirmLabel="Cancelar Pedido"
+          title="Cancelar Ticket"
+          subtitle={<>Os itens deste ticket de <strong>{label}</strong> serão anulados — #{ticket.orderId.slice(0, 8)}·L{ticket.batch}</>}
+          confirmLabel="Cancelar Ticket"
           onClose={() => setCancelOrderOpen(false)}
           onConfirm={(motivo) => {
-            onCancelOrder(ticket.id, motivo);
+            onCancelOrder(ticket, motivo);
             setCancelOrderOpen(false);
           }}
         />
@@ -965,7 +972,7 @@ export default function KDS() {
         .then(r => r.json())
         .then(data => {
           if (!Array.isArray(data)) return;
-          const incoming = data.map(mapTicket);
+          const incoming = data.flatMap(orderToTickets);
           // Clean up archived IDs that no longer exist in DB (e.g. paid orders)
           const liveIds = new Set(incoming.map(t => t.id));
           const staleArchived = [...archivedRef.current].filter(id => !liveIds.has(id));
@@ -992,59 +999,60 @@ export default function KDS() {
     return subscribeRealtime(["orders", "order_lines"], load, { name: "kds-tickets" });
   }, []);
 
-  const handleAdvance = useCallback(async (ticketId, next) => {
+  const handleAdvance = useCallback(async (ticket, next) => {
+    const ticketId = ticket.id;
     if (next === "servido") {
       setTickets(prev => prev.filter(t => t.id !== ticketId));
       archivedRef.current.add(ticketId);
       try { localStorage.setItem("kds_archived", JSON.stringify([...archivedRef.current])); } catch {}
-      addLog("ACTION", `Ticket <strong>#${ticketId.slice(0,8)}</strong> arquivado (servido).`);
+      addLog("ACTION", `Ticket <strong>#${ticket.orderId.slice(0,8)}·L${ticket.batch}</strong> arquivado (servido).`);
       addToast(`Ticket arquivado`, T.teal);
       return;
     }
-    // Capture current state for rollback and toast before the optimistic update
-    const prevTicket = tickets.find(t => t.id === ticketId);
-    const prevStatus = prevTicket?.status;
-    // Mark in-flight so the poll doesn't overwrite our optimistic state
+    const prevStatus = ticket.status;
+    // Mark in-flight so the live re-sync doesn't overwrite our optimistic state
     inFlightRef.current.add(ticketId);
     setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: next } : t));
     try {
-      await fetch(`/api/kds/tickets/${ticketId}`, { method: "PATCH" });
-      addLog("ACTION", `Ticket <strong>#${ticketId.slice(0,8)}</strong> → <strong>${statusLabel(next)}</strong>.`);
+      const res = await fetch(`/api/kds/tickets/${ticket.orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch: ticket.batch, action: next === "pronto" ? "ready" : "start" }),
+      });
+      if (!res.ok) throw new Error();
+      addLog("ACTION", `Ticket <strong>#${ticket.orderId.slice(0,8)}·L${ticket.batch}</strong> → <strong>${statusLabel(next)}</strong>.`);
       if (next === "pronto") {
-        addToast(`Mesa ${prevTicket?.table || "—"} pronto! 🔔`, T.success);
+        addToast(`Mesa ${ticket.table || "—"} pronto! 🔔`, T.success);
       }
     } catch {
-      // Rollback to actual previous status
-      if (prevStatus) {
-        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: prevStatus } : t));
-      }
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: prevStatus } : t));
       addToast("Erro ao avançar ticket", T.danger);
     } finally {
       inFlightRef.current.delete(ticketId);
     }
-  }, [addLog, addToast, tickets]);
+  }, [addLog, addToast]);
 
-  const handleCancelOrder = useCallback(async (ticketId, motivo) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    // Optimistic — remove the whole ticket from the board
+  const handleCancelOrder = useCallback(async (ticket, motivo) => {
+    const ticketId = ticket.id;
+    // Optimistic — remove this ticket (one send-batch) from the board
     setTickets(prev => prev.filter(t => t.id !== ticketId));
     try {
-      const res = await fetch(`/api/orders/${ticketId}/cancel`, {
+      const res = await fetch(`/api/orders/${ticket.orderId}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: motivo }),
+        body: JSON.stringify({ reason: motivo, batch: ticket.batch }),
       });
       if (!res.ok) throw new Error();
-      // Don't let the poll re-add it before the DB reflects "cancelled"
+      // Don't let the live re-sync re-add it before the DB reflects "cancelled"
       archivedRef.current.add(ticketId);
       try { localStorage.setItem("kds_archived", JSON.stringify([...archivedRef.current])); } catch {}
-      addLog("CANCEL", `Pedido <strong>#${ticketId.slice(0,8)}</strong> (${ticket?.table ? `Mesa ${ticket.table}` : "balcão"}) anulado por completo.`, motivo);
-      addToast(`Pedido anulado — ${ticket?.table ? `Mesa ${ticket.table}` : "balcão"}`, T.danger);
+      addLog("CANCEL", `Ticket <strong>#${ticket.orderId.slice(0,8)}·L${ticket.batch}</strong> (${ticket.table ? `Mesa ${ticket.table}` : "balcão"}) anulado.`, motivo);
+      addToast(`Ticket anulado — ${ticket.table ? `Mesa ${ticket.table}` : "balcão"}`, T.danger);
     } catch {
-      if (ticket) setTickets(prev => prev.some(t => t.id === ticketId) ? prev : [...prev, ticket]);
-      addToast("Erro ao cancelar pedido", T.danger);
+      setTickets(prev => prev.some(t => t.id === ticketId) ? prev : [...prev, ticket]);
+      addToast("Erro ao cancelar ticket", T.danger);
     }
-  }, [addLog, addToast, tickets]);
+  }, [addLog, addToast]);
 
   const byStatus = (s) => tickets.filter(t => t.status === s);
   const totalActive = tickets.filter(t => t.status !== "pronto").length;

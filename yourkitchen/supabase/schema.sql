@@ -254,6 +254,11 @@ alter table order_lines add column if not exists delivered boolean not null defa
 -- Also lets the KDS freeze the ticket timer once it's "Pronto".
 alter table order_lines add column if not exists ready_at timestamptz;
 
+-- When the kitchen started preparing a line. The KDS renders one ticket per
+-- send-batch (sent_batch) with independent status, derived per batch from
+-- prep_started_at (Em Preparação) and ready_at (Pronto). See add_prep_started_at.sql.
+alter table order_lines add column if not exists prep_started_at timestamptz;
+
 -- Ingredient modifiers: ingredients the customer can add/remove on a per-item basis
 alter table ingredients add column if not exists is_modifier boolean not null default false;
 

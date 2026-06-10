@@ -6,6 +6,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const staffId = req.headers.get("x-session-id");
   const body = await req.json().catch(() => ({}));
   const reason: string | null = body?.reason ?? null;
+  // When a KDS ticket (a single send-batch) is cancelled, only that batch's lines
+  // are anulled — other batches of the same order keep going. Omitting batch keeps
+  // the original "cancel the whole order" behaviour (e.g. from the POS).
+  const batch: number | null = body?.batch != null ? Number(body.batch) : null;
 
   const { data: order, error: orderErr } = await supabaseAdmin
     .from("orders")
@@ -19,14 +23,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (order.status === "paid")
     return Response.json({ error: "Pedido já pago — não pode ser anulado" }, { status: 400 });
 
-  // Mark every line as cancelled
-  const { error: linesErr } = await supabaseAdmin
+  // Mark the targeted lines as cancelled (one batch, or all of them)
+  let linesQuery = supabaseAdmin
     .from("order_lines")
     .update({ cancelled: true, cancel_note: reason })
     .eq("order_id", id)
     .eq("cancelled", false);
+  if (batch != null) linesQuery = linesQuery.eq("sent_batch", batch);
 
+  const { error: linesErr } = await linesQuery;
   if (linesErr) return Response.json({ error: linesErr.message }, { status: 500 });
+
+  // A single-batch cancel only takes down the whole order when nothing is left.
+  if (batch != null) {
+    const { data: remaining } = await supabaseAdmin
+      .from("order_lines")
+      .select("id")
+      .eq("order_id", id)
+      .eq("cancelled", false);
+    if (remaining && remaining.length > 0) {
+      const tableLabel = (order.table as { label?: string } | null)?.label ?? "balcão";
+      await writeLog(
+        "CANCEL",
+        "KDS",
+        `Ticket anulado — Mesa ${tableLabel} (${id.slice(0, 8)}·L${batch})`,
+        staffId,
+        reason
+      );
+      return Response.json({ ...order, cancelledBatch: batch });
+    }
+    // else: no active lines remain → fall through and cancel the order itself.
+  }
 
   // Cancel the order
   const { data: updated, error: updateErr } = await supabaseAdmin

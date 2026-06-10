@@ -198,7 +198,9 @@ input,textarea,select{font-family:'Syne',sans-serif;color:${T.text};}
 @media(max-width:600px){
   .kpi-grid{grid-template-columns:1fr 1fr;}
   .sidebar.expanded{width:56px;}
-  .sb-label,.sb-logo-text,.sb-logo-sub,.sb-ext span{display:none;}
+  .sb-label,.sb-logo-text,.sb-logo-sub,.sb-ext span,.sb-collapse-text{display:none;}
+  .sb-collapse{padding:12px 0;gap:0;}
+  .sb-collapse svg{width:18px;height:18px;}
 }
 @media print{
   body>*{visibility:hidden!important;}
@@ -2066,7 +2068,7 @@ function Sidebar({active,onSelect,collapsed,onCollapse,appName="RestaurantOS"}){
         <div className="sb-sep"/>
         <button className="sb-collapse"onClick={onCollapse}title={collapsed?"Expandir":"Recolher"}>
           {collapsed?<Ic.ChevRight/>:<Ic.ChevLeft/>}
-          {!collapsed&&<span style={{marginLeft:8,fontSize:11,fontWeight:600}}>Recolher</span>}
+          {!collapsed&&<span className="sb-collapse-text" style={{marginLeft:8,fontSize:11,fontWeight:600}}>Recolher</span>}
         </button>
       </div>
     </nav>

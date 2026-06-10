@@ -12,11 +12,6 @@ const T = {
   text:"#FFFFFF", textSec:"#A8A8BC", textMuted:"#6E6E84",
 };
 
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const ROLE_COLORS = ["#7C6AF7","#3ECFAE","#F7A94A","#B06AF7","#4A9EF7","#F75A5A"];
-function staffColor(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))&0xffff; return ROLE_COLORS[h%ROLE_COLORS.length]; }
-function staffInitials(name){ const w=name.trim().split(/\s+/); return (w[0]?.[0]??"")+(w[1]?.[0]??w[0]?.[1]??"").toUpperCase(); }
-
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800;900&display=swap');
@@ -364,64 +359,20 @@ function ManagerLogin({onBack,onSuccess}){
   );
 }
 
-// ─── STAFF PICK ───────────────────────────────────────────────────────────────
-function StaffPick({onSelect,onBack}){
-  const [staff,setStaff]=useState([]);
-  const [loading,setLoading]=useState(true);
+// ─── STAFF LOGIN (nick + PIN) ───────────────────────────────────────────────────
+const TIMEOUT_SECS = 60;
 
-  useEffect(()=>{
-    fetch("/api/auth/staff")
-      .then(r=>r.json())
-      .then(d=>{ setStaff(Array.isArray(d)?d:[]); setLoading(false); })
-      .catch(()=>setLoading(false));
-  },[]);
-
-  const ROLE_LABEL={manager:"Gestor",waiter:"Empregado",kitchen:"Cozinha"};
-
-  return(
-    <div className="staff-wrap">
-      <button className="back-btn" onClick={onBack}>
-        <svg width="14"height="14"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        Voltar
-      </button>
-      <div style={{marginTop:8}}>
-        <div className="staff-grid-title">Quem és tu?</div>
-        {loading
-          ? <div style={{color:T.textMuted,textAlign:"center",padding:32,fontFamily:"'DM Mono',monospace",fontSize:13}}>A carregar...</div>
-          : <div className="staff-grid">
-              {staff.map(s=>{
-                const color=staffColor(s.name);
-                const initials=staffInitials(s.name);
-                return(
-                  <div key={s.id} className="staff-tile" style={{"--tile-color":color}} onClick={()=>onSelect({...s,color,initials})}>
-                    <style>{`.staff-tile:hover{border-color:${color}44!important;background:${color}08!important;}`}</style>
-                    <div className="st-avatar" style={{background:`${color}18`,border:`1px solid ${color}33`,color}}>{initials}</div>
-                    <div>
-                      <div className="st-name">{s.name}</div>
-                      <div className="st-role">{ROLE_LABEL[s.role]??s.role}</div>
-                    </div>
-                    <svg style={{marginLeft:"auto",color,opacity:.4}} width="16"height="16"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                  </div>
-                );
-              })}
-            </div>
-        }
-      </div>
-    </div>
-  );
-}
-
-// ─── PIN PAD ──────────────────────────────────────────────────────────────────
-const TIMEOUT_SECS = 30;
-
-function PinPad({staff,onSuccess,onBack}){
+function StaffLogin({onSuccess,onBack}){
+  const accent=T.teal;
+  const [nick,setNick]=useState("");
   const [pin,setPin]=useState([]);
-  const [error,setError]=useState(false);
+  const [error,setError]=useState("");
   const [shake,setShake]=useState(false);
+  const [loading,setLoading]=useState(false);
   const [timeLeft,setTimeLeft]=useState(TIMEOUT_SECS);
   const timerRef=useRef(null);
 
-  // Countdown
+  // Inactivity countdown → back to the selector
   useEffect(()=>{
     timerRef.current=setInterval(()=>{
       setTimeLeft(t=>{
@@ -432,23 +383,32 @@ function PinPad({staff,onSuccess,onBack}){
     return()=>clearInterval(timerRef.current);
   },[onBack]);
 
-  // Auto-submit at 4 digits
+  // Auto-submit once 4 digits are entered. The nick is matched server-side, so
+  // the screen never has to list every user.
   useEffect(()=>{
     if(pin.length!==4) return;
+    if(!nick.trim()){
+      setError("Introduz o teu nick.");setShake(true);
+      setTimeout(()=>{setPin([]);setShake(false);},600);
+      return;
+    }
     const entered=pin.join("");
-    clearInterval(timerRef.current);
-    fetch("/api/auth/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({staffId:staff.id,pin:entered})})
+    setLoading(true);
+    fetch("/api/auth/staff",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nick:nick.trim(),pin:entered})})
       .then(r=>r.json())
       .then(d=>{
-        if(d.ok){ setTimeout(()=>onSuccess(d.user),200); }
-        else{ setError(true);setShake(true); setTimeout(()=>{setPin([]);setError(false);setShake(false); timerRef.current=setInterval(()=>setTimeLeft(t=>{if(t<=1){clearInterval(timerRef.current);onBack();return 0;}return t-1;}),1000);},600); }
+        setLoading(false);
+        if(d.ok){ clearInterval(timerRef.current); setTimeout(()=>onSuccess(d.user),200); }
+        else{ setError(d.error||"Nick ou PIN incorrectos.");setShake(true); setTimeout(()=>{setPin([]);setShake(false);},600); }
       })
-      .catch(()=>{ setError(true);setShake(true); setTimeout(()=>{setPin([]);setError(false);setShake(false);},600); });
-  },[pin,staff,onSuccess,onBack]);
+      .catch(()=>{ setLoading(false); setError("Erro de ligação. Tenta novamente.");setShake(true); setTimeout(()=>{setPin([]);setShake(false);},600); });
+  },[pin,nick,onSuccess]);
 
   const press=(d)=>{
+    setTimeLeft(TIMEOUT_SECS); // any keypress resets the inactivity timer
     if(d==="⌫"){setPin(p=>p.slice(0,-1));return;}
     if(pin.length>=4) return;
+    setError("");
     setPin(p=>[...p,d]);
   };
 
@@ -461,14 +421,22 @@ function PinPad({staff,onSuccess,onBack}){
         Voltar
       </button>
 
-      <div className="pin-staff" style={{marginTop:8}}>
-        <div className="pin-av" style={{background:`${staff.color}18`,border:`1px solid ${staff.color}33`,color:staff.color}}>
-          {staff.initials}
-        </div>
+      <div className="login-card-head" style={{border:"none",padding:"8px 0 18px",gap:14}}>
+        <div className="login-icon" style={{background:T.tealDim,border:`1px solid ${T.teal}33`}}>👤</div>
         <div>
-          <div className="pin-name">{staff.name}</div>
-          <div className="pin-role">{staff.role}</div>
+          <div className="login-card-title">Funcionário</div>
+          <div className="login-card-sub">Nick + PIN</div>
         </div>
+      </div>
+
+      <div className="field-wrap" style={{width:"100%",marginBottom:24}}>
+        <div className="field-label">Nick</div>
+        <input
+          className={`field-input${error&&!nick.trim()?" error":""}`}
+          type="text" placeholder="O teu nick" autoComplete="off"
+          value={nick} onChange={e=>{setNick(e.target.value);setError("");setTimeLeft(TIMEOUT_SECS);}}
+          autoFocus
+        />
       </div>
 
       <div className="pin-dots">
@@ -476,14 +444,14 @@ function PinPad({staff,onSuccess,onBack}){
           <div
             key={i}
             className={`pin-dot${pin.length>i?(error?" error":" filled"):""}`}
-            style={{"--dot-color":error?T.danger:staff.color}}
+            style={{"--dot-color":error?T.danger:accent}}
           />
         ))}
       </div>
 
       {error&&(
         <div style={{fontSize:12,color:T.danger,marginBottom:12,animation:"fadeIn .15s",fontWeight:600}}>
-          PIN incorrecto. Tenta novamente.
+          {error}
         </div>
       )}
 
@@ -492,6 +460,7 @@ function PinPad({staff,onSuccess,onBack}){
           <button
             key={i}
             className={`pn-btn${d===""?" empty":d==="⌫"?" del":""}`}
+            disabled={loading}
             onClick={()=>d&&press(d)}
           >
             {d==="⌫"
@@ -506,7 +475,7 @@ function PinPad({staff,onSuccess,onBack}){
         <div className="timeout-ring">
           <svg width="20"height="20"viewBox="0 0 50 50">
             <circle className="timeout-track"cx="25"cy="25"r="20"/>
-            <circle className="timeout-prog"cx="25"cy="25"r="20"style={{strokeDashoffset:progress,stroke:timeLeft<=10?T.danger:staff.color}}/>
+            <circle className="timeout-prog"cx="25"cy="25"r="20"style={{strokeDashoffset:progress,stroke:timeLeft<=10?T.danger:accent}}/>
           </svg>
         </div>
         Timeout em {timeLeft}s
@@ -545,9 +514,8 @@ function SuccessScreen({user}){
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Login({ onSuccess }){
-  // screen: selector | manager | staff-pick | staff-pin | success
+  // screen: selector | manager | staff | success
   const [screen,setScreen]=useState("selector");
-  const [selectedStaff,setSelectedStaff]=useState(null);
   const [loggedUser,setLoggedUser]=useState(null);
   // Pre-auth screen can't read settings; use the name cached on last login.
   const [appName,setAppName]=useState("RestaurantOS");
@@ -573,18 +541,11 @@ export default function Login({ onSuccess }){
           <div className="wm-ver">v1</div>
         </div>
 
-        {screen==="selector" && <Selector onSelect={s=>setScreen(s==="manager"?"manager":"staff-pick")}/>}
+        {screen==="selector" && <Selector onSelect={s=>setScreen(s==="manager"?"manager":"staff")}/>}
         {screen==="manager"  && <ManagerLogin onBack={()=>setScreen("selector")} onSuccess={handleSuccess}/>}
-        {screen==="staff-pick"&&(
-          <StaffPick
+        {screen==="staff"&&(
+          <StaffLogin
             onBack={()=>setScreen("selector")}
-            onSelect={s=>{setSelectedStaff(s);setScreen("staff-pin");}}
-          />
-        )}
-        {screen==="staff-pin"&&selectedStaff&&(
-          <PinPad
-            staff={selectedStaff}
-            onBack={()=>setScreen("staff-pick")}
             onSuccess={handleSuccess}
           />
         )}

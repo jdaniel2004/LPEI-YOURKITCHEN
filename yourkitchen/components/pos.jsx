@@ -397,6 +397,7 @@ input,textarea{font-family:'Syne',sans-serif;color:${T.text};}
 .pay-item-row.full{opacity:.45;}
 .pay-item-info{flex:1;min-width:0;}
 .pay-item-name{font-size:13px;font-weight:700;color:${T.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pay-item-mods{font-size:11px;color:${T.accent};margin-top:2px;line-height:1.3;}
 .pay-item-sub{font-size:11px;color:${T.textMuted};font-family:'DM Mono',monospace;margin-top:2px;}
 .pay-item-stepper{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .pay-item-step-btn{width:26px;height:26px;border-radius:6px;border:1px solid ${T.border};background:${T.elevated};color:${T.text};font-size:15px;font-weight:700;cursor:pointer;transition:all .12s;line-height:1;display:flex;align-items:center;justify-content:center;}
@@ -875,6 +876,9 @@ function PaymentModal({order,tableLabel,seats,discount,onConfirm,onClose}){
                       <div key={i.lineId} className="pay-item-row">
                         <div className="pay-item-info">
                           <div className="pay-item-name">{i.name}</div>
+                          {Array.isArray(i.mods)&&i.mods.length>0&&(
+                            <div className="pay-item-mods">{i.mods.join(", ")}</div>
+                          )}
                           <div className="pay-item-sub">{fmtEur(unitOf(i))} · {remQty} por pagar{i.paidQty?` (${i.paidQty} pago${i.paidQty>1?"s":""})`:""}</div>
                         </div>
                         <div className="pay-item-stepper">
@@ -1004,9 +1008,14 @@ function ReceiptModal({receipt,onClose}){
           </div>
           <div style={{padding:"10px 0",borderBottom:`1px dashed ${T.border}`}}>
             {items.map((item,i)=>(
-              <div key={i} className="receipt-row">
-                <span style={{color:T.textSec,flex:1,marginRight:8}}>{item.qty}× {item.name}</span>
-                <span style={{color:T.text,flexShrink:0}}>{fmtEur((item.price+(item.extraPrice||0))*item.qty)}</span>
+              <div key={i} style={{marginBottom:4}}>
+                <div className="receipt-row" style={{marginBottom:0}}>
+                  <span style={{color:T.textSec,flex:1,marginRight:8}}>{item.qty}× {item.name}</span>
+                  <span style={{color:T.text,flexShrink:0}}>{fmtEur((item.price+(item.extraPrice||0))*item.qty)}</span>
+                </div>
+                {Array.isArray(item.mods)&&item.mods.length>0&&(
+                  <div style={{color:T.textMuted,fontSize:11,paddingLeft:14}}>+ {item.mods.join(", ")}</div>
+                )}
               </div>
             ))}
           </div>
@@ -2021,22 +2030,10 @@ export default function POS({session,appName="YourKitchen"}){
       const tl=activeTable?.id||"?";
       addToast(`Pedido enviado — ${tl}`,T.accent);
       setReadyOrders(prev=>{const n=new Set(prev);n.delete(realOrderId);return n;});
-      // Create a new empty order for the table so the next batch gets its own KDS ticket.
-      // Only for table orders (not take-away/counter which have no physical table card).
-      if(activeTable?.dbId){
-        const followUpRes=await fetch("/api/orders",{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({table_id:activeTable.dbId,type:"table"}),
-        }).catch(()=>null);
-        if(followUpRes?.ok){
-          const followUpOrder=await followUpRes.json().catch(()=>null);
-          if(followUpOrder?.id){
-            const newMapped={id:followUpOrder.id,tableId:activeTableId,tableDbId:activeTable.dbId,waiterId:currentStaff.id,items:[],notes:"",type:"table",status:"open",paid:false,draft:false};
-            setOrders(p=>({...p,[followUpOrder.id]:newMapped}));
-            setTables(p=>p.map(t=>t.id===activeTableId?{...t,orderId:followUpOrder.id}:t));
-          }
-        }
-      }
+      // Each "Enviar" is a new send-batch on this order; the KDS renders one ticket
+      // per batch, so a follow-up send always gets its own ticket without us having
+      // to spin up a fresh order per send (which raced the live re-sync and could
+      // re-map the table back to the just-sent order, appending to the same ticket).
     }catch(e){
       setOrders(p=>({...p,[realOrderId]:{...p[realOrderId],items:(p[realOrderId]?.items||[]).map(i=>{
         const wasPending=pending.find(pi=>pi.lineId===i.lineId);

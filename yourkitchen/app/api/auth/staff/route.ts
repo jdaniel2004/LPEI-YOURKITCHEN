@@ -4,15 +4,19 @@ import { signSession, sessionCookieHeader } from "@/lib/auth";
 import { writeLog } from "@/lib/log";
 
 export async function POST(req: Request) {
-  const { staffId, pin } = await req.json();
-  if (!staffId || !pin)
-    return Response.json({ error: "staffId e pin obrigatórios" }, { status: 400 });
+  const { staffId, nick, pin } = await req.json();
+  if ((!staffId && !nick) || !pin)
+    return Response.json({ error: "nick e pin obrigatórios" }, { status: 400 });
 
-  const { data: staff, error } = await supabaseAdmin
-    .from("staff")
-    .select("id, name, role, pin_hash, active")
-    .eq("id", staffId)
-    .single();
+  // Identify the staff member by their unique nick (name) — entered manually so
+  // the login screen never lists every user — falling back to id for callers
+  // that still pass it.
+  const base = supabaseAdmin.from("staff").select("id, name, role, pin_hash, active");
+  const query = staffId
+    ? base.eq("id", staffId)
+    : base.ilike("name", String(nick).trim());
+
+  const { data: staff, error } = await query.maybeSingle();
 
   if (error || !staff)
     return Response.json({ error: "Funcionário não encontrado" }, { status: 404 });
