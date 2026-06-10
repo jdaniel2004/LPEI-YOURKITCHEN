@@ -1859,7 +1859,7 @@ function OrderHistory(){
                               <span className="mono"style={{color:T.accent,fontWeight:700}}>{fmtEur(p.amount)}</span>
                               {p.tip>0&&<span className="mono"style={{color:T.teal}}>+{fmtEur(p.tip)} gorjeta</span>}
                               {p.items
-                                ?<span style={{color:T.textSec}}>· {p.items.map(it=>`${it.qty}x ${it.name}`).join(", ")}</span>
+                                ?<span style={{color:T.textSec}}>· {p.items.map(it=>`${it.qty}x ${it.name}${Array.isArray(it.modifiers)&&it.modifiers.length?` (${it.modifiers.join(", ")})`:""}`).join(", ")}</span>
                                 :<span style={{color:T.textMuted}}>· pedido completo</span>}
                             </div>
                           ))}

@@ -9,6 +9,7 @@ type Line = {
   extra_price: number | null;
   paid_qty: number | null;
   cancelled: boolean;
+  modifiers: string[] | null;
 };
 
 const methodLabel: Record<string, string> = {
@@ -27,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { data: order, error: orderErr } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, table_id, table:tables(label), lines:order_lines(id, name, qty, unit_price, extra_price, paid_qty, cancelled)"
+      "id, table_id, table:tables(label), lines:order_lines(id, name, qty, unit_price, extra_price, paid_qty, cancelled, modifiers)"
     )
     .eq("id", id)
     .single();
@@ -46,7 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   let paidUnits = 0;
   // Per-item breakdown of what THIS transaction settled (item payments only), so
   // the backoffice can show exactly which units each payment covered.
-  const paidItems: Array<{ name: string; qty: number; unit_price: number; extra_price: number }> = [];
+  const paidItems: Array<{ name: string; qty: number; unit_price: number; extra_price: number; modifiers: string[] }> = [];
 
   if (isItemPayment) {
     // ── Partial payment: settle specific units of specific lines ───────────────
@@ -68,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         qty: payQty,
         unit_price: Number(line.unit_price),
         extra_price: Number(line.extra_price || 0),
+        modifiers: Array.isArray(line.modifiers) ? line.modifiers : [],
       });
     }
     if (updates.length === 0)
