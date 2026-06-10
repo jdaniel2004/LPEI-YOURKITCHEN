@@ -1,26 +1,36 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 // KDS shows orders that are open or sent (pending/in-prep) — not paid/cancelled
+const orderSelect = (lineCols: string) => `id, status, created_at, notes,
+   table:tables(id, label),
+   waiter:staff(id, name),
+   lines:order_lines(${lineCols})`;
+
+// prep_started_at is added by the add_prep_started_at.sql migration. If it hasn't
+// been run yet, selecting it would 500 the whole query and the KDS would show
+// nothing — so we retry without it and the client falls back to order.status.
+const LINES_FULL = "id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, ready_at, prep_started_at";
+const LINES_BASE = "id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, ready_at";
+
 export async function GET() {
   // Only show recent orders (last 24h). Older abandoned/unpaid orders
   // would otherwise pile up forever with absurd timers.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .select(
-      `id, status, created_at, notes,
-       table:tables(id, label),
-       waiter:staff(id, name),
-       lines:order_lines(
-         id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, ready_at, prep_started_at
-       )`
-    )
-    .in("status", ["open", "sent", "bill"])
-    .gte("created_at", since)
-    .order("created_at");
+  const run = (lineCols: string) =>
+    supabaseAdmin
+      .from("orders")
+      .select(orderSelect(lineCols))
+      .in("status", ["open", "sent", "bill"])
+      .gte("created_at", since)
+      .order("created_at");
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  let { data, error } = await run(LINES_FULL);
+  if (error && /prep_started_at/i.test(error.message || "")) {
+    ({ data, error } = await run(LINES_BASE));
+  }
+
+  if (error || !data) return Response.json({ error: error?.message ?? "Erro" }, { status: 500 });
 
   // Filter to orders that have at least one sent, non-cancelled line
   const tickets = data.filter((o) =>

@@ -50,7 +50,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .eq("sent_batch", batch)
       .eq("cancelled", false)
       .is("prep_started_at", null);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    // If the prep_started_at migration hasn't been run, fall back to the
+    // order-level status (the client derives "started" from it too).
+    if (error && !/prep_started_at/i.test(error.message || ""))
+      return Response.json({ error: error.message }, { status: 500 });
 
     // Keep the order out of "open" once any batch is cooking (doesn't affect the
     // per-batch KDS columns, but reflects the order is in progress).

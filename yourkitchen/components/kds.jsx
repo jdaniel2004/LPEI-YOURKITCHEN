@@ -46,6 +46,12 @@ function orderToTickets(o) {
   const sentLines = (o.lines || []).filter(l => l.sent && !l.cancelled);
   if (sentLines.length === 0) return [];
 
+  // Graceful fallback: if the prep_started_at migration hasn't been run, the
+  // column won't be present on the lines — derive "started" from the order-level
+  // status instead, so tickets still flow Pendente → Em Preparação → Pronto.
+  const hasPrepCol = sentLines.some(l => "prep_started_at" in l);
+  const orderStarted = o.status === "sent" || o.status === "bill";
+
   const byBatch = new Map();
   for (const l of sentLines) {
     const b = l.sent_batch ?? 0;
@@ -57,7 +63,7 @@ function orderToTickets(o) {
   const tickets = [];
   for (const [batch, lines] of byBatch) {
     const allReady = lines.every(l => l.ready_at);
-    const anyStarted = lines.some(l => l.prep_started_at);
+    const anyStarted = hasPrepCol ? lines.some(l => l.prep_started_at) : orderStarted;
     const status = allReady ? "pronto" : anyStarted ? "em_preparacao" : "pendente";
     // Timer runs from when this batch reached the kitchen and freezes at ready_at.
     const startedAt = Math.min(...lines.map(l => new Date(l.created_at).getTime()));
