@@ -600,7 +600,7 @@ function MenuStock(){
     if(!form.name){setErrMsg("Nome obrigatório");return;}
     if(!form.catId){setErrMsg("Selecciona uma categoria. Cria primeiro em Menu → Categorias.");return;}
     const body={
-      category_id:form.catId,name:form.name,emoji:form.emoji,
+      category_id:form.catId,name:form.name,
       image_url:form.image_url||null,
       price:parseFloat(form.price)||0,vat_rate:parseInt(form.vat)||23,
       stock:form.stock===""||form.stock===undefined?null:parseInt(form.stock)||0,
@@ -805,7 +805,7 @@ function MenuStock(){
                           {linked&&<svg width="10"height="10"viewBox="0 0 12 12"fill="none"><polyline points="2 6 5 9 10 3"stroke="#fff"strokeWidth="2"strokeLinecap="round"/></svg>}
                         </div>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:13,fontWeight:600}}>{t.name}{t.required&&<span style={{fontSize:10,color:T.danger,marginLeft:6}}>obrigatório</span>}</div>
+                          <div style={{fontSize:13,fontWeight:600}}>{t.name}</div>
                           <div style={{fontSize:11,color:T.textMuted}}>{(t.options||[]).map(o=>`${o.label}${o.extra_price>0?` +€${Number(o.extra_price).toFixed(2)}`:""}`).join(" · ")||"Sem opções"}</div>
                         </div>
                       </div>
@@ -1406,7 +1406,7 @@ function IngredientsMgmt(){
     }).catch(()=>{});
   },[]);
   const save=async()=>{
-    const body={name:form.name,unit:form.unit||"un",stock_qty:parseFloat(form.stock_qty)||0,is_modifier:!!form.is_modifier};
+    const body={name:form.name,unit:form.unit||"un",stock_qty:parseFloat(form.stock_qty)||0};
     if(editIng==="new"){
       const r=await fetch("/api/ingredients",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await r.json();
@@ -1440,14 +1440,14 @@ function IngredientsMgmt(){
     <div>
       <div className="section-head">
         <div className="section-h">{ings.length} ingredientes</div>
-        <button className="btn btn-solid"onClick={()=>{setForm({name:"",unit:"g",stock_qty:0,is_modifier:false});setEditIng("new");}}><Ic.Plus/>Novo Ingrediente</button>
+        <button className="btn btn-solid"onClick={()=>{setForm({name:"",unit:"g",stock_qty:0});setEditIng("new");}}><Ic.Plus/>Novo Ingrediente</button>
       </div>
       <div className="filters-row">
         <input className="filter-input"placeholder="Pesquisar ingrediente..."value={search}onChange={e=>setSearch(e.target.value)}style={{width:260}}/>
       </div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th>Nome</th><th>Unidade</th><th>Stock</th><th>Modificador</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Unidade</th><th>Stock</th><th></th></tr></thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={4}><div className="empty-state">Sem ingredientes</div></td></tr>}
             {filtered.map(i=>(
@@ -1464,11 +1464,8 @@ function IngredientsMgmt(){
                     <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>adjustStock(i.id,1)}>+</button>
                   </div>
                 </td>
-                <td style={{textAlign:"center"}}>
-                  {i.is_modifier&&<Badge color={T.accent}bg={T.accentDim}>POS</Badge>}
-                </td>
                 <td><div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                  <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({name:i.name,unit:i.unit||"un",stock_qty:i.stock_qty||0,is_modifier:!!i.is_modifier});setEditIng(i.id);}}><Ic.Edit/></button>
+                  <button className="btn btn-ghost btn-icon btn-sm"onClick={()=>{setForm({name:i.name,unit:i.unit||"un",stock_qty:i.stock_qty||0});setEditIng(i.id);}}><Ic.Edit/></button>
                   <button className="btn btn-danger btn-icon btn-sm"onClick={()=>deleteIng(i.id)}><Ic.Trash/></button>
                 </div></td>
               </tr>

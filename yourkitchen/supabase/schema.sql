@@ -45,7 +45,6 @@ create table if not exists menu_items (
   id          uuid primary key default gen_random_uuid(),
   category_id uuid references menu_categories(id) on delete cascade,
   name        text not null,
-  emoji       text,
   price       numeric(8,2) not null,
   vat_rate    int not null default 23,
   stock       int,
@@ -75,7 +74,6 @@ create table if not exists ingredients (
   name        text not null,
   unit        text default 'un',
   stock_qty   numeric(12,3) default 0,
-  is_modifier boolean not null default false,
   created_at  timestamptz default now()
 );
 
@@ -85,20 +83,6 @@ create table if not exists item_ingredients (
   ingredient_id uuid references ingredients(id) on delete cascade,
   qty           numeric(12,3) not null default 1,
   primary key (item_id, ingredient_id)
-);
-
--- RESERVATIONS
-create table if not exists reservations (
-  id         uuid primary key default gen_random_uuid(),
-  name       text not null,
-  phone      text,
-  date       date not null,
-  time       time not null,
-  persons    int not null,
-  table_id   uuid references tables(id),
-  notes      text,
-  status     text default 'pending' check (status in ('pending','confirmed','cancelled','seated')),
-  created_at timestamptz default now()
 );
 
 -- CAMPAIGNS
@@ -165,7 +149,6 @@ create table if not exists payments (
 create table if not exists shifts (
   id           uuid primary key default gen_random_uuid(),
   staff_id     uuid references staff(id),
-  fundo_value  numeric(8,2) default 0,
   opened_at    timestamptz default now(),
   closed_at    timestamptz
 );
@@ -203,7 +186,6 @@ alter table menu_items      enable row level security;
 alter table orders          enable row level security;
 alter table order_lines     enable row level security;
 alter table system_logs     enable row level security;
-alter table reservations    enable row level security;
 alter table campaigns       enable row level security;
 alter table payments        enable row level security;
 alter table shifts          enable row level security;
@@ -293,9 +275,6 @@ alter table order_lines add column if not exists ready_at timestamptz;
 -- prep_started_at (Em Preparação) and ready_at (Pronto). See add_prep_started_at.sql.
 alter table order_lines add column if not exists prep_started_at timestamptz;
 
--- Ingredient modifiers: ingredients the customer can add/remove on a per-item basis
-alter table ingredients add column if not exists is_modifier boolean not null default false;
-
 -- Function to decrement ingredient stock when an order is sent
 create or replace function decrement_ingredient_stock(p_ingredient_id uuid, p_qty numeric)
 returns void language plpgsql as $$
@@ -314,7 +293,6 @@ $$;
 create table if not exists modifier_templates (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
-  required   boolean default false,
   created_at timestamptz default now()
 );
 
@@ -355,9 +333,6 @@ alter table order_lines add column if not exists paid_qty int not null default 0
 alter table item_modifiers     add column if not exists single boolean default false;
 alter table modifier_templates add column if not exists single boolean default false;
 
--- Reservas multi-mesa. Ver add_reservation_table_ids.sql
-alter table reservations add column if not exists table_ids uuid[] not null default '{}';
-
 -- URL da imagem do produto. O upload precisa do bucket de Storage criado em
 -- add_menu_item_images.sql (esse passo é à parte, pois mexe no schema "storage").
 alter table menu_items add column if not exists image_url text;
@@ -377,3 +352,12 @@ update staff set nick = name where nick is null;
 -- drop table  if exists combo_modifiers;
 -- drop table  if exists combo_items;
 -- drop table  if exists combos;
+
+-- ─── LIMPEZA DE CAMPOS/TABELAS REMOVIDOS ──────────────────────────────────────
+-- Correr este bloco no Supabase SQL Editor para alinhar uma base de dados
+-- existente com este schema (idempotente — seguro re-executar).
+drop table if exists reservations;
+alter table ingredients       drop column if exists is_modifier;
+alter table shifts            drop column if exists fundo_value;
+alter table modifier_templates drop column if exists required;
+alter table menu_items        drop column if exists emoji;

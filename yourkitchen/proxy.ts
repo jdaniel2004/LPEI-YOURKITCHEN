@@ -14,10 +14,10 @@ const PUBLIC_PREFIXES = ["/api/auth", "/_next", "/favicon.ico"];
 
 const ROLE_ALLOWED: Record<string, string[]> = {
   manager: ["/api/staff", "/api/tables", "/api/menu", "/api/orders", "/api/kds",
-             "/api/reservations", "/api/campaigns", "/api/shifts", "/api/logs",
+             "/api/campaigns", "/api/shifts", "/api/logs",
              "/api/analytics", "/api/settings", "/api/zones", "/api/ingredients",
              "/api/combos"],
-  waiter:  ["/api/tables", "/api/menu", "/api/orders", "/api/reservations",
+  waiter:  ["/api/tables", "/api/menu", "/api/orders",
              "/api/combos", "/api/ingredients", "/api/shifts"],
   kitchen: ["/api/kds", "/api/orders"],
 };

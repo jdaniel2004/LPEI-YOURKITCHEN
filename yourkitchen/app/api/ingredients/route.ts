@@ -10,11 +10,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { name, unit, stock_qty, is_modifier } = await req.json();
+  const { name, unit, stock_qty } = await req.json();
   if (!name) return Response.json({ error: "name obrigatório" }, { status: 400 });
   const { data, error } = await supabaseAdmin
     .from("ingredients")
-    .insert({ name, unit: unit ?? "un", stock_qty: stock_qty ?? 0, is_modifier: is_modifier ?? false })
+    .insert({ name, unit: unit ?? "un", stock_qty: stock_qty ?? 0 })
     .select()
     .single();
   if (error) return Response.json({ error: error.message }, { status: 500 });

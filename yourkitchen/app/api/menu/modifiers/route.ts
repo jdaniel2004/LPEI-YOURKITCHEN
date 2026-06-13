@@ -13,12 +13,12 @@ export async function GET() {
 // Create a new template (+ its options)
 export async function POST(req: Request) {
   const body = await req.json();
-  const { name, required, single, options } = body;
+  const { name, single, options } = body;
   if (!name) return Response.json({ error: "name obrigatório" }, { status: 400 });
 
   const { data: tpl, error: tplErr } = await supabaseAdmin
     .from("modifier_templates")
-    .insert({ name, required: required ?? false, single: single ?? false })
+    .insert({ name, single: single ?? false })
     .select()
     .single();
   if (tplErr) return Response.json({ error: tplErr.message }, { status: 500 });

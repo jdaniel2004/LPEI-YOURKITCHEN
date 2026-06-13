@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     const ids = (data as unknown as Array<{ id: string }>).map((i) => i.id);
     const { data: links } = await supabaseAdmin
       .from("item_modifier_templates")
-      .select("item_id, template:modifier_templates(id,name,required,single,options:modifier_template_options(*, ingredient:ingredients(id,name,unit)))")
+      .select("item_id, template:modifier_templates(id,name,single,options:modifier_template_options(*, ingredient:ingredients(id,name,unit)))")
       .in("item_id", ids);
     if (Array.isArray(links)) {
       const byItem: Record<string, { template: unknown }[]> = {};
@@ -40,13 +40,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { category_id, name, emoji, image_url, price, vat_rate, stock } = body;
+  const { category_id, name, image_url, price, vat_rate, stock } = body;
   if (!category_id || !name || price == null)
     return Response.json({ error: "category_id, name e price obrigatórios" }, { status: 400 });
 
   const { data, error } = await supabaseAdmin
     .from("menu_items")
-    .insert({ category_id, name, emoji, image_url: image_url ?? null, price, vat_rate: vat_rate ?? 23, stock: stock ?? null })
+    .insert({ category_id, name, image_url: image_url ?? null, price, vat_rate: vat_rate ?? 23, stock: stock ?? null })
     .select()
     .single();
 

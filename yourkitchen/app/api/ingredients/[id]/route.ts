@@ -7,7 +7,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ("name" in body) patch.name = body.name;
   if ("unit" in body) patch.unit = body.unit;
   if ("stock_qty" in body) patch.stock_qty = body.stock_qty;
-  if ("is_modifier" in body) patch.is_modifier = body.is_modifier;
 
   const { data, error } = await supabaseAdmin
     .from("ingredients")

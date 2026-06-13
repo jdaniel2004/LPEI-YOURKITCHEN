@@ -70,7 +70,7 @@ function buildMenu(menuRes, modifierIngIds){
           options:(t.options||[]).map(mapOpt),
         }));
       catMap[cat.id].items.push({
-        id:item.id,name:item.name,emoji:item.emoji||"🍽️",image:item.image_url||null,
+        id:item.id,name:item.name,emoji:"🍽️",image:item.image_url||null,
         price:item.price,vat:item.vat_rate,stock:item.stock,
         mods:[...customMods,...linkedMods],
         ingredientMods:(item.ingredients||[])
@@ -1596,13 +1596,9 @@ export default function POS({session,appName="YourKitchen"}){
         if(settingsRes&&Array.isArray(settingsRes["horario.turnos"]))
           setTurnos(settingsRes["horario.turnos"]);
 
-        // Build set of modifier ingredient IDs (gracefully empty if migration not run yet)
-        const modifierIngIds=new Set(
-          (Array.isArray(ingsRes)?ingsRes:[]).filter(i=>i.is_modifier).map(i=>i.id)
-        );
-
-        // Build grouped menu
-        const mappedMenu=buildMenu(menuRes,modifierIngIds);
+        // Build grouped menu. Os "ingredient modifiers" (is_modifier) foram
+        // removidos, por isso nenhum ingrediente é tratado como modificador.
+        const mappedMenu=buildMenu(menuRes,new Set());
 
         // Build stock map
         const stock={};
@@ -1780,8 +1776,7 @@ export default function POS({session,appName="YourKitchen"}){
         // Rebuild menu (modifiers, linked library mods) + refresh stock,
         // so changes made in the Backoffice appear without restarting the POS.
         if(Array.isArray(menuRes)){
-          const modifierIngIds=new Set((Array.isArray(ingsRes)?ingsRes:[]).filter(i=>i.is_modifier).map(i=>i.id));
-          setMenu(buildMenu(menuRes,modifierIngIds));
+          setMenu(buildMenu(menuRes,new Set()));
           const freshStock={};
           menuRes.forEach(it=>{if(it.stock!==null)freshStock[it.id]=it.stock;});
           setMenuStock(freshStock);
