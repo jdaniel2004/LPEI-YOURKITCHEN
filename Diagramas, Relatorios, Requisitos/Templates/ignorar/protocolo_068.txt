@@ -1,0 +1,58 @@
+Proposta de Projeto 2025-2026
+LICENCIATURA EM ENGENHARIA INFORMÁTICA
+TÍTULO*
+ORIENTADOR
+PRINCIPAL *
+COORIENTADORES
+ALUNOS(S)
+
+ÁREA DE
+
+PROPOSTA N.º
+
+Sistema de Gestão para Restauração (POS)
+Frederico Branco
+Emanuel Peres, Manuel Cabral
+<Se esta proposta for apresentada em conjunto com os alunos, indicar o número e
+nome do(s) alunos(s). Caso contrário, indicar para quantos alunos é indicado este
+trabalho>
+Sistemas de Informação, Horeca, Sistemas de Tempo Rea
+
+INVESTIGAÇÃO
+
+CENTRO DE
+INVESTIGAÇÃO
+
+DEPENDÊNCIAS
+APRESENTAÇÃO *
+
+OBJETIVOS*
+
+<Se o projeto estiver associado à atividade de algum centro de investigação, indicá-lo
+aqui.>
+<Se o projeto estiver dependente do conhecimento adquirido em unidades curriculares
+do curso, indicá-lo aqui.>
+Restaurantes precisam de velocidade. Este projeto propõe desenvolver um sistema
+de Point of Sales (POS) e Kitchen Display System (KDS) utilizando Vibe Coding para
+garantir comunicação em tempo real (WebSockets) sem a complexidade habitual. O
+aluno usará assistentes de IA para gerar o código de sincronização entre dispositivos,
+focando na resiliência e na interface tátil do sistema.
+Implementar uma solução integrada de POS (Frente de Loja) e Gestão de Cozinha.
+Fases e Atividades:
+- Ponto de Venda (POS):
+-- Interface tátil para registo rápido de pedidos e mesas.
+-- Gestão de pagamentos, descontos e divisão de contas.
+- Kitchen Display System (KDS):
+-- Ecrãs de cozinha sincronizados em tempo real com o POS.
+-- Gestão de estados de preparação e tempos de espera.
+- Gestão de Stocks e Fichas Técnicas:
+-- Definição de receitas e abate automático de ingredientes.
+-- Controlo de custos de mercadoria (Food Cost).
+- Backoffice e Analytics:
+-- Relatórios de vendas por hora, produto e empregado.
+-- Configuração remota de menus e preços.
+
+* Campos de preenchimento obrigatório
+NOTA: a totalidade deste documento (exceto esta linha) não deve exceder uma página.
+
+

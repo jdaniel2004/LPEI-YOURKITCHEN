@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagramas UML — Sistema POS/KDS</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #13161e;
+      --surface2: #1a1e2a;
+      --border: #252b3b;
+      --accent: #4f9cf9;
+      --accent2: #f97316;
+      --green: #22d3a0;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --tag-bg: #1e293b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 3rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo-box {
+      width: 44px;
+      height: 44px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #0d0f14;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .badge-row {
+      margin-left: auto;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      border: 1px solid;
+    }
+
+    .badge.blue {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: #4f9cf910;
+    }
+
+    .badge.orange {
+      color: var(--accent2);
+      border-color: var(--accent2);
+      background: #f9731610;
+    }
+
+    .badge.green {
+      color: var(--green);
+      border-color: var(--green);
+      background: #22d3a010;
+    }
+
+    /* ── Nav sidebar ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 81px);
+    }
+
+    nav {
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      padding: 1.5rem 0;
+      position: sticky;
+      top: 81px;
+      height: calc(100vh - 81px);
+      overflow-y: auto;
+    }
+
+    nav ul {
+      list-style: none;
+    }
+
+    .nav-section {
+      font-size: 0.65rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 1rem 1.25rem 0.4rem;
+    }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 1.25rem;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.82rem;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    nav a:hover,
+    nav a.active {
+      color: var(--accent);
+      background: #4f9cf908;
+      border-left-color: var(--accent);
+    }
+
+    nav a .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+
+    /* ── Main content ── */
+    main {
+      padding: 2.5rem 3rem;
+      max-width: 1100px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-num {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      background: #4f9cf912;
+      border: 1px solid #4f9cf930;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .section-desc {
+      color: var(--muted);
+      font-size: 0.83rem;
+      margin-bottom: 1.75rem;
+      line-height: 1.6;
+    }
+
+    section {
+      margin-bottom: 4rem;
+    }
+
+    /* ── Diagram card ── */
+    .diagram-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .card-header span {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .card-tags {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .tag {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: var(--tag-bg);
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .diagram-body {
+      padding: 2rem 1.5rem;
+      overflow-x: auto;
+      background: #0f1218;
+    }
+
+    .diagram-body .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Mermaid theme overrides */
+    .mermaid svg {
+      max-width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo-box">POS</div>
+    <div>
+      <h1>Sistema de Gestão para Restauração</h1>
+      <p>Diagramas UML · LPEI 2025/2026 · Protocolo 068</p>
+    </div>
+    <div class="badge-row">
+      <span class="badge blue">UML</span>
+      <span class="badge orange">Casos de Uso</span>
+      <span class="badge green">Supabase + Next.js</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav>
+      <div class="nav-section">Diagramas</div>
+      <ul>
+        <li><a href="#casos-uso"><span class="dot"></span>Casos de Uso</a></li>
+        <li><a href="#classes"><span class="dot"></span>Diagrama de Classes</a></li>
+        <li><a href="#er"><span class="dot"></span>Entidade-Relacionamento</a></li>
+        <li><a href="#atividade-pedido"><span class="dot"></span>Atividade — Pedido</a></li>
+        <li><a href="#atividade-pagamento"><span class="dot"></span>Atividade — Pagamento</a></li>
+        <li><a href="#estado-mesa"><span class="dot"></span>Estado da Mesa</a></li>
+        <li><a href="#estado-pedido"><span class="dot"></span>Estado do Pedido</a></li>
+        <li><a href="#sequencia-kds"><span class="dot"></span>Sequência — POS/KDS</a></li>
+        <li><a href="#arquitetura"><span class="dot"></span>Arquitetura do Sistema</a></li>
+      </ul>
+    </nav>
+
+    <main>
+
+      <!-- 1. Casos de Uso -->
+      <section id="casos-uso">
+        <div class="section-title">
+          <span class="section-num">01</span>
+          <h2>Diagrama de Casos de Uso</h2>
+        </div>
+        <p class="section-desc">Mapeamento das interações entre os quatro atores principais do sistema (Empregado,
+          Cozinheiro, Gestor e Administrador) e as funcionalidades disponíveis.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>use-case-diagram.uml</span>
+            <div class="card-tags"><span class="tag">UML</span><span class="tag">Atores</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              graph LR
+
+              EMP["Empregado de Mesa"]
+
+              subgraph POS
+              UC1(("Autenticar"))
+              UC2(("Gerir Mesas"))
+              UC3(("Registar Pedido"))
+              UC4(("Enviar para Cozinha"))
+              UC5(("Processar Pagamento"))
+              UC6(("Emitir Fatura"))
+              UC7(("Aplicar Desconto"))
+              UC8(("Dividir Conta"))
+              end
+
+              EMP --- UC1
+              EMP --- UC2
+              EMP --- UC3
+              EMP --- UC5
+
+              UC3 -.-> UC4
+              UC5 -.-> UC6
+              UC5 -.-> UC7
+              UC5 -.-> UC8
+
+            </div>
+            <div class="mermaid">
+              graph LR
+
+              COZ["Cozinheiro"]
+
+              subgraph KDS
+              UC1(("Monitorizar Pedidos"))
+              UC2(("Atualizar Estado"))
+              UC3(("Concluir Pedido"))
+              UC4(("Alertas de Atraso"))
+              end
+
+              COZ --- UC1
+              COZ --- UC2
+              COZ --- UC3
+              COZ --- UC4
+
+            </div>
+            <div class="mermaid">
+              graph LR
+
+              GES["Gestor"]
+              ADM["Administrador"]
+
+              subgraph Backoffice
+
+              %% Gestão (Gestor)
+              UC1(("Analisar Vendas"))
+              UC2(("Gerir Stock"))
+              UC3(("Gerir Ementa"))
+              UC4(("Gerir Escalas"))
+              UC5(("Gerir Fornecedores"))
+
+              %% Sistema (Admin)
+              UC6(("Gerir Utilizadores"))
+              UC7(("Configurar Permissões"))
+              UC8(("Config Sistema"))
+              UC9(("Auditoria"))
+              UC10(("Backups"))
+
+              end
+
+              GES --- UC1
+              GES --- UC2
+              GES --- UC3
+              GES --- UC4
+              GES --- UC5
+
+              ADM --- UC6
+              ADM --- UC7
+              ADM --- UC8
+              ADM --- UC9
+              ADM --- UC10
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Classes -->
+      <section id="classes">
+        <div class="section-title">
+          <span class="section-num">02</span>
+          <h2>Diagrama de Classes</h2>
+        </div>
+        <p class="section-desc">Estrutura orientada a objetos do sistema com atributos, métodos e relações entre
+          entidades principais.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>class-diagram.uml</span>
+            <div class="card-tags"><span class="tag">UML</span><span class="tag">OOP</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              classDiagram
+              class Usuario {
+              +id: UUID
+              +nome: string
+              +email: string
+              +pin_hash: string
+              +perfil: Perfil
+              +ativo: boolean
+              +autenticar(pin: string)
+              }
+
+              class Turno {
+              +id: UUID
+              +abertoPor: UUID
+              +fechadoPor: UUID
+              +abertoEm: DateTime
+              +fechadoEm: DateTime
+              +fundoManeio: decimal
+              +totalApurado: decimal
+              +abrir()
+              +fechar()
+              +verificarDiferenca()
+              }
+
+              class Zona {
+              +id: UUID
+              +nome: string
+              +ativa: boolean
+              }
+
+              class Mesa {
+              +id: UUID
+              +numero: int
+              +capacidade: int
+              +estado: EstadoMesa
+              +zonaId: UUID
+              +abrir(turnoId: UUID)
+              +transferir(destino: Mesa)
+              +juntar(outra: Mesa)
+              }
+
+              class Pedido {
+              +id: UUID
+              +mesaId: UUID
+              +utilizadorId: UUID
+              +turnoId: UUID
+              +estado: EstadoPedido
+              +criadoEm: DateTime
+              +totalLiquido: decimal
+              +totalImpostos: decimal
+              +enviarParaCozinha()
+              +cancelar()
+              }
+
+              class ItemPedido {
+              +id: UUID
+              +pedidoId: UUID
+              +produtoId: UUID
+              +quantidade: int
+              +precoUnit: decimal
+              +taxaIva: decimal
+              +modificadores: string[]
+              +estado: EstadoItem
+              +marcarPreparacao()
+              +marcarPronto()
+              }
+
+              class Produto {
+              +id: UUID
+              +nome: string
+              +precoBase: decimal
+              +ivaId: UUID
+              +categoriaId: UUID
+              +disponivel: boolean
+              +secaoCozinha: string
+              +abaterStock()
+              }
+
+              class Cliente {
+              +id: UUID
+              +nif: string
+              +nome: string
+              +email: string
+              }
+
+              class Fatura {
+              +id: UUID
+              +pedidoId: UUID
+              +clienteId: UUID
+              +numeroFatura: string
+              +total: decimal
+              +emitidaEm: DateTime
+              +emitir()
+              +estornar()
+              }
+
+              class Pagamento {
+              +id: UUID
+              +faturaId: UUID
+              +metodo: MetodoPagamento
+              +valorRecebido: decimal
+              +troco: decimal
+              +processar()
+              }
+
+              Usuario "1" --> "0..*" Turno : abre/fecha
+              Zona "1" --> "1..*" Mesa : contem
+              Turno "1" --> "0..*" Pedido : engloba
+              Mesa "1" --> "0..*" Pedido : tem
+              Pedido "1" --> "1..*" ItemPedido : possui
+              ItemPedido "*" --> "1" Produto : refere
+              Pedido "1" --> "0..1" Fatura : gera
+              Fatura "*" --> "0..1" Cliente : emitida para
+              Fatura "1" --> "1..*" Pagamento : liquidada por
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. ER -->
+      <section id="er">
+        <div class="section-title">
+          <span class="section-num">03</span>
+          <h2>Diagrama Entidade-Relacionamento (ER)</h2>
+        </div>
+        <p class="section-desc">Modelo de dados relacional para implementação no Supabase (PostgreSQL), com todas as
+          tabelas e relações.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>er-diagram.uml</span>
+            <div class="card-tags"><span class="tag">ER</span><span class="tag">PostgreSQL</span><span
+                class="tag">Supabase</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              erDiagram
+              USUARIOS {
+              uuid id PK
+              string nome
+              string email
+              string pin_hash
+              enum perfil
+              boolean ativo
+              }
+              TURNOS {
+              uuid id PK
+              uuid aberto_por FK
+              uuid fechado_por FK
+              decimal fundo_maneio
+              decimal total_apurado
+              timestamp aberto_em
+              timestamp fechado_em
+              }
+              ZONAS {
+              uuid id PK
+              string nome
+              boolean ativa
+              }
+              MESAS {
+              uuid id PK
+              int numero
+              int capacidade
+              enum estado
+              uuid zona_id FK
+              }
+              PEDIDOS {
+              uuid id PK
+              uuid mesa_id FK
+              uuid utilizador_id FK
+              uuid turno_id FK
+              enum estado
+              decimal total_liquido
+              decimal total_impostos
+              timestamp criado_em
+              }
+              ITENS_PEDIDO {
+              uuid id PK
+              uuid pedido_id FK
+              uuid produto_id FK
+              int quantidade
+              decimal preco_unit
+              decimal taxa_iva
+              text modificadores
+              enum estado
+              }
+              PRODUTOS {
+              uuid id PK
+              uuid categoria_id FK
+              string nome
+              decimal preco_base
+              decimal taxa_iva
+              boolean disponivel
+              }
+              CLIENTES {
+              uuid id PK
+              string nif UK
+              string nome
+              string email
+              }
+              FATURAS {
+              uuid id PK
+              uuid pedido_id FK
+              uuid cliente_id FK
+              string numero_fatura UK
+              decimal total
+              timestamp emitida_em
+              }
+              PAGAMENTOS {
+              uuid id PK
+              uuid fatura_id FK
+              enum metodo
+              decimal valor_recebido
+              decimal troco
+              timestamp criado_em
+              }
+
+              ZONAS ||--o{ MESAS : "contem"
+              USUARIOS ||--o{ TURNOS : "gere"
+              TURNOS ||--o{ PEDIDOS : "regista"
+              MESAS ||--o{ PEDIDOS : "tem"
+              PEDIDOS ||--|{ ITENS_PEDIDO : "contem"
+              ITENS_PEDIDO }o--|| PRODUTOS : "refere"
+              PEDIDOS ||--o| FATURAS : "gera"
+              FATURAS }o--o| CLIENTES : "associada_a"
+              FATURAS ||--|{ PAGAMENTOS : "paga_por"
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Atividade Pedido -->
+      <section id="atividade-pedido">
+        <div class="section-title">
+          <span class="section-num">04</span>
+          <h2>Diagrama de Atividade — Fluxo de Pedido</h2>
+        </div>
+        <p class="section-desc">Fluxo completo desde a abertura de mesa até ao envio do pedido para a cozinha.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>activity-pedido.uml</span>
+            <div class="card-tags"><span class="tag">Atividade</span><span class="tag">POS</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              flowchart TD
+              B[Empregado seleciona mesa]
+              B --> C{Mesa disponível?}
+              C -- Não --> D[Selecionar outra mesa]
+              D --> B
+              C -- Sim --> E[Abrir mesa / Associar empregado]
+              E --> F[Navegar no menu por categorias]
+              F --> G[Selecionar produto]
+              G --> H{Tem modificadores?}
+              H -- Sim --> I[Configurar modificadores e notas]
+              I --> J[Adicionar item ao pedido]
+              H -- Não --> J
+              J --> K{Adicionar mais itens?}
+              K -- Sim --> F
+              K -- Não --> L[Rever pedido]
+              L --> M{Correções necessárias?}
+              M -- Sim --> N[Editar / Remover item]
+              N --> L
+              M -- Não --> O[Confirmar e Enviar para Cozinha]
+              O --> P[(Pedido gravado no Supabase)]
+              P --> Q[WebSocket notifica KDS]
+              Q --> R([✅ Pedido em cozinha])
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Atividade Pagamento -->
+      <section id="atividade-pagamento">
+        <div class="section-title">
+          <span class="section-num">05</span>
+          <h2>Diagrama de Atividade — Fluxo de Pagamento</h2>
+        </div>
+        <p class="section-desc">Processo de fecho de conta, suportando divisão, desconto e múltiplos métodos de
+          pagamento.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>activity-pagamento.uml</span>
+            <div class="card-tags"><span class="tag">Atividade</span><span class="tag">Pagamento</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              flowchart TD
+              A([Pedido de Conta]) --> B[Empregado solicita fecho de mesa]
+              B --> C{Todos os itens prontos?}
+              C -- Não --> D[Aguardar itens pendentes]
+              D --> C
+              C -- Sim --> E[Apresentar conta total]
+              E --> F{Dividir conta?}
+              F -- Por pessoas --> G[Dividir igualmente / por itens]
+              F -- Não --> H{Aplicar desconto?}
+              G --> H
+              H -- Sim --> I{Perfil autorizado?}
+              I -- Não --> J[Negar desconto]
+              J --> K[Selecionar método de pagamento]
+              I -- Sim --> L[Aplicar desconto % ou valor fixo]
+              L --> K
+              H -- Não --> K
+              K --> M{Método?}
+              M -- Dinheiro --> N[Inserir valor recebido]
+              N --> O[Calcular troco]
+              O --> P[Processar pagamento]
+              M -- Cartão --> P
+              P --> S[Registar pagamento no Supabase]
+              S --> X[Abate de Stock]
+              X --> T{Imprimir recibo?}
+              T -- Sim --> U[Enviar para impressora]
+              T -- Email --> V[Enviar por email]
+              T -- Não --> W[Fechar mesa]
+              U --> W
+              V --> W
+
+              W --> Y([✅ Mesa disponível])
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. Estado Mesa -->
+      <section id="estado-mesa">
+        <div class="section-title">
+          <span class="section-num">06</span>
+          <h2>Diagrama de Estado — Mesa</h2>
+        </div>
+        <p class="section-desc">Transições de estado possíveis para uma mesa ao longo do serviço.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>state-mesa.uml</span>
+            <div class="card-tags"><span class="tag">Estado</span><span class="tag">Mesa</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              stateDiagram-v2
+              [*] --> Livre
+
+              Livre --> Reservada : reservar()
+              Livre --> Ocupada : abrir() / sentar clientes
+
+              Reservada --> Ocupada : check-in cliente
+              Reservada --> Livre : cancelar / no-show
+
+              Ocupada --> AguardandoConta : pedirConta()
+              Ocupada --> Ocupada : novosPedidos()
+
+              AguardandoConta --> Ocupada : cliente pede mais
+              AguardandoConta --> EmPagamento : iniciarPagamento()
+
+              EmPagamento --> Suja : pagamentoConfirmado()
+              EmPagamento --> AguardandoConta : pagamento cancelado
+
+              Suja --> Livre : limparMesa()
+
+              Livre --> [*]
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Estado Pedido -->
+      <section id="estado-pedido">
+        <div class="section-title">
+          <span class="section-num">07</span>
+          <h2>Diagrama de Estado — Pedido / Item</h2>
+        </div>
+        <p class="section-desc">Ciclo de vida de um pedido desde a criação até à entrega, incluindo estados de cada item
+          individualmente no KDS.</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>state-pedido.uml</span>
+            <div class="card-tags"><span class="tag">Estado</span><span class="tag">KDS</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              stateDiagram-v2
+              [*] --> Rascunho : criar pedido
+
+              Rascunho --> EnviadoCozinha : enviarParaCozinha()
+              Rascunho --> Anulado : cancelar()
+
+              EnviadoCozinha --> EmPreparacao : cozinheiro inicia
+              EnviadoCozinha --> Anulado : cancelar antes de iniciar
+
+              EmPreparacao --> Pronto : marcarPronto()
+
+              Pronto --> Entregue : empregado confirma entrega
+              Pronto --> EmPreparacao : retificação
+
+              Entregue --> Concluido : pedido fechado (pago)
+              Entregue --> Anulado : estorno / devolução
+
+              Anulado --> [*]
+              Concluido --> [*]
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Sequência POS/KDS -->
+      <section id="sequencia-kds">
+        <div class="section-title">
+          <span class="section-num">08</span>
+          <h2>Diagrama de Sequência — Sincronização POS / KDS</h2>
+        </div>
+        <p class="section-desc">Fluxo de comunicação em tempo real entre o POS, o servidor Supabase e o ecrã KDS via
+          WebSockets (Supabase Realtime).</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>sequence-pos-kds.uml</span>
+            <div class="card-tags"><span class="tag">Sequência</span><span class="tag">WebSocket</span><span
+                class="tag">Realtime</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              sequenceDiagram
+              actor EMP as Empregado
+              participant POS as POS (Next.js)
+              participant SB as Supabase DB
+              participant RT as Supabase Realtime
+              participant KDS as KDS (Next.js)
+              actor COZ as Cozinheiro
+
+              EMP->>POS: Confirma pedido
+              POS->>SB: INSERT pedido + itens
+              SB->>RT: Trigger: novo pedido
+              RT-->>KDS: Broadcast (WebSocket)
+              KDS-->>COZ: Exibe pedido em tempo real
+
+              COZ->>KDS: Marca item como "Em Preparação"
+              KDS->>SB: UPDATE item_pedido.estado
+              SB->>RT: Trigger: item atualizado
+              RT-->>POS: Broadcast (WebSocket)
+              POS-->>EMP: Indicador de estado atualizado
+
+              COZ->>KDS: Marca pedido como "Pronto"
+              KDS->>SB: UPDATE pedido.estado = pronto
+              SB->>RT: Trigger: pedido pronto
+              RT-->>POS: Broadcast (WebSocket)
+              POS-->>EMP: ⚡ Notificação "Mesa X — Pronto para servir"
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9. Arquitetura -->
+      <section id="arquitetura">
+        <div class="section-title">
+          <span class="section-num">09</span>
+          <h2>Diagrama de Arquitetura (Deployment)</h2>
+        </div>
+        <p class="section-desc">Visão de alto nível da infraestrutura do sistema, evidenciando a separação entre os
+          clientes (POS, KDS, Backoffice), o backend as a service (Supabase) e integrações externas (Autoridade
+          Tributária).</p>
+
+        <div class="diagram-card">
+          <div class="card-header">
+            <span>deployment-architecture.uml</span>
+            <div class="card-tags"><span class="tag">Arquitetura</span><span class="tag">Supabase</span><span
+                class="tag">Next.js</span></div>
+          </div>
+          <div class="diagram-body">
+            <div class="mermaid">
+              flowchart TD
+              subgraph "Frontend Clients (Next.js + PWA)"
+              POS["🖥️ POS Tablet\n(Interface de Venda)"]
+              KDS["📺 KDS Monitor\n(Ecrã de Cozinha)"]
+              BO["💻 BO Dashboard\n(Browser Gestão)"]
+              end
+
+              subgraph "Supabase Backend (BaaS)"
+              API["⚡ PostgREST API\n(REST / GraphQL)"]
+              RT["🔄 Realtime\n(WebSockets)"]
+              AUTH["🔐 GoTrue Auth\n(Gestão Utilizadores)"]
+              DB[("🐘 PostgreSQL DB\n(Armazenamento Dados)")]
+              end
+
+              subgraph "External Services"
+              AT["🏢 Autoridade Tributária\n(API Faturação)"]
+              end
+
+              POS <-->|REST API| API
+                POS <-->|WSS Events| RT
+                  KDS <-->|WSS Events| RT
+                    KDS <-->|REST API| API
+                      BO <-->|REST API| API
+
+                        POS -->|Auth| AUTH
+                        BO -->|Auth| AUTH
+
+                        API <--> DB
+                          RT <--> DB
+                            AUTH <--> DB
+
+                              API -.->|Emissão de Fatura / SAF-T| AT
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0f1218',
+        primaryColor: '#1e293b',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#334155',
+        lineColor: '#4f9cf9',
+        secondaryColor: '#1a1e2a',
+        tertiaryColor: '#13161e',
+        edgeLabelBackground: '#13161e',
+        clusterBkg: '#13161e',
+        clusterBorder: '#252b3b',
+        titleColor: '#e2e8f0',
+        nodeBorder: '#334155',
+        mainBkg: '#1e293b',
+        nodeTextColor: '#e2e8f0',
+        fontSize: '13px'
+      },
+      flowchart: { curve: 'basis', padding: 20 },
+      er: { diagramPadding: 30 },
+      sequence: { diagramMarginX: 30, diagramMarginY: 20, actorMargin: 80 }
+    });
+
+    // Active nav on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('nav a');
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(s => {
+        if (window.scrollY >= s.offsetTop - 120) current = s.id;
+      });
+      navLinks.forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+      });
+    });
+  </script>
+</body>
+
+</html>
