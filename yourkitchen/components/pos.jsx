@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { fmtTime, fmtDate } from "@/lib/timezone";
 import { subscribeRealtime } from "@/lib/realtime";
+import { fmtEur, orderTotal, orderVAT } from "@/lib/pricing";
 
 // ─── TOKENS ──────────────────────────────────────────────────────────────────
 const T = {
@@ -101,7 +102,6 @@ function convUnit(qty, from, to){
   return (qty * f[1]) / t[1];
 }
 
-function fmtEur(v){ return `€${Number(v).toFixed(2)}`; }
 function fmtMins(ms){
   const m=Math.floor(ms/60000);
   if(m<60) return `${m}m`;
@@ -109,19 +109,6 @@ function fmtMins(ms){
 }
 function nowTime(){
   return fmtTime(new Date(),{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-}
-function orderTotal(items){
-  return items.filter(i=>!i.cancelled).reduce((s,i)=>s+(i.price+(i.extraPrice||0))*i.qty,0);
-}
-function orderVAT(items){
-  const map={};
-  items.filter(i=>!i.cancelled).forEach(i=>{
-    const rate=i.vat;
-    const base=(i.price+(i.extraPrice||0))*i.qty;
-    const vat=base-(base/(1+rate/100));
-    map[rate]=(map[rate]||0)+vat;
-  });
-  return map;
 }
 function stockForItem(menuStock, itemId){
   return menuStock[itemId]!==undefined ? menuStock[itemId] : null;
@@ -1716,9 +1703,17 @@ export default function POS({session,appName="YourKitchen"}){
           // later batch keeps these "Entregue" while the new one stays "Enviado").
           setOrders(prev=>{
             const next={...prev};let changed=false;
+            // Server lines for the newly-ready orders — authoritative for cancelled,
+            // so a line cancelled on the KDS is never flashed as "Entregue" here.
+            const srvById=new Map(data.map(o=>[o.id,new Map((o.lines||[]).map(l=>[l.id,l]))]));
             for(const id of readyIds){
               const o=prev[id];if(!o)continue;
-              next[id]={...o,items:o.items.map(i=>(i.sent&&!i.cancelled&&!i.delivered)?{...i,delivered:true}:i)};
+              const srv=srvById.get(id);
+              next[id]={...o,items:o.items.map(i=>{
+                const sl=srv?.get(i.lineId);
+                if(sl&&sl.cancelled) return i.cancelled?i:{...i,cancelled:true};
+                return (i.sent&&!i.cancelled&&!i.delivered)?{...i,delivered:true}:i;
+              })};
               changed=true;
             }
             return changed?next:prev;
@@ -1808,7 +1803,15 @@ export default function POS({session,appName="YourKitchen"}){
           Object.values(prev).forEach(o=>{if(o.draft)next[o.id]=o;}); // keep local drafts
           serverOrders.forEach(o=>{
             if(o.id===editingId&&prev[o.id]){
-              next[o.id]=prev[o.id]; // don't clobber items the user is editing
+              // Don't clobber items the user is editing — but a server-side cancel is
+              // authoritative and must still land, or a batch cancelled on the KDS
+              // stays billable/"Entregue" here from a stale local copy (only happens
+              // while the waiter has this table open). Reconcile cancelled per line.
+              const srv=new Map((o.lines||[]).map(l=>[l.id,l]));
+              next[o.id]={...prev[o.id],items:prev[o.id].items.map(i=>{
+                const sl=srv.get(i.lineId);
+                return (sl&&sl.cancelled&&!i.cancelled)?{...i,cancelled:true}:i;
+              })};
             }else{
               next[o.id]=mapOrder(o);
             }
