@@ -38,19 +38,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (batch != null) {
     const { data: remaining } = await supabaseAdmin
       .from("order_lines")
-      .select("id")
+      .select("id, sent, ready_at")
       .eq("order_id", id)
       .eq("cancelled", false);
     if (remaining && remaining.length > 0) {
+      // Some active lines survive the cancel. If every one of them is already ready
+      // (sent + delivered by the KDS), the kitchen has nothing left to do — the order
+      // is fully served, so move it (and the table) back to "bill"/Servido. This is
+      // the same "all ready" rule the KDS uses when marking Pronto, and it covers the
+      // case of cancelling a follow-up round after the first was already served:
+      // sending that round reset the order to "open", and cancelling it must restore
+      // the served state instead of leaving the table stuck on "Ocupada".
+      const allServed = remaining.every((l) => l.sent && l.ready_at != null);
+      if (allServed && order.status !== "bill") {
+        await supabaseAdmin.from("orders").update({ status: "bill" }).eq("id", id);
+        if (order.table_id) {
+          await supabaseAdmin.from("tables").update({ status: "bill" }).eq("id", order.table_id);
+        }
+      }
       const tableLabel = (order.table as { label?: string } | null)?.label ?? "balcão";
       await writeLog(
         "CANCEL",
         "KDS",
-        `Ticket anulado — Mesa ${tableLabel} (${id.slice(0, 8)}·L${batch})`,
+        `Ticket anulado — Mesa ${tableLabel} (${id.slice(0, 8)}·L${batch})${allServed ? " — restante já servido" : ""}`,
         staffId,
         reason
       );
-      return Response.json({ ...order, cancelledBatch: batch });
+      return Response.json({ ...order, cancelledBatch: batch, status: allServed ? "bill" : order.status });
     }
     // else: no active lines remain → fall through and cancel the order itself.
   }
