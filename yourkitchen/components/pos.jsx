@@ -122,27 +122,6 @@ const STATUS_MAP = {
 };
 
 
-// ─── TURNOS (operating shifts) ──────────────────────────────────────────────────
-function hhmmToMin(t){
-  if(!t) return null;
-  const [h,m]=String(t).slice(0,5).split(":").map(Number);
-  if(Number.isNaN(h)) return null;
-  return h*60+(m||0);
-}
-// True if `mins` falls within [start,end]; handles windows that cross midnight.
-function inTurnoWindow(mins,start,end){
-  const s=hhmmToMin(start),e=hhmmToMin(end);
-  if(s==null||e==null||mins==null) return false;
-  return e>=s ? (mins>=s&&mins<=e) : (mins>=s||mins<=e);
-}
-function currentTurno(turnos,now=new Date()){
-  // Use the configured restaurant timezone (not the device's) so shift windows
-  // line up with the clock shown across the app.
-  const [h,m]=fmtTime(now,{hour:"2-digit",minute:"2-digit",hour12:false}).split(":").map(Number);
-  const mins=h*60+m;
-  return (turnos||[]).find(t=>inTurnoWindow(mins,t.start,t.end))||null;
-}
-
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
@@ -1386,33 +1365,16 @@ function OrderScreen({table,order,menu,staffList,menuStock,ingredientStock,onBac
 
 
 // ─── FLOOR SCREEN ─────────────────────────────────────────────────────────────
-function FloorScreen({tables,orders,zones,staffList,turnos,onTablePress,onQuickOrder,addToast,zone,setZone,notifs,onCloseNotif,onCloseAllNotifs}){
+function FloorScreen({tables,orders,zones,staffList,onTablePress,onQuickOrder,addToast,zone,setZone,notifs,onCloseNotif,onCloseAllNotifs}){
   // Zone selection lives in the parent (POS) so it survives leaving/returning to
   // the floor. Fall back to the first zone until one is picked or if the stored
   // one no longer exists.
   const activeZone=(zone&&zones.includes(zone))?zone:(zones[0]||"Interior");
   const zoneTables=tables.filter(t=>t.zone===activeZone);
-  const turnoNow=currentTurno(turnos||[]);
 
   return(
     <>
     <div className="floor-screen">
-      {turnos&&turnos.length>0&&(
-        <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 16px",borderBottom:`1px solid ${T.border}`,background:T.surface,flexShrink:0,overflowX:"auto"}}>
-          <span style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:T.textMuted,flexShrink:0}}>Turnos</span>
-          {turnos.map(t=>{
-            const active=turnoNow&&turnoNow.start===t.start&&turnoNow.end===t.end;
-            return(
-              <div key={t.id||`${t.start}-${t.end}`} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,fontSize:12,whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${active?T.success+"55":T.border}`,background:active?T.successDim:T.card,color:active?T.success:T.textSec,fontWeight:active?700:500}}>
-                {active&&<span style={{width:6,height:6,borderRadius:"50%",background:T.success,boxShadow:`0 0 6px ${T.success}`}}/>}
-                {t.name} · {(t.start||"").slice(0,5)}–{(t.end||"").slice(0,5)}
-              </div>
-            );
-          })}
-          <span style={{fontSize:11,color:turnoNow?T.success:T.textMuted,marginLeft:"auto",flexShrink:0,fontWeight:600}}>{turnoNow?`Em serviço — ${turnoNow.name}`:"Fora de serviço"}</span>
-        </div>
-      )}
-
       <div className="floor-zones">
         {zones.map(z=>(
           <div key={z} className={`zone-tab${activeZone===z?" active":""}`} onClick={()=>setZone(z)}>
@@ -1531,7 +1493,6 @@ export default function POS({session,appName="YourKitchen"}){
   const [staffList,setStaffList]=useState([]);
   const [menuStock,setMenuStock]=useState({});
   const [ingredientStock,setIngredientStock]=useState({});
-  const [turnos,setTurnos]=useState([]);
   const [activeTableId,setActiveTableId]=useState(null);
   const [floorZone,setFloorZone]=useState(null); // selected zone tab — kept here so it survives entering/leaving an order
   const [toasts,setToasts]=useState([]);
@@ -1580,8 +1541,6 @@ export default function POS({session,appName="YourKitchen"}){
           fetch("/api/settings").then(r=>r.json()).catch(()=>null),
         ]);
 
-        if(settingsRes&&Array.isArray(settingsRes["horario.turnos"]))
-          setTurnos(settingsRes["horario.turnos"]);
 
         // Build grouped menu. Os "ingredient modifiers" (is_modifier) foram
         // removidos, por isso nenhum ingrediente é tratado como modificador.
@@ -1765,8 +1724,6 @@ export default function POS({session,appName="YourKitchen"}){
         ]);
         if(!Array.isArray(tablesRes)) return;
 
-        if(settingsRes&&Array.isArray(settingsRes["horario.turnos"]))
-          setTurnos(settingsRes["horario.turnos"]);
 
         // Rebuild menu (modifiers, linked library mods) + refresh stock,
         // so changes made in the Backoffice appear without restarting the POS.
@@ -2222,7 +2179,7 @@ export default function POS({session,appName="YourKitchen"}){
           </header>
 
         {screen==="floor"&&(
-          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} turnos={turnos} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}
+          <FloorScreen tables={tables} orders={orders} zones={zones} staffList={staffList} onTablePress={handleTablePress} onQuickOrder={handleQuickOrder} addToast={addToast}
             zone={floorZone} setZone={setFloorZone}
             notifs={kdsNotifs}
             onCloseNotif={id=>{kdsDismissedRef.current.add(id);setKdsNotifs(p=>p.filter(n=>n.id!==id));}}

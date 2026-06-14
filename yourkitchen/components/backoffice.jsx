@@ -1808,6 +1808,12 @@ function OrderHistory(){
     if(search&&!o.table.toLowerCase().includes(search.toLowerCase())&&!o.waiter.toLowerCase().includes(search.toLowerCase()))return false;
     return true;
   });
+  const exportCSV=()=>{
+    const q=v=>`"${String(v).replace(/"/g,'""')}"`;
+    const csv=["ID,Mesa,Funcionário,Itens,Total,Gorjeta,Método,Data,Hora",
+      ...filtered.map(o=>[o.id,q(o.table),q(o.waiter),o.items,o.total.toFixed(2),o.tip.toFixed(2),q(o.method),o.date,o.time].join(","))].join("\n");
+    const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="historico-pedidos.csv";a.click();
+  };
   return(
     <div>
       <div className="filters-row">
@@ -1820,7 +1826,7 @@ function OrderHistory(){
           <input type="datetime-local"className="filter-input"value={toDt}onChange={e=>setToDt(e.target.value)}style={{width:185,colorScheme:"dark"}}/>
           {rangeActive&&<button className="filter-chip"onClick={()=>{setFromDt("");setToDt("");}}title="Limpar intervalo">✕</button>}
         </div>
-        <button className="btn btn-ghost"style={{marginLeft:"auto"}}onClick={()=>{}}><Ic.Export/>Exportar</button>
+        <button className="btn btn-ghost"style={{marginLeft:"auto"}}onClick={exportCSV}><Ic.Export/>Exportar</button>
       </div>
       <div className="card" style={{overflowX:"auto"}}>
         <table className="data-table">
@@ -1952,10 +1958,6 @@ const SETTINGS_DEFAULTS={
   ]},
   kds:{alertYellow:5,alertRed:12,autoRefresh:3},
   caixa:{defaultFundo:50,maxTurno:8,confirmAbertura:true},
-  horario:{turnos:[
-    {id:"t1",name:"Almoço",start:"11:30",end:"15:00"},
-    {id:"t2",name:"Jantar",start:"18:30",end:"22:00"},
-  ]},
 };
 function SettingsSection({onAppNameChange}={}){
   const [tab,setTab]=useState("geral");
@@ -1969,7 +1971,6 @@ function SettingsSection({onAppNameChange}={}){
         fiscal:{nif:flat["fiscal.nif"]??prev.fiscal.nif,regime:flat["fiscal.regime"]??prev.fiscal.regime,rates:flat["fiscal.rates"]??prev.fiscal.rates},
         kds:{alertYellow:flat["kds.alertYellow"]??prev.kds.alertYellow,alertRed:flat["kds.alertRed"]??prev.kds.alertRed,autoRefresh:flat["kds.autoRefresh"]??prev.kds.autoRefresh},
         caixa:{defaultFundo:flat["caixa.defaultFundo"]??prev.caixa.defaultFundo,maxTurno:flat["caixa.maxTurno"]??prev.caixa.maxTurno,confirmAbertura:flat["caixa.confirmAbertura"]??prev.caixa.confirmAbertura},
-        horario:{turnos:Array.isArray(flat["horario.turnos"])?flat["horario.turnos"]:prev.horario.turnos},
       }));
       if(flat["geral.timezone"]) setTimezone(flat["geral.timezone"]);
     }).catch(()=>{});
@@ -1994,9 +1995,6 @@ function SettingsSection({onAppNameChange}={}){
   };
   const setK=(k,v)=>setS(p=>({...p,kds:{...p.kds,[k]:v}}));
   const setC=(k,v)=>setS(p=>({...p,caixa:{...p.caixa,[k]:v}}));
-  const addTurno=()=>setS(p=>({...p,horario:{turnos:[...p.horario.turnos,{id:`t${Date.now()}`,name:"Novo turno",start:"12:00",end:"15:00"}]}}));
-  const setTurno=(id,k,v)=>setS(p=>({...p,horario:{turnos:p.horario.turnos.map(t=>t.id===id?{...t,[k]:v}:t)}}));
-  const removeTurno=(id)=>setS(p=>({...p,horario:{turnos:p.horario.turnos.filter(t=>t.id!==id)}}));
   return(
     <div>
       <div className="stab-row">{["geral","fiscal","kds"].map(t=><div key={t}className={`stab${tab===t?" active":""}`}onClick={()=>setTab(t)}>{t==="fiscal"?"Fiscal & IVA":t==="kds"?"KDS":"Geral"}</div>)}</div>

@@ -174,9 +174,11 @@ insert into settings (key, value) values
   ('restaurant', '{"name":"RestaurantOS","address":"","phone":"","email":"","nif":""}'),
   ('fiscal',     '{"rates":[{"value":6,"active":true},{"value":13,"active":true},{"value":23,"active":true}]}'),
   ('kds',        '{"alertYellow":5,"alertRed":12,"autoRefresh":3}'),
-  ('caixa',      '{"defaultFundo":100,"maxTurnoHours":12,"confirmAbertura":true}'),
-  ('horario.turnos', '[{"id":"t1","name":"Almoço","start":"11:30","end":"15:00"},{"id":"t2","name":"Jantar","start":"18:30","end":"22:00"}]')
+  ('caixa',      '{"defaultFundo":100,"maxTurnoHours":12,"confirmAbertura":true}')
 on conflict (key) do nothing;
+
+-- Operating-shift (turnos Almoço/Jantar) feature removed — drop its stored setting.
+delete from settings where key = 'horario.turnos';
 
 -- ─── RLS ─────────────────────────────────────────────────────────────────────
 
