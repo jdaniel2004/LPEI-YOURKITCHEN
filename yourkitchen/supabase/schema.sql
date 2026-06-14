@@ -275,6 +275,12 @@ alter table order_lines add column if not exists ready_at timestamptz;
 -- prep_started_at (Em Preparação) and ready_at (Pronto). See add_prep_started_at.sql.
 alter table order_lines add column if not exists prep_started_at timestamptz;
 
+-- When the line was sent to the kitchen ("Enviar" no POS). The KDS ticket timer
+-- runs from here, NOT created_at — created_at is when the item was added to the
+-- cart, so the timer would otherwise count the time the waiter spent building the
+-- order. See add_prep_started_at.sql / send route.
+alter table order_lines add column if not exists sent_at timestamptz;
+
 -- Function to decrement ingredient stock when an order is sent
 create or replace function decrement_ingredient_stock(p_ingredient_id uuid, p_qty numeric)
 returns void language plpgsql as $$

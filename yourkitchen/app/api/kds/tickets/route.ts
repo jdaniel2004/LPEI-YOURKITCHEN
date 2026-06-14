@@ -6,10 +6,11 @@ const orderSelect = (lineCols: string) => `id, status, created_at, notes,
    waiter:staff(id, name),
    lines:order_lines(${lineCols})`;
 
-// prep_started_at is added by the add_prep_started_at.sql migration. If it hasn't
-// been run yet, selecting it would 500 the whole query and the KDS would show
-// nothing — so we retry without it and the client falls back to order.status.
-const LINES_FULL = "id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, ready_at, prep_started_at";
+// prep_started_at and sent_at are added by the add_prep_started_at.sql migration.
+// If it hasn't been run yet, selecting them would 500 the whole query and the KDS
+// would show nothing — so we retry without them and the client falls back
+// (order.status for prep, created_at for the timer start).
+const LINES_FULL = "id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, sent_at, ready_at, prep_started_at";
 const LINES_BASE = "id, name, qty, modifiers, notes, sent, cancelled, sent_batch, delivered, created_at, ready_at";
 
 export async function GET() {
@@ -26,7 +27,7 @@ export async function GET() {
       .order("created_at");
 
   let { data, error } = await run(LINES_FULL);
-  if (error && /prep_started_at/i.test(error.message || "")) {
+  if (error && /prep_started_at|sent_at/i.test(error.message || "")) {
     ({ data, error } = await run(LINES_BASE));
   }
 

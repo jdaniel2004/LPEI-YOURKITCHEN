@@ -65,8 +65,11 @@ function orderToTickets(o) {
     const allReady = lines.every(l => l.ready_at);
     const anyStarted = hasPrepCol ? lines.some(l => l.prep_started_at) : orderStarted;
     const status = allReady ? "pronto" : anyStarted ? "em_preparacao" : "pendente";
-    // Timer runs from when this batch reached the kitchen and freezes at ready_at.
-    const startedAt = Math.min(...lines.map(l => new Date(l.created_at).getTime()));
+    // Timer runs from when this batch was SENT to the kitchen (sent_at) and freezes
+    // at ready_at. Falls back to created_at when the sent_at migration hasn't run —
+    // created_at is when the item was added to the cart, so using it makes the timer
+    // count the time the waiter spent building the order before "Enviar".
+    const startedAt = Math.min(...lines.map(l => new Date(l.sent_at ?? l.created_at).getTime()));
     const readyTimes = lines.map(l => l.ready_at).filter(Boolean).map(t => new Date(t).getTime());
     const readyAt = allReady && readyTimes.length ? Math.max(...readyTimes) : null;
     tickets.push({

@@ -11,13 +11,21 @@
 
 alter table order_lines add column if not exists prep_started_at timestamptz;
 
+-- The KDS ticket timer runs from when a batch was SENT to the kitchen, not from
+-- created_at (which is when the item was added to the cart). Without this the timer
+-- starts at however long the waiter spent building the order before "Enviar".
+alter table order_lines add column if not exists sent_at timestamptz;
+
 -- Preserve in-flight state: orders already being prepared at migration time should
 -- not jump back to "Pendente". Stamp their sent, non-cancelled lines as started.
+-- Backfill sent_at from created_at too — the real send time is unknown for existing
+-- lines, so created_at is the best available approximation.
 update order_lines l
-set    prep_started_at = coalesce(l.prep_started_at, l.created_at)
+set    prep_started_at = coalesce(l.prep_started_at, l.created_at),
+       sent_at         = coalesce(l.sent_at, l.created_at)
 from   orders o
 where  l.order_id = o.id
   and  l.sent = true
   and  l.cancelled = false
-  and  l.prep_started_at is null
+  and  (l.prep_started_at is null or l.sent_at is null)
   and  o.status in ('sent', 'bill');

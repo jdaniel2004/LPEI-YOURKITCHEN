@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const lineIds = unsentLines.map((l) => l.id);
   const { error: linesErr } = await supabaseAdmin
     .from("order_lines")
-    .update({ sent: true, sent_batch: nextBatch })
+    .update({ sent: true, sent_batch: nextBatch, sent_at: new Date().toISOString() })
     .in("id", lineIds);
 
   if (linesErr) return Response.json({ error: linesErr.message }, { status: 500 });
