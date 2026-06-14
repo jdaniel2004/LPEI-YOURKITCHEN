@@ -29,10 +29,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const maxBatch = lines.reduce((m, l) => Math.max(m, l.sent_batch ?? 0), 0);
   const nextBatch = maxBatch + 1;
 
+  // sent_at is stamped by the set_sent_at trigger (DB clock) when sent flips true —
+  // not here. Writing it from the Next server would put it on a different clock than
+  // created_at and the serverNow the KDS uses, reintroducing timer skew.
   const lineIds = unsentLines.map((l) => l.id);
   const { error: linesErr } = await supabaseAdmin
     .from("order_lines")
-    .update({ sent: true, sent_batch: nextBatch, sent_at: new Date().toISOString() })
+    .update({ sent: true, sent_batch: nextBatch })
     .in("id", lineIds);
 
   if (linesErr) return Response.json({ error: linesErr.message }, { status: 500 });

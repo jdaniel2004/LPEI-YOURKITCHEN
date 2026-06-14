@@ -40,5 +40,12 @@ export async function GET() {
   // Filter to orders that have at least one sent, non-cancelled line
   const tickets = rows.filter((o) => o.lines.some((l) => l.sent && !l.cancelled));
 
-  return Response.json(tickets);
+  // serverNow = the DB clock. The KDS uses it to cancel out the difference between
+  // the kitchen tablet's clock and the DB, so the ticket timer starts at ~0 rather
+  // than the browser↔server skew. Falls back to the app-server clock if the db_now()
+  // migration hasn't run yet.
+  const { data: nowVal } = await supabaseAdmin.rpc("db_now");
+  const serverNow = (nowVal as string | null) ?? new Date().toISOString();
+
+  return Response.json({ serverNow, tickets });
 }

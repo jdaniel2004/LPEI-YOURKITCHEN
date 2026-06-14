@@ -278,8 +278,29 @@ alter table order_lines add column if not exists prep_started_at timestamptz;
 -- When the line was sent to the kitchen ("Enviar" no POS). The KDS ticket timer
 -- runs from here, NOT created_at — created_at is when the item was added to the
 -- cart, so the timer would otherwise count the time the waiter spent building the
--- order. See add_prep_started_at.sql / send route.
+-- order. Stamped by the trigger below (DB clock) so it stays on the same clock as
+-- created_at and the KDS serverNow. See add_prep_started_at.sql.
 alter table order_lines add column if not exists sent_at timestamptz;
+
+create or replace function set_sent_at() returns trigger as $$
+begin
+  if new.sent = true and new.sent_at is null then
+    new.sent_at := now();
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_set_sent_at on order_lines;
+create trigger trg_set_sent_at
+  before insert or update on order_lines
+  for each row execute function set_sent_at();
+
+-- DB clock, read by the KDS to correct the kitchen tablet's clock skew so the
+-- ticket timer starts at ~0 instead of the browser↔server offset.
+create or replace function db_now() returns timestamptz language sql stable as $$
+  select now();
+$$;
 
 -- Function to decrement ingredient stock when an order is sent
 create or replace function decrement_ingredient_stock(p_ingredient_id uuid, p_qty numeric)

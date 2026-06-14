@@ -91,8 +91,20 @@ function orderToTickets(o) {
 }
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
+// Clock-skew correction: the ticket timestamps come from the DB clock, but the
+// timer runs on the kitchen tablet's clock. If those differ (they often do by tens
+// of seconds), the timer would start at that offset instead of 0. /api/kds/tickets
+// returns the DB's "now"; we measure how far the local clock is from it and subtract
+// that everywhere we read the current time. nowMs() = current time on the DB clock.
+let clockSkewMs = 0; // localNow − serverNow
+const nowMs = () => Date.now() - clockSkewMs;
+function syncClock(serverNow) {
+  const s = serverNow ? new Date(serverNow).getTime() : NaN;
+  if (!Number.isNaN(s)) clockSkewMs = Date.now() - s;
+}
+
 function elapsed(createdAt) {
-  return Math.floor((Date.now() - createdAt) / 1000);
+  return Math.floor((nowMs() - createdAt) / 1000);
 }
 // Elapsed-time formatter for ticket timers (seconds → "m:ss"). Named distinctly
 // from the imported fmtTime(date, opts) clock formatter to avoid a name clash.
@@ -709,8 +721,8 @@ function TimerBadge({ startedAt, endedAt, done }) {
   const calc = () => {
     let end;
     if (endedAt != null) end = endedAt;
-    else if (done) { if (capturedRef.current == null) capturedRef.current = Date.now(); end = capturedRef.current; }
-    else { capturedRef.current = null; end = Date.now(); }
+    else if (done) { if (capturedRef.current == null) capturedRef.current = nowMs(); end = capturedRef.current; }
+    else { capturedRef.current = null; end = nowMs(); }
     return Math.max(0, Math.floor((end - startedAt) / 1000));
   };
   const [secs, setSecs] = useState(calc);
@@ -980,8 +992,12 @@ export default function KDS() {
       fetch("/api/kds/tickets")
         .then(r => r.json())
         .then(data => {
-          if (!Array.isArray(data)) return;
-          const incoming = data.flatMap(orderToTickets);
+          // Response is { serverNow, tickets }; tolerate the old bare-array shape
+          // during a rolling deploy.
+          const rows = Array.isArray(data) ? data : data?.tickets;
+          if (!Array.isArray(rows)) return;
+          if (!Array.isArray(data)) syncClock(data?.serverNow);
+          const incoming = rows.flatMap(orderToTickets);
           // Clean up archived IDs that no longer exist in DB (e.g. paid orders)
           const liveIds = new Set(incoming.map(t => t.id));
           const staleArchived = [...archivedRef.current].filter(id => !liveIds.has(id));

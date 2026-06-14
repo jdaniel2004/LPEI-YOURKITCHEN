@@ -16,6 +16,30 @@ alter table order_lines add column if not exists prep_started_at timestamptz;
 -- starts at however long the waiter spent building the order before "Enviar".
 alter table order_lines add column if not exists sent_at timestamptz;
 
+-- Stamp sent_at with the DATABASE clock (now()) the moment a line flips to sent.
+-- Doing it here — not from the Next server — keeps sent_at on the same clock as
+-- created_at and the serverNow the KDS uses, so the ticket timer is immune to skew
+-- between the app server, the DB, and the kitchen tablet's browser.
+create or replace function set_sent_at() returns trigger as $$
+begin
+  if new.sent = true and new.sent_at is null then
+    new.sent_at := now();
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_set_sent_at on order_lines;
+create trigger trg_set_sent_at
+  before insert or update on order_lines
+  for each row execute function set_sent_at();
+
+-- The KDS reads this to align the kitchen tablet's clock with the DB clock, so the
+-- ticket timer never shows the browser↔server skew (the "starts at 41s" bug).
+create or replace function db_now() returns timestamptz language sql stable as $$
+  select now();
+$$;
+
 -- Preserve in-flight state: orders already being prepared at migration time should
 -- not jump back to "Pendente". Stamp their sent, non-cancelled lines as started.
 -- Backfill sent_at from created_at too — the real send time is unknown for existing
